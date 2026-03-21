@@ -44,6 +44,7 @@ struct PaperListView: View {
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         }
         .listStyle(.plain)
+        .refreshable { await vm.load() }
         .overlay(alignment: .top) {
             if vm.isLoading && !vm.papers.isEmpty {
                 ProgressView()
