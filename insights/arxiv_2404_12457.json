@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RAGCache is a serving system that reduces RAG latency by caching intermediate LLM states (KV cache) of retrieved documents in a hierarchical GPU/host memory tree, and uses speculative pipelining to overlap retrieval with generation. It achieves up to 4x faster time-to-first-token and 2.1x higher throughput compared to vLLM+Faiss.",
+    "key_idea": "Reuse precomputed KV cache states for frequently retrieved documents organized in a knowledge tree, while speculatively starting LLM generation before retrieval completes.",
+    "why_it_matters": "RAG systems are increasingly used in production but suffer from high latency due to long retrieved contexts; RAGCache directly addresses this bottleneck without changing model quality, making real-time RAG applications more feasible.",
+    "possible_use_cases": [
+      "Low-latency enterprise search and Q&A systems that repeatedly retrieve from the same knowledge base",
+      "High-throughput RAG APIs serving many concurrent users over a shared document corpus",
+      "Real-time customer support chatbots that augment responses with product documentation"
+    ],
+    "generated_at": "2026-03-21T20:37:17Z"
+  },
+  "deep": {
+    "method_breakdown": "RAGCache organizes intermediate KV cache states of retrieved documents into a knowledge tree structure spanning GPU and host memory, enabling reuse when the same documents are retrieved across requests. It uses dynamic speculative pipelining to overlap the retrieval phase with LLM prefill/generation, hiding retrieval latency behind computation. The system is built on vLLM and Faiss, extending prefix caching to the RAG-specific multi-document retrieval pattern.",
+    "key_innovation": "Prior work treats RAG as a black box pipeline (retrieve then generate sequentially); RAGCache exploits two underutilized properties: (1) retrieval pattern regularity — popular chunks are retrieved repeatedly, enabling KV cache reuse via a shared knowledge tree rather than recomputing attention over retrieved docs every time, and (2) streaming search behavior — retrieval results arrive incrementally, enabling speculative pipelining where LLM generation begins before all retrieved chunks arrive.",
+    "technical_insight": "The knowledge tree design is the critical choice: by organizing cached KV states hierarchically by document/chunk identity across GPU and host memory tiers, RAGCache achieves prefix-cache-style reuse for retrieved context without requiring exact prompt prefix matches. This works because retrieved documents are semantically independent of the query prefix, so their KV states are query-agnostic and safely reusable — a property unique to RAG that doesn't hold for general LLM serving.",
+    "limitations": "Cache effectiveness degrades for long-tail or highly diverse query distributions where retrieval overlap between requests is low. Speculative pipelining introduces complexity and potential wasted computation if early-retrieved chunks force re-ranking or are superseded by later results. Memory pressure from maintaining a large knowledge tree across GPU/host tiers may conflict with the base model's KV cache needs under high load. The approach is tightly coupled to dense retrieval (Faiss); sparse or hybrid retrieval pipelines may not exhibit the same streaming or reuse patterns.",
+    "interview_questions": [
+      "How does RAGCache handle cache invalidation when the external knowledge base is updated?",
+      "What happens during speculative pipelining if the later-arriving retrieved chunks change the optimal generation — does the system roll back or discard speculated tokens?",
+      "How does the knowledge tree decide eviction policy when GPU memory is under pressure — does it use LRU, frequency-based, or something retrieval-pattern-aware?",
+      "The TTFT improvement is up to 4×, but what is the average case, and under what retrieval overlap conditions does the gain approach 1× (no improvement)?",
+      "How does RAGCache interact with batched serving — if two concurrent requests retrieve overlapping but not identical document sets, how is the shared knowledge tree accessed safely?"
+    ],
+    "interview_answers": [
+      "The paper does not deeply address this; knowledge tree entries would need TTL or explicit invalidation signals tied to the vector database update cycle, which is a practical gap for production deployments with frequently updated corpora.",
+      "Dynamic speculative pipelining likely adopts a commit-or-discard model similar to speculative decoding — tokens generated from early chunks are tentative and verified once all chunks arrive; mismatch causes recomputation, so the benefit depends on early chunks being high-quality and stable across the streaming retrieval window.",
+      "The knowledge tree likely uses a frequency- or recency-weighted eviction (similar to SGLang's RadixAttention), prioritizing chunks that appear in many queries, since retrieval pattern regularity is the core assumption — evicting hot chunks would undermine the entire caching strategy.",
+      "The 4× TTFT gain represents the best case with high retrieval overlap and cache-warm conditions; for cold cache or low-overlap workloads the gain approaches zero, and the paper's production dataset results likely show more modest average improvements around 1.5–2×.",
+      "The knowledge tree uses chunk-level granularity with shared read access; concurrent requests can safely share immutable KV cache entries since attention over retrieved context is deterministic and query-independent, with write locks only during initial population of a new chunk's cache entry."
+    ],
+    "generated_at": "2026-03-21T20:37:45Z"
+  }
+}

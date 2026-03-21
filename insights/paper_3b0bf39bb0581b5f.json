@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper compares a statistical model and a neural two-tower model for e-commerce recommendations based on the 'users who viewed X also bought Y' pattern. A/B testing showed the statistical approach outperforms the neural model in CTR and conversion, while the two-tower model adds coverage as a complementary system.",
+    "key_idea": "Modeling co-purchase behavior conditioned on product views—rather than pure item similarity—better captures purchase intent and drives higher conversion rates.",
+    "why_it_matters": "Practitioners building recommendation systems should not assume deep learning always wins; a well-designed statistical model can outperform neural approaches on business metrics while being simpler to deploy, and hybrid strategies can balance precision with coverage.",
+    "possible_use_cases": [
+      "E-commerce product detail pages showing 'customers who viewed this also bought' carousels",
+      "Cold-start or long-tail product recommendation where neural models lack sufficient training signal",
+      "Supplementary recommendation layers that increase catalog coverage without degrading primary recommendation quality"
+    ],
+    "generated_at": "2026-03-21T20:34:04Z"
+  },
+  "deep": {
+    "method_breakdown": "The statistical model computes co-occurrence signals between viewed and purchased products from historical user sessions, ranking candidates by frequency-weighted purchase probability given a view event. The neural two-tower model encodes product features into separate query (viewed item) and candidate (purchased item) embedding spaces, trained with contrastive loss to align viewed-item representations with their associated purchase embeddings, enabling approximate nearest-neighbor retrieval at scale.",
+    "key_innovation": "The core novelty is reframing the recommendation signal from item-item similarity (content/collaborative filtering) to a causal behavioral signal: 'what do users buy after viewing this item,' which better captures purchase intent rather than mere similarity. The dual-model deployment — statistical for precision, two-tower for coverage — is a pragmatic ensemble strategy validated through A/B testing.",
+    "technical_insight": "Using view-to-purchase co-occurrence rather than purchase-to-purchase or view-to-view co-occurrence is the critical design choice: it captures cross-stage funnel behavior (browse → buy), filtering out items users viewed but didn't buy, which directly optimizes for conversion rather than engagement or similarity. This is why the statistical model outperforms naive similarity baselines on CTR and CR.",
+    "limitations": "The statistical model suffers from popularity bias and cold-start problems — low-traffic items have sparse co-occurrence counts and unreliable estimates. The two-tower model's 1% CTR drop suggests its broader coverage introduces lower-quality candidates, likely from embedding space noise or insufficient training signal for long-tail products. Neither model explicitly models session context, user demographics, or temporal dynamics, limiting personalization depth.",
+    "interview_questions": [
+      "Why does the statistical model outperform the two-tower model on CTR and CR despite the two-tower model having broader coverage?",
+      "How would you handle the cold-start problem for new products in the statistical co-occurrence model?",
+      "What are the key architectural choices in the two-tower model, and how does training differ from a standard collaborative filtering approach?",
+      "How would you design the A/B test to ensure the CTR and CR lifts are attributable to the recommendation model and not confounded by position bias or seasonality?",
+      "How would you extend this system to incorporate real-time user session signals rather than relying solely on historical co-occurrence patterns?"
+    ],
+    "interview_answers": [
+      "The statistical model is trained directly on a clean, high-precision signal (frequent co-occurrences have reliable purchase intent) and produces fewer but higher-quality candidates. The two-tower model optimizes a smooth embedding space that generalizes across the long tail, but this generalization introduces noise — items that are semantically nearby in embedding space may not actually be purchased together, diluting precision and hurting CTR/CR.",
+      "Common approaches include: (1) content-based fallback using item attribute similarity to proxy co-occurrence for new items, (2) transfer learning from category-level co-occurrence statistics to item level, (3) using early impression data to bootstrap counts with Bayesian smoothing (e.g., add-k smoothing or a hierarchical prior), and (4) a hybrid routing layer that serves the two-tower model for cold items and the statistical model for warm items above a count threshold.",
+      "The two-tower architecture uses one encoder for the query item (viewed) and a separate encoder for candidate items (purchased), trained with in-batch negative sampling or sampled softmax. Unlike standard collaborative filtering which uses user-item interaction matrices, this model encodes item features directly, enabling generalization to unseen items. Key choices include whether to share weights between towers, how to construct negatives (random vs. hard negatives), and whether to incorporate side features (price, category, image embeddings).",
+      "Critical controls include: randomizing recommendation slot assignment at the user or session level (not item level) to avoid selection bias, using pre-period holdout to verify group comparability, logging impression positions to correct for position bias via inverse propensity weighting, running the test across multiple weeks to average out weekly seasonality, and using a metric hierarchy (primary: CR; secondary: CTR) with pre-registered statistical thresholds to avoid p-hacking.",
+      "You would integrate a streaming pipeline (e.g., Kafka + Flink) to compute real-time session co-occurrence signals, maintaining a session-level context vector of recently viewed items. This context vector can be appended to the query tower input in the two-tower model, or used to re-rank statistical model candidates with a lightweight session-aware scoring layer. The challenge is balancing freshness (real-time signals) against reliability (historical aggregates), typically handled by a weighted combination or a cascade ranker."
+    ],
+    "generated_at": "2026-03-21T20:34:29Z"
+  }
+}
