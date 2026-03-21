@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SuperRS proposes a unified ranking framework for e-commerce that jointly models search and recommendation scenarios using a Dual-layer Multi-MoE architecture, enabling shared learning between the two pipelines rather than maintaining separate systems.",
+    "key_idea": "By fusing user interaction sequences from both search and recommendation with reciprocal attention and dual gating, a single model can capture cross-scenario user intent while preserving each scenario's unique characteristics.",
+    "why_it_matters": "Practitioners running separate search and recommendation ranking stacks can reduce infrastructure complexity and improve ranking quality by exploiting the shared behavioral signals between the two scenarios.",
+    "possible_use_cases": [
+      "Unified ranking model for e-commerce platforms serving both search queries and personalized recommendation feeds",
+      "Cross-scenario user behavior modeling to better capture purchase intent signals across different product discovery touchpoints",
+      "Multi-task ranking systems where a single model serves multiple surfaces (search, homepage feed, category pages) with scenario-specific heads"
+    ],
+    "generated_at": "2026-03-21T19:01:00Z"
+  },
+  "deep": {
+    "method_breakdown": "SuperRS jointly models search and recommendation ranking through a Dual-layer Multi-MoE (DualMoE) architecture that handles scenario-specific disparities while enabling cross-scenario information sharing. A Search-Recommendation Sequence Fusion Unit merges user interaction histories from both scenarios, and Reciprocal Scenario Interest Attention (RSIA) aligns feature representations across domains. Dynamic Feature Integration (DFI) uses a dual gating mechanism to selectively fuse cross-scenario signals while preserving each scenario's identity, optimized via multi-objective training.",
+    "key_innovation": "The reciprocal awareness design — RSIA explicitly models how a user's search behavior informs recommendation preferences and vice versa, rather than treating cross-scenario signals as simple feature concatenation. The dual-gating in DFI is also novel: it controls information flow bidirectionally so neither scenario's characteristics are overwritten by the other, addressing a common failure mode in naive multi-task joint models.",
+    "technical_insight": "The most critical design choice is the separation of scenario identity preservation from cross-scenario knowledge transfer. By using DualMoE to handle domain-specific experts while RSIA+DFI handles cross-domain signals, the model avoids negative transfer — a well-known failure in joint modeling where one domain degrades because the shared representation is pulled toward the other. This decomposition is why the system can improve both scenarios simultaneously.",
+    "limitations": "The framework is validated only on a single platform (1688 App, a B2B e-commerce site), so generalizability to platforms with different search-recommendation interaction patterns (e.g., content streaming, social media) is unverified. The DualMoE architecture adds substantial inference latency and parameter count, which may be prohibitive for latency-sensitive ranking stages. The approach also assumes that search and recommendation share enough user behavioral signal to benefit from joint modeling — on platforms where these are used by distinct user segments, the reciprocal signal would be sparse and the gains likely diminish.",
+    "interview_questions": [
+      "How does RSIA differ from standard cross-attention between two sequence encoders, and why is the 'reciprocal' framing important?",
+      "What failure mode does the dual gating mechanism in DFI specifically prevent, and how does it differ from a single shared gate?",
+      "Why use a Dual-layer MoE instead of a single MoE with scenario ID as an input feature?",
+      "How is negative transfer between search and recommendation prevented during joint multi-objective optimization?",
+      "What are the computational trade-offs of the DualMoE architecture at inference time, and how might you compress it for production?"
+    ],
+    "interview_answers": [
+      "RSIA treats search and recommendation interest representations as mutually conditioning — each scenario's attention query is formed using the other scenario's context, so the model learns 'what from my search history is relevant to scoring this recommendation item' rather than just independently encoding both sequences. The reciprocal framing enforces bidirectional conditioning rather than one-way feature augmentation.",
+      "A single shared gate would produce one scalar/vector weighting the cross-scenario signal uniformly, risking over-suppression or over-injection depending on the scenario context. The dual gate maintains separate gating paths per scenario, allowing search to absorb recommendation signals at a different rate and direction than recommendation absorbs search signals — critical when the two domains have asymmetric signal richness.",
+      "A single MoE with scenario ID input can still route tokens to the same experts if the learned routing ignores scenario ID, leading to implicit sharing that may cause interference. Dual-layer MoE enforces structural separation at the architecture level: one MoE layer handles scenario-agnostic patterns and another handles scenario-specific ones, making the decomposition explicit and more controllable.",
+      "Multi-objective optimization with separate loss heads per scenario prevents gradient dominance from the higher-volume scenario (typically recommendation). The DFI gating also acts as a soft regularizer by controlling how much cross-scenario gradient flows through the shared representation, reducing the chance that one scenario's loss update corrupts the other's feature space.",
+      "DualMoE doubles expert parameters and requires two routing computations per forward pass. For production, options include expert pruning to retain only top-K activated experts per scenario, distilling DualMoE into a smaller dense model using the joint model as teacher, or applying top-1 routing with caching for static user embeddings to amortize expert computation across ranking calls."
+    ],
+    "generated_at": "2026-03-21T19:01:24Z"
+  }
+}
