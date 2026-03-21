@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper systematically compares data splitting strategies for evaluating sequential recommendation systems, showing that the choice of split (e.g., leave-one-out vs. global temporal split) significantly impacts model rankings and conclusions. The authors argue that common evaluation protocols like leave-one-out suffer from temporal leakage and misalignment with real-world deployment scenarios.",
+    "key_idea": "Global temporal splitting, which evaluates models on truly future interactions, is more realistic than leave-one-out splitting but requires careful definition of target interactions and validation set construction to ensure consistency.",
+    "why_it_matters": "Practitioners building or benchmarking recommender systems may be drawing incorrect conclusions about which models perform best due to flawed evaluation protocols—switching to temporally sound splits could change model selection decisions and better predict real-world performance.",
+    "possible_use_cases": [
+      "Re-evaluating existing sequential recommender benchmarks to correct for temporal leakage and obtain more reliable model rankings",
+      "Designing offline evaluation pipelines for production recommendation systems that better simulate online A/B test outcomes",
+      "Establishing reproducible evaluation standards in academic research to ensure fair comparison across sequential recommendation papers"
+    ],
+    "generated_at": "2026-03-21T19:22:01Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper systematically compares data splitting strategies for evaluating sequential recommenders, focusing on leave-one-out (LOO) splits versus global temporal splits. LOO holds out the last interaction per user for testing, while global temporal splits partition interactions by absolute time into distinct train/validation/test periods. The authors analyze how each strategy constructs target interactions and validation subsets, then empirically measure their impact on model rankings across multiple datasets and baselines.",
+    "key_innovation": "The paper identifies and formalizes two previously underappreciated failure modes of LOO: (1) temporal leakage, where test interactions can occur before some training interactions due to per-user rather than global time boundaries, and (2) unrealistically long test horizons, since the last interaction may be arbitrarily far in the future. It also provides the first systematic treatment of how to correctly construct validation sets under global temporal splitting to ensure consistency between validation and test metrics.",
+    "technical_insight": "The most critical design choice is enforcing globally consistent time boundaries for train/validation/test splits rather than per-user boundaries. This matters because sequential recommenders are trained to model temporal order, so allowing test data to temporally overlap with training data (as LOO does) creates an evaluation that cannot generalize to deployment, where the model always predicts future interactions from a fixed cutoff point.",
+    "limitations": "The study is primarily empirical and dataset-dependent; conclusions about which split is 'better' may not universally transfer across domains with different interaction density or temporal dynamics. Global temporal splits can produce highly imbalanced test sets (sparse users with few post-cutoff interactions), and the paper does not fully resolve how to tune the cutoff date. The baselines tested are established but may not cover the full landscape of modern LLM-based recommenders.",
+    "interview_questions": [
+      "What is temporal leakage in the context of leave-one-out splitting, and why does it matter for sequential recommenders?",
+      "How does global temporal splitting differ from leave-one-out splitting in terms of how the test set is constructed?",
+      "Why is consistency between validation and test metrics particularly important for sequential recommendation evaluation?",
+      "What practical deployment decisions can be affected by the choice of splitting strategy?",
+      "How should one choose the time boundary for a global temporal split, and what trade-offs are involved?"
+    ],
+    "interview_answers": [
+      "Temporal leakage occurs in LOO because the split is done per-user: a user's last interaction becomes the test item, but other users' training interactions may occur after this timestamp. The model thus sees future global context during training that post-dates some test targets, breaking the assumption that training always precedes evaluation and inflating measured performance unrealistically.",
+      "LOO holds out each user's final interaction individually, so train/test boundaries differ per user and can interleave temporally. Global temporal splitting defines a single global cutoff timestamp: all interactions before it form the training set, and all interactions after form the test set. This mirrors real deployment where a model is trained up to a date and then evaluated on future data.",
+      "If validation uses a different splitting logic than test (e.g., LOO for validation but temporal for test), hyperparameter tuning and early stopping optimize for a metric that does not correlate with the true test objective. This causes models selected during validation to underperform at test time, making experimental results unreliable and difficult to reproduce.",
+      "Splitting strategy affects which models rank highest in benchmarks, so a model chosen based on LOO results may not be the best model under realistic temporal evaluation. This can mislead practitioners into deploying suboptimal models, misallocating engineering resources, and drawing incorrect conclusions about the relative value of architectural choices like attention mechanisms or pretraining.",
+      "The cutoff is typically chosen to balance data volume (enough training history) against test set size (enough future interactions to evaluate reliably). A cutoff too close to the end leaves little test data; too early wastes recent training signal. Common heuristics include reserving the last N days or a fixed percentage of the timeline, but the optimal choice is domain-specific and sensitivity analysis across multiple cutoffs is recommended."
+    ],
+    "generated_at": "2026-03-21T19:22:27Z"
+  }
+}

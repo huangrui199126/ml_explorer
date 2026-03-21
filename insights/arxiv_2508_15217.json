@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MAL (Multi-Attribution Learning) is a framework that trains CVR prediction models on labels from multiple attribution mechanisms simultaneously (First-Click, Last-Click, Linear, Data-Driven) rather than just one, extracting complementary conversion signals. It uses a multi-task Attribution Knowledge Aggregator plus a Primary Target Predictor to stay calibrated to the production metric while benefiting from richer supervision.",
+    "key_idea": "Instead of discarding alternative attribution labels as noise, treat them as complementary views of the same conversion event and aggregate their knowledge via multi-task learning while keeping the production-metric predictor cleanly separated.",
+    "why_it_matters": "Industrial ad systems already compute multiple attribution labels but typically waste them; MAL turns this free signal into measurable gains (+0.51% GAUC offline, +2.6% ROI online) with no additional data collection cost.",
+    "possible_use_cases": [
+      "E-commerce CVR modeling where platforms log both last-click and data-driven attribution and want to squeeze more signal without new data pipelines",
+      "Ad platforms migrating between attribution models who want a single model robust to attribution definition changes",
+      "Multi-channel retail attribution where different business units own different attribution rules but share a common conversion prediction backend"
+    ],
+    "generated_at": "2026-03-21T19:23:46Z"
+  },
+  "deep": {
+    "method_breakdown": "MAL consists of two components: AKA (Attribution Knowledge Aggregator), a multi-task learner that simultaneously trains on labels from multiple attribution mechanisms (First-Click, Last-Click, Linear, Data-Driven MTA), and PTP (Primary Target Predictor), which uses AKA's shared representations to produce calibrated CVR predictions aligned with the production attribution metric. The CAT training strategy generates supervision signals from all Cartesian product combinations of attribution labels, creating richer cross-attribution training pairs that improve AKA's ability to extract attribution-agnostic conversion signals.",
+    "key_innovation": "Prior work treats attribution as a fixed, single-label problem — training only on one mechanism's labels. MAL is the first framework to explicitly treat multiple attribution mechanisms as complementary supervision sources, using multi-task learning to aggregate their distinct signals rather than discarding them. The CAT strategy is novel in that it exponentially expands supervision signal diversity without collecting new data.",
+    "technical_insight": "The decoupling of AKA and PTP is the critical design choice: AKA learns attribution-agnostic conversion patterns from diverse label perspectives, while PTP re-aligns the learned representation back to the production metric. This prevents the multi-attribution learning from drifting away from deployment requirements — a common failure mode when naively adding auxiliary tasks that optimize for different objectives.",
+    "limitations": "The framework assumes access to multiple attribution mechanisms simultaneously, which may not hold for platforms using only one system. CAT's Cartesian product expansion scales combinatorially and may introduce noisy or contradictory supervision signals when attribution mechanisms disagree strongly. The online +2.6% ROI improvement is reported without confidence intervals, making it hard to assess statistical reliability. Also, the approach does not address the fundamental data sparsity and delay problems in CVR prediction.",
+    "interview_questions": [
+      "Why does training on multiple attribution labels help CVR prediction if the deployment metric is fixed to a single attribution (e.g., Last-Click)?",
+      "How does the CAT strategy work, and why does the Cartesian product help compared to simply using all attribution labels independently?",
+      "What is the role of PTP and why is it necessary to have a separate module rather than just using AKA's output directly?",
+      "What failure modes could arise when attribution mechanisms give conflicting conversion credit, and how does MAL handle this?",
+      "How would you extend MAL to handle the delayed feedback problem in CVR prediction?"
+    ],
+    "interview_answers": [
+      "Different attribution mechanisms capture different aspects of user intent and the conversion funnel — First-Click reflects discovery intent, Last-Click reflects decision intent, and linear/MTA capture multi-step influence. Even though deployment uses one metric, training jointly on all of them forces the model to learn richer, more general conversion patterns that reduce overfitting to the noise or bias inherent in any single attribution heuristic.",
+      "CAT generates supervision by pairing predictions from all combinations of attribution label subsets (e.g., {First-Click only}, {Last-Click only}, {First + Last}, {all three}, etc.), treating each combination as a distinct training signal. This matters because it teaches AKA to maintain consistent predictions under partial or combined attribution views — analogous to dropout or data augmentation — making the aggregator more robust than simply summing individual task losses.",
+      "PTP is necessary because AKA optimizes for a blend of attribution signals that may not align with the production metric. If AKA's output were used directly, the predicted CVR would be calibrated to an averaged attribution view rather than the specific metric the bidding system depends on. PTP acts as a calibration layer that re-anchors the rich AKA representation to the Last-Click (or whichever system-critical) ground truth.",
+      "When attribution mechanisms disagree — common for long purchase funnels — AKA may receive contradictory gradient signals. MAL implicitly handles this through task weighting in the multi-task objective, but if conflicts are severe, the aggregator could learn a muddled representation. A stronger solution would include explicit conflict detection or uncertainty weighting per attribution mechanism, which MAL does not currently implement.",
+      "Delayed feedback means CVR labels arrive late, causing training-serving distribution shift. MAL as described uses static labels, so delayed conversions would still cause label sparsity at training time. One extension is to combine MAL with frameworks like DEFER or FNW that model delayed feedback explicitly — the multi-attribution structure could even help since different attribution mechanisms may have different delay distributions, providing earlier noisy signals that the model can learn to integrate."
+    ],
+    "generated_at": "2026-03-21T19:24:13Z"
+  }
+}
