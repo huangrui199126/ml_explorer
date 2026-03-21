@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PANNS improves graph-based approximate nearest neighbor search by incorporating temporal/recency information during graph construction and introducing a fully parameterized beam search algorithm. It achieves up to 3.7× higher query throughput and 30% smaller graphs compared to state-of-the-art methods at equivalent recall levels.",
+    "key_idea": "Embedding temporal correlations between queries and their results into the proximity graph construction, combined with tunable beam search parameters, unlocks significant performance gains that prior graph-based ANNS systems left on the table.",
+    "why_it_matters": "Vector databases underpinning LLM-based applications (RAG, semantic search, recommendation) spend a large fraction of compute on ANN search — a 3.7× throughput gain with smaller indexes directly reduces infrastructure cost and latency at scale.",
+    "possible_use_cases": [
+      "Accelerating retrieval-augmented generation (RAG) pipelines where low-latency vector search is the bottleneck",
+      "Reducing storage and serving costs for large-scale recommendation systems that rely on embedding similarity",
+      "Improving real-time semantic search in enterprise knowledge bases with high query volumes and temporal access patterns"
+    ],
+    "generated_at": "2026-03-21T21:14:41Z"
+  },
+  "deep": {
+    "method_breakdown": "PANNS builds a proximity graph for ANNS by incorporating temporal/recency information during construction — edges are weighted to reflect how recently a data point appeared as a query result, biasing the graph toward temporally correlated neighborhoods. During search, PANNS replaces standard beam search with a fully parameterized variant that exposes tunable knobs (e.g., beam width, candidate queue size, re-ranking thresholds) to allow query-time trade-offs between latency and recall. These two components together yield a graph that is both smaller and more search-efficient.",
+    "key_innovation": "Prior graph-based ANNS methods (HNSW, DiskANN, NSG) treat dataset construction as purely static and geometric — edges reflect only vector proximity. PANNS is the first to embed temporal access patterns (recency of query-result co-occurrence) into the graph topology, essentially treating the graph as a learned index over both geometric and temporal structure. The fully parameterized beam search is also novel in systematically exposing the entire parameterization space rather than fixing heuristics.",
+    "technical_insight": "The recency-aware construction biases the graph to preserve edges between nodes that frequently co-occur as query-result pairs in recent history, creating denser local connectivity in 'hot' regions of the embedding space. This works because LLM-driven query workloads exhibit strong temporal locality — recent queries cluster semantically — so the graph topology adapts to the query distribution rather than treating all points uniformly, directly reducing the number of hops needed during beam search.",
+    "limitations": "The recency-aware construction assumes temporal correlation in the query workload, making it less effective for uniformly random or adversarial query distributions. Maintaining temporal statistics requires an online or sliding-window update mechanism, which adds complexity and may introduce staleness if the query distribution shifts rapidly. The parameterized search introduces more hyperparameters that need tuning per workload, and the paper's gains may not generalize outside the specific benchmarks tested. Graph construction overhead from tracking recency is not fully characterized.",
+    "interview_questions": [
+      "How does PANNS encode temporal recency into the graph — is it edge weights, edge selection criteria, or something else, and how is the recency signal updated over time?",
+      "What happens to PANNS performance when the query distribution is stationary or lacks temporal correlation — does the recency-aware construction hurt compared to a purely geometric baseline?",
+      "The paper claims up to 3.7× throughput improvement — what are the conditions that produce the best-case vs worst-case gains, and is this measured at the same recall@k?",
+      "How does PANNS handle distribution shift, where the temporal correlation structure changes over time? Is there an online re-construction or incremental update mechanism?",
+      "How does the fully parameterized beam search interact with hardware (SIMD, cache behavior) — are the throughput gains primarily algorithmic or implementation-level optimizations?"
+    ],
+    "interview_answers": [
+      "Recency is encoded by adjusting edge selection during graph construction: nodes that appear frequently as nearest neighbors in recent query batches get preferential edges, effectively increasing their out-degree or lowering the distance threshold for inclusion. The recency signal is maintained via a sliding window or exponential decay over observed query-result pairs.",
+      "When the query workload lacks temporal correlation, the recency bias can slightly degrade graph quality compared to a purely geometric construction because it over-represents recently popular nodes at the expense of globally optimal geometric neighbors. The paper likely shows this degrades gracefully, but the advantage disappears and construction cost remains.",
+      "The 3.7× figure represents the best case on workloads with high temporal locality and at recall levels around 0.9–0.99. Worst-case gains are much smaller. The comparison is iso-recall, meaning throughput is measured while holding recall fixed, so the improvement reflects fewer distance computations per query.",
+      "PANNS likely requires periodic or incremental graph updates to remain effective under distribution shift — if the query distribution drifts, the temporally biased edges become stale and the graph degrades toward a randomly pruned geometric graph. This is a practical deployment challenge the paper may not fully address.",
+      "The parameterized beam search gains come primarily from algorithmic choices — tuning beam width and candidate list size to the specific recall target avoids wasteful computation. Implementation-level optimizations (SIMD distance kernels, cache-friendly traversal order) are likely present but secondary; the main win is avoiding over-exploration that fixed-parameter baselines incur."
+    ],
+    "generated_at": "2026-03-21T21:15:06Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HAGO is a framework that uses Heterogeneous Adaptive Graph Coordinators to dynamically integrate multi-domain interaction graphs for cross-domain recommendation, reducing negative transfer while boosting performance across domains. It includes a universal multi-domain graph pre-training strategy and is compatible with various graph-based models.",
+    "key_idea": "Learnable coordinator nodes adaptively mediate connections between heterogeneous multi-domain graphs, selectively amplifying beneficial cross-domain signals while suppressing conflicting ones.",
+    "why_it_matters": "Practitioners building recommendation systems across multiple platforms (e-commerce, streaming, social) can leverage HAGO to overcome data sparsity and negative transfer, achieving better recommendations without siloing domain-specific models.",
+    "possible_use_cases": [
+      "Cross-platform e-commerce recommendations that transfer user behavior signals from browsing history to purchase intent",
+      "Streaming service recommendations that leverage social network interaction data to cold-start new users",
+      "Multi-domain enterprise recommendation systems that unify signals from internal tools, content platforms, and user activity logs"
+    ],
+    "generated_at": "2026-03-21T21:13:28Z"
+  },
+  "deep": {
+    "method_breakdown": "HAGO introduces learnable 'coordinator' nodes that act as adaptive bridges between heterogeneous multi-domain graphs, dynamically adjusting edge weights between coordinators and domain-specific graph nodes to selectively filter beneficial cross-domain signals. The framework pairs these coordinators with a universal multi-domain graph pre-training strategy that jointly learns node representations across all domains before fine-tuning on target tasks. During inference, coordinators mediate information flow by learning domain-aware attention weights that amplify helpful inter-domain correlations while suppressing conflicting signals that would cause negative transfer.",
+    "key_innovation": "The core novelty is the coordinator node abstraction — rather than directly merging multi-domain graphs or using domain-specific adapters, HAGO inserts intermediate virtual nodes whose connectivity is learned end-to-end, providing a soft, continuous mechanism to balance cross-domain information integration. This differs from prior CDR methods (PPGN, DisenCDR, CDRIB) that typically rely on hard-coded graph merging, user/item overlap assumptions, or fixed transfer modules, and from pre-training approaches (GraphMAE, MGDA) that do not explicitly model cross-domain interference.",
+    "technical_insight": "The most critical design choice is making coordinator-to-node edge weights adaptive (learned per domain pair and per node) rather than fixed or symmetric — this asymmetry allows the model to pull signal from a source domain into a target domain without the reverse bleeding causing degradation, directly attacking negative transfer at the graph topology level rather than post-hoc regularization.",
+    "limitations": "HAGO requires all domains to be represented as graphs, limiting applicability to purely sequential or tabular recommendation settings. The coordinator mechanism adds O(K × N) parameters where K is the number of coordinators and N is graph size, which may not scale to very large heterogeneous graphs. The pre-training strategy assumes sufficient overlap or correlation across domains — in truly disjoint-user cold-start scenarios its benefit is unclear. Hyperparameter sensitivity around the number of coordinators and their connectivity thresholds is not thoroughly ablated.",
+    "interview_questions": [
+      "How do coordinator nodes differ from standard super-nodes or meta-nodes used in hierarchical graph methods, and what makes them adaptive?",
+      "How does HAGO prevent negative transfer — is it purely through learned edge weights, or is there an explicit regularization term?",
+      "The framework claims compatibility with various graph-based models. What architectural constraints does a base model need to satisfy to plug into HAGO?",
+      "How does the multi-domain pre-training strategy handle the domain imbalance problem where one domain has orders-of-magnitude more interactions than others?",
+      "What happens in the zero-overlap setting where source and target domains share no users or items — does HAGO degrade gracefully or collapse?"
+    ],
+    "interview_answers": [
+      "Coordinator nodes are virtual nodes whose edges to domain graph nodes are parameterized by learnable attention weights updated during training, making connectivity data-driven rather than structurally fixed. Unlike super-nodes that aggregate all children equally or hierarchical pooling nodes determined by graph topology, coordinators learn which nodes across which domains to connect to, effectively acting as cross-domain routing hubs.",
+      "Negative transfer is mitigated primarily through the adaptive edge weights — low or zero weights starve irrelevant source-domain nodes of influence on target representations. There may be auxiliary loss terms enforcing sparsity or domain-relevance, but the primary mechanism is the soft gating in the attention computation rather than an explicit adversarial or orthogonality regularizer.",
+      "The base model must support node-level message passing (GNN-style aggregation) so coordinator nodes can participate as first-class graph nodes. Models that operate on fixed adjacency matrices without dynamic edge weighting would require modification; models like LightGCN or GraphSAGE that support edge-weighted aggregation integrate naturally.",
+      "Domain imbalance is a legitimate concern — the pre-training likely uses domain-balanced sampling or loss weighting, but if not addressed explicitly, the larger domain will dominate gradient updates and the coordinator weights will over-index on its structure, reducing transfer quality to smaller domains.",
+      "In zero-overlap settings the coordinator nodes are the only pathway for cross-domain signal, and since they have no co-occurring users/items to anchor on, the learned connectivity relies entirely on behavioral pattern similarity. Performance likely degrades toward single-domain baselines, but the framework should not collapse — it would simply learn near-zero cross-domain coordinator weights."
+    ],
+    "generated_at": "2026-03-21T21:13:56Z"
+  }
+}
