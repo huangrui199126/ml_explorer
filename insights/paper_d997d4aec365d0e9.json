@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Geniie-Lab is an open-source research testbed for systematically studying how prompt and instruction design affects LLM behavior across different stages of a search pipeline, including query formulation, document ranking, and response refinement. It integrates OpenSearch and LLM APIs to enable reproducible, controlled experiments on retrieval-augmented generation systems.",
+    "key_idea": "By treating each stage of an LLM-powered search pipeline (query reformulation, ranking, relevance assessment) as an independently controllable variable, geniie-lab enables rigorous empirical study of how instruction sensitivity impacts IR system behavior.",
+    "why_it_matters": "Practitioners building RAG or LLM-augmented search systems need reliable ways to test prompt robustness and reproducibility — this testbed provides a standardized framework to catch instruction-sensitivity issues before deployment and benchmark different pipeline configurations.",
+    "possible_use_cases": [
+      "Benchmarking prompt variations for query reformulation to find the most robust formulations across different document collections",
+      "Evaluating how different ranking instructions affect LLM-based relevance judgments in enterprise search systems",
+      "Reproducing and comparing agentic IR workflows across model versions to detect behavioral drift as underlying LLMs are updated"
+    ],
+    "generated_at": "2026-03-21T21:22:43Z"
+  },
+  "deep": {
+    "method_breakdown": "Geniie-lab is a modular testbed that wraps OpenSearch and LLM APIs into a unified pipeline supporting three controllable stages: query formulation, document ranking, and response refinement. Experiments are defined declaratively, allowing systematic variation of prompts and instructions across pipeline stages while logging inputs/outputs for reproducibility. The framework treats LLMs as generative information intermediaries (GIIs) and exposes each stage as an independently configurable component.",
+    "key_innovation": "Prior IR evaluation frameworks treat LLMs as black-box components with fixed prompts; geniie-lab uniquely enables controlled ablation of prompt and instruction variations across every stage of a retrieval pipeline simultaneously, isolating the sensitivity of each stage. The explicit framing of LLMs as GIIs and the focus on prompt-induced behavioral variance as a first-class research variable distinguishes it from standard RAG benchmarks.",
+    "technical_insight": "The most important design choice is stage-wise prompt isolation — by decoupling query formulation, ranking, and response refinement into independently configurable modules, the testbed allows researchers to attribute behavioral changes to a specific pipeline stage rather than conflating prompt effects across the full system. This works because IR pipelines have natural sequential dependencies, and isolating each node enables causal analysis of instruction sensitivity.",
+    "limitations": "The testbed is infrastructure/tooling rather than a research contribution with empirical findings, limiting its novelty claims. Its utility depends heavily on the quality and diversity of prompt variations researchers design themselves. Evaluation metrics for 'model search behaviour' remain underspecified in the abstract. OpenSearch-specific integration may limit generalizability to other retrieval backends. Agentic IR workflows are listed as supported but appear nascent.",
+    "interview_questions": [
+      "How does geniie-lab isolate prompt sensitivity at a specific pipeline stage without confounding effects from other stages?",
+      "What makes the 'generative information intermediary' framing theoretically useful compared to simply calling these RAG systems?",
+      "How do you handle the reproducibility challenge given that LLM outputs are stochastic even under identical prompts?",
+      "What evaluation protocol would you use to determine whether a prompt variation at the query formulation stage actually changes downstream retrieval quality versus just changing surface form?",
+      "How does geniie-lab support agentic IR workflows, and what distinguishes an agentic workflow from a standard multi-stage pipeline in this framework?"
+    ],
+    "interview_answers": [
+      "Each stage exposes its own prompt template as an independently swappable parameter; the framework logs stage-level inputs and outputs, so a researcher can fix all stages except one and run controlled comparisons — analogous to ablation studies but over instruction space rather than model weights.",
+      "The GII framing foregrounds that LLMs are not passive retrievers but active intermediaries that transform information — they select, rerank, and rephrase, which introduces biases and sensitivities not present in traditional IR. This framing motivates studying instruction effects as a core IR concern rather than a prompt engineering detail.",
+      "Reproducibility is addressed through deterministic decoding settings (temperature=0 or fixed seeds where APIs support it) and full logging of prompts, model versions, and outputs. The framework acknowledges stochasticity as a variable to study rather than noise to eliminate, enabling variance analysis across repeated runs.",
+      "The appropriate protocol is end-to-end retrieval metric evaluation (nDCG, MRR against a relevance-judged collection) after reformulation, so surface-form changes that do not move ranked results are distinguished from genuinely impactful reformulations. Intermediate query similarity metrics alone are insufficient.",
+      "Agentic workflows in geniie-lab involve multi-turn or conditional stage execution where the LLM can decide to re-query or refine based on intermediate results, rather than a fixed linear pipeline. The distinction is dynamic control flow — the LLM can loop back to query formulation based on retrieved document quality, whereas a standard pipeline executes each stage exactly once in sequence."
+    ],
+    "generated_at": "2026-03-21T21:23:06Z"
+  }
+}

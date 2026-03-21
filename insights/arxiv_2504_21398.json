@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This study compares weak supervision (ORCAS-I baseline) against LLaMA-3.1 models (8B and 70B) for classifying search query intent into informational, navigational, and transactional categories. Results show LLMs achieve better recall but worse precision than weak supervision approaches.",
+    "key_idea": "LLMs tend to over-predict query intents (high recall, low precision) while weak supervision provides more conservative but precise classifications, revealing a fundamental precision-recall tradeoff between the two paradigms.",
+    "why_it_matters": "Search engineers building query understanding pipelines must choose between scalable weak supervision and powerful LLMs — this benchmark provides concrete guidance that neither approach dominates, and that LLM fine-tuning or hybrid methods may be needed for production-quality intent classification.",
+    "possible_use_cases": [
+      "Search engine query understanding and routing",
+      "E-commerce search intent classification to distinguish browse vs. buy vs. brand queries",
+      "Conversational AI systems that need to detect whether a user wants information, navigation, or a transaction"
+    ],
+    "generated_at": "2026-03-21T21:21:40Z"
+  },
+  "deep": {
+    "method_breakdown": "The study compares weak supervision (ORCAS-I baseline) against LLM-based approaches for classifying search queries into informational, navigational, and transactional (INT) categories. LLaMA-3.1-8B and 70B are evaluated under in-context learning (ICL) with few-shot prompts, while LLaMA-3.1-8B is also fine-tuned on labeled data. ORCAS-I uses heuristic-derived weak labels from click logs to train a classifier without manual annotation.",
+    "key_innovation": "The primary contribution is an empirical, head-to-head benchmark of weak supervision versus modern instruction-tuned LLMs for short query intent classification — a comparison not previously done at this scale with LLaMA-3.1 models. It also isolates the precision-recall tradeoff specific to generative models applied to a classification task with very short, ambiguous inputs.",
+    "technical_insight": "The most critical design choice is using weak supervision (click-log heuristics via ORCAS-I) as the baseline, which encodes real user behavior signals rather than manual labels. This matters because short queries are highly ambiguous and behavioral signals capture intent implicitly — making it a strong and practically grounded baseline that LLMs struggle to consistently beat on precision.",
+    "limitations": "LLMs exhibit poor precision despite high recall, meaning they over-predict certain intent classes. Short queries provide minimal context, making reliable classification inherently difficult. The study is limited to three coarse intent categories (INT taxonomy), which may not reflect real-world granularity. Results may not generalize beyond the ORCAS dataset or English queries. Fine-tuning only the 8B model limits conclusions about scale effects.",
+    "interview_questions": [
+      "Why do LLMs tend to have high recall but low precision for query intent classification?",
+      "What is ORCAS-I and how does weak supervision work in this context?",
+      "How does the ambiguity of short queries specifically challenge both LLMs and weak supervision approaches?",
+      "What are the tradeoffs between fine-tuning a smaller LLM versus using a larger model for in-context learning on this task?",
+      "How might you improve precision for LLM-based intent classifiers without sacrificing recall?"
+    ],
+    "interview_answers": [
+      "LLMs are generative models optimized for fluency and coverage rather than calibrated classification. When prompted to classify, they tend to assign broader or more common intent labels (e.g., informational) to uncertain inputs, inflating recall for dominant classes while generating false positives that hurt precision.",
+      "ORCAS-I is a dataset derived from the ORCAS click log corpus, where weak labels are assigned to queries using heuristic rules based on click behavior (e.g., clicks on Wikipedia suggest informational intent). Weak supervision avoids expensive manual labeling by programmatically generating noisy but scalable training labels.",
+      "Short queries like 'python' or 'weather' carry minimal syntactic and semantic cues, making intent highly context-dependent. LLMs lack access to user context and must rely on surface-level patterns, while weak supervision heuristics can also misfire when behavioral signals are noisy or absent for rare queries.",
+      "Fine-tuning even a small 8B model on task-specific data can yield competitive performance by adapting weights to the label distribution, whereas ICL with larger models relies on prompt engineering and may not internalize the specific INT taxonomy. However, fine-tuning requires labeled data and is less flexible, while 70B ICL can generalize better zero-shot.",
+      "Techniques include calibration (adjusting output probability thresholds per class), training with precision-focused loss functions, using chain-of-thought prompting to force more deliberate reasoning before classification, ensemble methods combining LLM outputs with behavioral signals, and post-hoc filtering using a high-precision secondary classifier."
+    ],
+    "generated_at": "2026-03-21T21:22:03Z"
+  }
+}

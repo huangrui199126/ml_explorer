@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Trigger3 is a cascaded query correction framework that routes search queries through a small specialized model first, then escalates to an LLM only when needed, with fallback to the original query if both fail. An adaptive trigger mechanism decides at each stage whether to correct, escalate, or pass through, balancing accuracy and inference cost.",
+    "key_idea": "A three-stage cascade with learned triggers selectively invokes increasingly expensive correction models only when cheaper ones are insufficient, avoiding unnecessary LLM calls while handling out-of-distribution or context-dependent query errors.",
+    "why_it_matters": "Search engines and voice assistants deal with massive query volumes where running an LLM on every request is prohibitively expensive; Trigger3 offers near-LLM correction quality at a fraction of the cost by reserving LLM calls for hard cases.",
+    "possible_use_cases": [
+      "E-commerce search query correction for typos and misspellings at scale",
+      "Voice search error correction where ASR produces garbled or incorrect terms",
+      "Enterprise search over technical or domain-specific vocabularies where small models lack coverage"
+    ],
+    "generated_at": "2026-03-21T21:23:16Z"
+  },
+  "deep": {
+    "method_breakdown": "Trigger3 is a cascaded framework with three sequential decision points: a correction trigger that identifies whether a query needs correction at all (avoiding unnecessary processing), a traditional small correction model that handles in-distribution errors, and an LLM trigger that escalates only hard cases to an LLM. A final fallback trigger decides whether to return the LLM's correction or the original query if neither model succeeds. Each trigger is a learned classifier operating on query features and intermediate correction outputs.",
+    "key_innovation": "The core novelty is the adaptive, cascaded routing mechanism — rather than always using a single model or always calling the LLM, Trigger3 learns when each component is likely to succeed and routes accordingly. Prior work either used standalone small models (fast but limited) or LLMs (powerful but expensive); Trigger3 is the first to frame query correction as a model-selection problem with explicit gating classifiers between stages, preserving efficiency while extending coverage.",
+    "technical_insight": "The most important design choice is the LLM trigger — it acts as a confidence filter on the small model's output, only invoking the expensive LLM when the traditional model is likely wrong. This asymmetric cost structure (cheap triggers + cheap small model for most queries, LLM only for the long tail) is what makes the system practical at search-engine scale. It works because query correction errors are not uniformly distributed; most queries are common and well-handled by small models, while a small fraction require world knowledge or contextual reasoning that only LLMs provide.",
+    "limitations": "The cascade introduces compounding error: a miscalibrated correction trigger can suppress corrections entirely, and a miscalibrated LLM trigger can either over-call the LLM (cost explosion) or under-call it (missing hard cases). The triggers themselves require labeled data to train, creating a bootstrapping dependency. LLM latency, even when called selectively, may still violate real-time search SLAs for the escalated subset. The framework is also evaluated on specific domains and may not generalize to highly specialized or low-resource query types not represented in training.",
+    "interview_questions": [
+      "How are the three triggers trained, and what features do they use to make routing decisions?",
+      "How does Trigger3 handle the case where the LLM and the traditional model disagree — what signal does the fallback trigger use to choose between them or return the original query?",
+      "What is the empirical LLM call rate in production-scale experiments, and how sensitive is overall performance to the LLM trigger's decision threshold?",
+      "How does Trigger3 compare to a simpler two-stage baseline where you just always run the small model and only call the LLM when the small model's confidence is below a threshold?",
+      "Query correction models are known to hallucinate plausible-but-wrong corrections — how does Trigger3 detect and suppress bad LLM corrections that look fluent but change query intent?"
+    ],
+    "interview_answers": [
+      "The triggers are likely binary classifiers trained on query-level features (edit distance, n-gram frequency, language model perplexity) combined with the small model's output confidence. The correction trigger likely uses a pre-correction signal (does this query look malformed?) while the LLM trigger uses a post-correction signal (did the small model's output look like a confident, valid correction?).",
+      "The fallback trigger compares the correction candidates or their associated confidence signals and decides whether any correction is better than the original. It likely uses a ranking or threshold approach over correction quality scores; if neither model's output clears the threshold, the original query is returned to avoid harmful over-correction.",
+      "This is a key practical result the paper should report. A well-calibrated system would call the LLM for roughly 5–20% of queries (the hard tail), achieving most of the quality gain at a fraction of full LLM cost. Performance should degrade gracefully as the threshold tightens (fewer LLM calls, lower recall on hard queries).",
+      "A simple confidence-threshold baseline is a reasonable ablation. Trigger3's advantage would be that the LLM trigger is trained discriminatively on cases where the small model fails, whereas a raw confidence threshold uses the small model's self-reported certainty which may be poorly calibrated for out-of-distribution queries — precisely the ones that most need LLM escalation.",
+      "The fallback trigger serves this role — it must distinguish between a fluent LLM output that fixes the query versus one that subtly alters intent. This is hard with surface-level signals alone and likely requires semantic similarity between the corrected query and original query combined with a correction plausibility score, but the paper may not fully solve this problem."
+    ],
+    "generated_at": "2026-03-21T21:23:41Z"
+  }
+}
