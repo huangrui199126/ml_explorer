@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LIGS uses locality-sensitive hashing (LSH) to build a proximity graph for approximate nearest neighbor search, replacing the traditional dependency-heavy graph construction with independent hash-based neighbor selection. This enables fast insertions and deletions while maintaining competitive recall and search speed.",
+    "key_idea": "By using LSH to independently assign each node's neighbors without data dependencies, LIGS decouples index construction from global graph state, making maintenance operations dramatically faster.",
+    "why_it_matters": "Real-world retrieval systems (e.g., vector databases, semantic search) frequently update their indices as documents are added or removed; LIGS offers a principled way to support high-throughput updates without expensive graph reconstruction or quality degradation.",
+    "possible_use_cases": [
+      "Dynamic document stores where embeddings are continuously added or deleted (e.g., news feeds, product catalogs)",
+      "Low-latency semantic search systems that need to reflect near-real-time content changes",
+      "Retrieval-augmented generation (RAG) pipelines requiring frequent index updates without full reindexing"
+    ],
+    "generated_at": "2026-03-21T18:30:35Z"
+  },
+  "deep": {
+    "method_breakdown": "LIGS uses locality-sensitive hashing (LSH) to construct a proximity graph for ANN search without the data and execution dependencies inherent in traditional graph-based index construction. Instead of building edges through greedy neighbor search (as in HNSW or NSG), LIGS assigns nodes to hash buckets and connects co-bucketed nodes, simulating a proximity graph that can be searched with standard graph traversal. This decoupled construction enables insertions and deletions to be handled independently per node without global graph recomputation.",
+    "key_innovation": "The key innovation is replacing dependency-heavy greedy graph construction (where each node's neighbors depend on the current graph state) with stateless LSH-based edge generation. Prior graph-based methods like HNSW, NSG, and DiskANN require sequential or tightly coupled build passes that make dynamic updates expensive; LIGS makes edge assignment a local, hash-determined operation, enabling truly parallel construction and O(1)-ish maintenance per element.",
+    "technical_insight": "The most important design choice is using multiple independent LSH functions to generate diverse candidate neighbor sets, compensating for LSH's probabilistic false-negative rate. Because any single hash family misses nearby neighbors with non-trivial probability, layering multiple hash tables ensures high-probability coverage of the true neighborhood — analogous to how HNSW uses hierarchical layers for long-range connectivity, but here achieved through hash diversity rather than hierarchical structure.",
+    "limitations": "LSH-based edges are noisier than greedy-selected edges, so graph quality (neighbor accuracy) is inherently lower per edge, requiring more edges or hash tables to match recall — increasing memory and degree. The approach may degrade more sharply in high-dimensional spaces where LSH collision rates drop. Additionally, search latency on the resulting graph may be higher than state-of-the-art methods at equivalent recall targets, making LIGS primarily advantageous only in high-churn, maintenance-heavy scenarios rather than static retrieval benchmarks.",
+    "interview_questions": [
+      "How does LIGS handle the classic LSH false-negative problem, where true nearest neighbors fail to share a hash bucket?",
+      "What graph search algorithm is run on the LIGS-constructed proximity graph, and how does it compare to HNSW-style beam search?",
+      "How does LIGS's insertion/deletion complexity compare to HNSW and NSG theoretically and empirically?",
+      "What LSH family does LIGS use for dense vector (embedding) search — random projection, SimHash, or something else — and why does this choice matter?",
+      "In what real-world deployment scenarios would LIGS's maintenance advantages outweigh its potential recall disadvantage versus HNSW?"
+    ],
+    "interview_answers": [
+      "LIGS mitigates false negatives by using multiple independent hash tables with different hash functions. A pair of nodes only needs to collide in at least one table to be connected, so the probability of missing a true neighbor decreases exponentially with the number of tables, trading memory for recall coverage.",
+      "LIGS performs standard greedy graph search (beam search / best-first search) on the constructed graph, identical in form to HNSW traversal. The difference is purely in graph topology: LIGS graphs are built via LSH rather than greedy insertion, so the navigability properties depend on hash quality rather than construction-time optimization.",
+      "HNSW and NSG insertions require finding approximate nearest neighbors in the current graph state (O(log n) or O(ef · deg) traversal) and potentially updating neighbors' neighbor lists. LIGS insertion only requires hashing the new point and adding edges to co-bucket members — O(L · bucket_size) where L is the number of hash tables — with no graph traversal or cascading neighbor updates, yielding significant constant-factor and asymptotic improvements for frequent updates.",
+      "For dense embedding vectors, LIGS would use random projection LSH (dot-product or cosine similarity families), where each hash function is a random hyperplane partition. This choice matters because it directly determines collision probability as a function of angular distance — the hash family must match the metric space of the embeddings to ensure co-bucketing correlates with true proximity.",
+      "LIGS is most advantageous in streaming or highly dynamic corpora — e.g., real-time document ingestion, frequently updated knowledge bases, or recommendation systems with rapid item churn — where the amortized cost of HNSW/NSG re-linking dominates total system cost. For static or infrequently updated indices where recall and query latency are paramount, traditional graph methods remain preferable."
+    ],
+    "generated_at": "2026-03-21T18:31:04Z"
+  }
+}

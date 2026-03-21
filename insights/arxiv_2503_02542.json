@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LREA is an attention mechanism for CTR prediction that uses low-rank matrix decomposition to efficiently model long user behavior histories without discarding items via top-K filtering. It includes a custom loss function to preserve attention quality and uses matrix absorption with pre-storage at inference time to meet latency constraints.",
+    "key_idea": "Decomposing the attention matrix into low-rank factors reduces the computational cost of attending over long user histories while a distillation loss ensures the approximation retains the fidelity of full attention.",
+    "why_it_matters": "Recommendation systems at scale must score items in milliseconds, yet richer user history improves accuracy — LREA lets practitioners capture more behavioral signal without blowing latency budgets or throwing away data via coarse filtering.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where users have thousands of past interactions",
+      "Short-video feed ranking requiring sub-10ms inference over long watch histories",
+      "Ad click-through rate prediction on platforms with dense user engagement logs"
+    ],
+    "generated_at": "2026-03-21T18:26:19Z"
+  },
+  "deep": {
+    "method_breakdown": "LREA applies low-rank matrix decomposition to the attention computation in user behavior modeling, factorizing the attention weight matrix into lower-dimensional representations to reduce the O(n²) complexity of standard attention. A custom loss function is introduced to regularize the low-rank approximation so that the decomposed matrices preserve the attention distribution fidelity. At inference time, the factored matrices are pre-absorbed and cached, collapsing sequential matrix multiplications into pre-computed forms that satisfy latency SLAs.",
+    "key_innovation": "Prior work handles long user histories via hard truncation (top-K filtering) or sparse attention, both of which discard information. LREA instead approximates the full attention matrix in a low-rank subspace without dropping any behavior signals, while using a purpose-built distillation-style loss to ensure the low-rank approximation does not degrade attention quality — a combination not previously applied to CTR behavior towers.",
+    "technical_insight": "The matrix absorption trick at inference is the critical design choice: by pre-multiplying and storing the decomposed projection matrices offline, the online serving path avoids the decomposition cost entirely and matches the latency of a simple lookup, making the theoretical efficiency gain practically realizable in a production recommendation system.",
+    "limitations": "The paper relies on offline and online A/B results without ablating the rank hyperparameter sensitivity, leaving it unclear how to tune rank for new domains or behavior sequence lengths. The low-rank assumption implicitly constrains the expressiveness of user interest space, which may hurt recall for users with highly diverse or rapidly shifting interests. The approach is also specific to attention-based behavior towers and does not generalize to retrieval or non-attention architectures.",
+    "interview_questions": [
+      "Why does low-rank decomposition reduce attention computation cost, and what is the complexity before and after?",
+      "What problem does the custom loss function solve, and how does it differ from simply using reconstruction loss on the weight matrix?",
+      "How does matrix absorption work at inference time, and why can't the same trick be applied during training?",
+      "Compared to top-K filtering methods like SIM or ETA, what are the precision-recall trade-offs of LREA?",
+      "How would you choose the rank hyperparameter in practice, and what signals would indicate underfitting vs overfitting to the low-rank constraint?"
+    ],
+    "interview_answers": [
+      "Standard attention is O(n·d) for the QK^T product where n is sequence length and d is dimension. Low-rank decomposition factorizes the key/value projections into rank-r matrices (r << d), reducing per-query cost from O(n·d) to O(n·r + r·d), which is linear in sequence length with a much smaller constant.",
+      "Plain reconstruction loss minimizes ||A - UV^T||_F but does not constrain the attention distribution (softmax output). The custom loss adds a term that aligns the softmax distributions of the full and low-rank attention, ensuring behavioral ranking signals are preserved even when the raw matrix values differ — analogous to knowledge distillation but applied to attention maps.",
+      "During training both U and V are learned end-to-end and must be updated, so the full computation graph is needed. At inference the weights are frozen, so U·V^T can be pre-multiplied into a single matrix and stored, and context-independent projections (e.g., item embeddings projected by V) can be pre-computed and cached in a key-value store, eliminating the decomposition overhead from the serving path.",
+      "Top-K methods like SIM discard low-scoring items entirely, trading recall for speed. LREA retains all items but approximates their joint attention, so it has higher recall but introduces approximation error in the attention weights. For users with long tails of weakly relevant items, LREA should outperform top-K; for very long sequences where the rank is too low, approximation error may dominate.",
+      "Cross-validate AUC and online CTR lift across a small grid (e.g., r ∈ {8, 16, 32, 64}) while monitoring serving latency. Underfitting to the constraint shows as a large KL divergence between full and low-rank attention distributions on a held-out probe set; overfitting the rank (r too large) collapses back to full attention cost. A rank where the attention distribution divergence plateaus at an acceptable level while latency stays within budget is the practical operating point."
+    ],
+    "generated_at": "2026-03-21T18:26:48Z"
+  }
+}
