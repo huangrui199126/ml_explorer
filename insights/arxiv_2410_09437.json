@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MTL-LoRA extends LoRA for multi-task learning by adding task-adaptive parameters that separate task-specific information while preserving shared knowledge in low-dimensional spaces, reducing task interference. It outperforms standard LoRA and its variants across NLU, commonsense reasoning, image-text understanding, and industrial ad relevance benchmarks with comparable or fewer parameters.",
+    "key_idea": "Augment LoRA's shared low-rank projection with lightweight task-adaptive parameters so each task carves out its own subspace instead of colliding in a single dense intrinsic space.",
+    "why_it_matters": "Teams fine-tuning a single model on multiple tasks simultaneously can avoid the performance degradation caused by task interference without paying a higher parameter budget than plain LoRA.",
+    "possible_use_cases": [
+      "Fine-tuning a single LLM to handle multiple NLP tasks (classification, QA, summarization) in one deployment",
+      "Multi-domain ad relevance scoring where a shared model must generalize across different ad verticals",
+      "Multimodal assistants that need to jointly adapt to vision-language tasks with distinct objectives"
+    ],
+    "generated_at": "2026-03-21T19:18:14Z"
+  },
+  "deep": {
+    "method_breakdown": "MTL-LoRA extends standard LoRA by adding task-adaptive parameters alongside the shared low-rank matrices (A and B), allowing each task to maintain a distinct representation within the low-dimensional space rather than collapsing all tasks into a single shared subspace. The task-adaptive parameters capture task-specific information while the shared LoRA matrices encode common knowledge, enabling joint multi-task fine-tuning without excessive parameter overhead. This decomposition allows the model to simultaneously learn task-invariant features and task-specific transformations within the same low-rank framework.",
+    "key_innovation": "Prior LoRA variants apply a single shared low-rank projection across all tasks in MTL settings, causing task interference because distinct sparse high-dimensional task features get mixed in the same dense low-dimensional intrinsic space. MTL-LoRA's novelty is augmenting LoRA with lightweight task-adaptive parameters that disentangle task-specific signals from shared representations within the low-rank subspace itself — rather than using separate adapter modules per task (expensive) or fully shared adapters (interfering).",
+    "technical_insight": "The critical design choice is keeping the low-rank structure intact (preserving parameter efficiency) while adding minimal task-conditional parameters that modulate the shared subspace per task. This works because the low-rank bottleneck already forces compression of task-agnostic structure, and the task-adaptive parameters only need to capture the residual task-specific variation — a much smaller signal — rather than full task representations, achieving disentanglement cheaply.",
+    "limitations": "The paper does not deeply analyze how MTL-LoRA scales when the number of tasks grows large, where the shared subspace may still become a bottleneck. Task-adaptive parameters require task identity at inference time, making it unsuitable for zero-shot generalization to unseen tasks. The method likely assumes tasks are known and fixed at training time, limiting applicability to continual or online MTL settings. Evaluation is primarily on NLP and vision-language benchmarks, leaving open questions about effectiveness in other modalities or highly heterogeneous task distributions.",
+    "interview_questions": [
+      "How does MTL-LoRA prevent task interference while still sharing parameters across tasks?",
+      "What is the parameter overhead of MTL-LoRA compared to standard LoRA in an N-task setting?",
+      "Why does standard LoRA cause task interference in multi-task settings, and what is the geometric intuition?",
+      "How would you extend MTL-LoRA to handle a new task at inference time without retraining?",
+      "What is the relationship between the rank hyperparameter r and the capacity for task differentiation in MTL-LoRA?"
+    ],
+    "interview_answers": [
+      "MTL-LoRA adds task-adaptive parameters on top of shared LoRA matrices (A, B). The shared matrices capture common knowledge across tasks while the task-adaptive parameters modulate the low-dimensional representation per task, so task-specific signals are separated without requiring fully independent adapters per task.",
+      "Standard LoRA adds 2×d×r parameters (for matrices A and B). MTL-LoRA adds additional task-adaptive parameters per task — likely O(N×r) or O(N×r²) depending on formulation — which is much smaller than adding full LoRA modules per task (which would cost N×2×d×r). The overhead scales with number of tasks N but remains low-rank.",
+      "LoRA projects high-dimensional weight updates into a low-rank subspace via W ≈ BA. When multiple tasks share the same A and B, their distinct sparse feature directions in the original high-dimensional space get projected into the same dense low-dimensional subspace, causing their representations to overlap and interfere. Geometrically, the shared subspace cannot simultaneously align with optimal task-specific directions for all tasks.",
+      "MTL-LoRA requires task identity at inference, so handling a new unseen task would require either: (1) training new task-adaptive parameters while freezing shared LoRA weights (few-shot adaptation), or (2) using a task embedding predicted from input data. Neither is addressed in the paper, making zero-shot transfer to new tasks a genuine open problem.",
+      "The rank r controls the dimensionality of the shared subspace. Higher r gives more capacity for shared knowledge but also more room for task-specific variation to be encoded in the task-adaptive parameters. However, if r is too small, even with task-adaptive parameters, the bottleneck may be too tight to represent distinct task structures. The optimal r likely depends on task similarity — more similar tasks can share a tighter subspace."
+    ],
+    "generated_at": "2026-03-21T19:18:39Z"
+  }
+}

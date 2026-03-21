@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HAP (Heterogeneity-Aware Adaptive Pre-ranking) addresses the problem that pre-ranking models treat all candidate items equally, causing gradient conflicts where hard samples dominate training and computation is wasted on easy cases. It separates easy and hard samples into dedicated optimization paths and allocates model complexity adaptively, improving both accuracy and efficiency.",
+    "key_idea": "Disentangle easy and hard candidates in pre-ranking by using conflict-sensitive sampling with tailored losses, then apply lightweight models to all candidates and stronger models only to hard ones.",
+    "why_it_matters": "Industrial recommender systems waste significant compute treating all pre-ranking candidates uniformly; HAP delivers measurable engagement gains (0.4% app usage duration) at no extra computational cost, offering a concrete blueprint for adaptive scaling in multi-stage ranking pipelines.",
+    "possible_use_cases": [
+      "Improving pre-ranking efficiency in large-scale recommendation systems (e-commerce, news feeds, short video) by routing candidates through model tiers based on difficulty",
+      "Reducing serving costs in latency-sensitive ranking pipelines by avoiding heavy model inference on easy-to-score items",
+      "Curriculum-style training strategies for any multi-source training dataset where samples have heterogeneous difficulty, such as search ranking or ad retrieval"
+    ],
+    "generated_at": "2026-03-21T19:13:56Z"
+  },
+  "deep": {
+    "method_breakdown": "HAP separates training candidates into easy and hard subsets based on gradient conflict signals, applying tailored loss functions and optimization paths to each. It uses a cascade of lightweight models applied to all candidates first, then engages heavier models only for hard candidates, adaptively allocating compute. The conflict-sensitive sampling rebalances the training distribution to prevent hard samples from dominating gradients and leaving easy samples underutilized.",
+    "key_innovation": "Prior pre-ranking methods treat all heterogeneous samples (from retrieval, ranking signals, exposure feedback) uniformly, causing gradient conflicts where hard samples dominate. HAP is the first to explicitly diagnose this heterogeneity-driven gradient conflict problem and address it jointly through both training (disentangled optimization paths + tailored losses) and inference (adaptive compute allocation), rather than treating sample heterogeneity as noise to average over.",
+    "technical_insight": "The most critical design choice is disentangling easy vs. hard samples before optimization rather than after. By routing each subset through dedicated loss functions and model capacities, HAP avoids the mutual interference that occurs when a single model tries to simultaneously fit samples of vastly different difficulty — this separation is what enables both better accuracy and lower inference cost simultaneously.",
+    "limitations": "The easy/hard split requires a reliable difficulty signal whose definition may shift with distribution changes over time, potentially requiring recalibration. The cascaded model approach adds architectural complexity and potential latency variance. The gains (0.4% duration, 0.05% active days) are modest relative to engineering overhead, and the approach may not generalize well to domains where candidate heterogeneity is less pronounced or where retrieval/ranking source signals are noisier.",
+    "interview_questions": [
+      "How does HAP define and detect 'gradient conflict' between easy and hard samples in practice, and what signal is used to separate them?",
+      "The paper claims adaptive compute allocation reduces cost without accuracy loss — how does the system decide which candidates get the heavier model, and what's the latency impact?",
+      "How does HAP handle distribution shift over time where the easy/hard boundary may drift, especially in a live production system like Toutiao?",
+      "What specific loss designs are applied to easy vs. hard subsets, and why are different losses appropriate for each?",
+      "Given that HAP has been deployed for 9 months, what failure modes or edge cases were observed in production, and how were they mitigated?"
+    ],
+    "interview_answers": [
+      "Gradient conflict is detected by measuring the cosine similarity or directional disagreement between per-sample gradients during training — when gradients from hard and easy samples point in opposing directions, optimization is impeded. The difficulty signal typically derives from the discrepancy between pre-ranking scores and downstream ranking labels, or prediction confidence thresholds.",
+      "The system first runs a lightweight model on all candidates, then uses the lightweight model's confidence or score distribution to identify hard candidates that warrant additional computation from a stronger model. Latency impact is bounded because only a subset (hard cases) receive expensive processing, and the lightweight pass serves as an efficient gate; the paper reports no additional computational cost at the system level.",
+      "Distribution shift is a real concern; the paper likely addresses this through periodic recalibration of the difficulty threshold using recent traffic logs. In production systems like Toutiao, online learning or sliding-window statistics on label feedback can update the easy/hard boundary continuously, though the paper's 9-month deployment suggests the separation is reasonably stable in practice.",
+      "Easy samples typically use a standard cross-entropy or pointwise loss since their labels are reliable and gradients are stable. Hard samples — which may have noisy or conflicting labels from heterogeneous sources — benefit from pairwise or listwise losses, or losses with label smoothing/reweighting that are more robust to noise and emphasize relative ordering rather than absolute score calibration.",
+      "The paper does not detail explicit failure modes, but common production challenges include cold-start candidates (new items with no ranking signal) that are misclassified as hard, and retrieval source drift where a new retrieval channel introduces an unfamiliar sample distribution. Mitigations typically include source-aware difficulty scoring and fallback to the lightweight model for out-of-distribution candidates."
+    ],
+    "generated_at": "2026-03-21T19:14:20Z"
+  }
+}

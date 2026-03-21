@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper reframes model merging as a constrained optimization problem that minimizes the gap between the merged model and individual task-specific models while retaining shared knowledge across tasks. It solves this via adaptive projective gradient descent, operating data-free on task vectors and using task-aware adaptive merging coefficients.",
+    "key_idea": "Instead of discarding conflicting task-specific information through sparsification or orthogonalization, project gradients into a shared subspace to resolve conflicts while preserving task-critical knowledge.",
+    "why_it_matters": "Practitioners can combine multiple fine-tuned expert models into one multi-task model without any original training data, achieving near task-specific performance — enabling cheaper, more flexible model deployment at scale.",
+    "possible_use_cases": [
+      "Merging domain-specific LLMs (e.g., coding, math, reasoning) into a single deployable model without retraining",
+      "Combining vision models fine-tuned on different datasets (e.g., classification, segmentation) into one unified model",
+      "Continual learning scenarios where new expert models must be integrated without catastrophic forgetting or access to old data"
+    ],
+    "generated_at": "2026-03-21T19:16:09Z"
+  },
+  "deep": {
+    "method_breakdown": "The method frames model merging as a constrained optimization problem that minimizes the gap between the merged model and individual task-specific models while retaining shared knowledge. It decomposes and reconstitutes the loss function to align the merged model with individual models via data-free optimization of task vectors. Conflicts are alleviated by projecting gradients within a shared subspace spanning all tasks, and merging coefficients are treated as adaptive learning rates through a task-aware, training-free strategy.",
+    "key_innovation": "Unlike prior methods (TIES, DARE, etc.) that sparsify task vectors or enforce orthogonality — discarding task-specific information in the process — this work explicitly optimizes for the fundamental objective: minimizing divergence from each task-specific model. The projective gradient descent within a shared subspace is novel in that it resolves conflicts without discarding task-critical parameters, and the reinterpretation of merging coefficients as adaptive learning rates enables principled, training-free coefficient selection.",
+    "technical_insight": "The most important design choice is projecting gradients onto the shared subspace rather than the null space of conflicting tasks. This retains information that is simultaneously useful across tasks while still resolving destructive interference — previous orthogonality-based methods implicitly assumed task vectors should be made independent, but shared directions are precisely where generalization lives. The data-free nature is also critical: it makes the method practical without requiring access to original training data.",
+    "limitations": "The method still operates post-hoc on already-trained expert models, so fundamental capacity limitations of a single merged model remain. The shared subspace construction may scale poorly with a very large number of tasks. The data-free optimization relies on approximations of the true loss landscape, so the constrained optimization may converge to suboptimal solutions when tasks are highly heterogeneous. Evaluation is limited to vision and NLP benchmarks with moderate task counts; extreme multi-task regimes (100+ tasks) are unexplored.",
+    "interview_questions": [
+      "How do you construct the shared subspace, and how sensitive is performance to its dimensionality?",
+      "The loss decomposition is described as data-free — what surrogate or approximation do you use in place of actual task data?",
+      "How does the adaptive learning rate strategy for merging coefficients compare to simply tuning them via held-out validation?",
+      "Prior methods like TIES resolve conflicts by sign-based pruning; what specifically does your gradient projection retain that sign-pruning discards?",
+      "How does the method handle tasks with very different gradient magnitudes or loss scales during the projective optimization?"
+    ],
+    "interview_answers": [
+      "The shared subspace is typically constructed via SVD of the stacked task vectors, retaining the top-k singular directions that capture variance common to all tasks. Performance is moderately sensitive to k — too small loses task-specific signal, too large re-introduces conflicts — and the paper likely ablates this hyperparameter on a validation split.",
+      "The data-free loss approximation is derived by decomposing the merged model's loss relative to each expert using a Taylor expansion or parameter-space distance metric (e.g., squared L2 norm of the difference between merged and expert task vectors), avoiding the need for forward passes through actual data.",
+      "The adaptive coefficient strategy likely uses per-task gradient norms or singular value magnitudes as proxies for 'how much does this task vector contribute useful signal,' making it training-free but principled — validation tuning would require held-out data and per-task evaluation, which contradicts the data-free premise.",
+      "Sign-pruning (TIES) zeroes out parameters where task vectors disagree in sign, discarding both the conflicting value and any shared magnitude. Gradient projection instead keeps the component of each task vector that lies in the shared subspace, so parameters that partially agree across tasks are retained at their consensus magnitude rather than being nulled out.",
+      "The method addresses scale differences through the adaptive merging coefficients, which act as per-task learning rate scalings that normalize for differing gradient magnitudes — tasks with large-magnitude gradients receive smaller effective coefficients, preventing them from dominating the merged solution in a way analogous to Adam's per-parameter normalization."
+    ],
+    "generated_at": "2026-03-21T19:16:30Z"
+  }
+}
