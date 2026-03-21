@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Snapchat built an Embedding Based Retrieval (EBR) system using Graph Neural Networks to generate user embeddings for friend recommendations, complementing traditional Friends-of-Friends graph traversal. A/B tests showed significant improvements in friendships made, especially in cold-start and sparse-network scenarios.",
+    "key_idea": "Represent billions of users as dense GNN-derived embeddings and use approximate nearest neighbor search to retrieve friend candidates beyond the 2-hop neighborhood that graph traversal can reach.",
+    "why_it_matters": "EBR unlocks friend recommendations for cold-start users and sparse networks where graph traversal fails, and provides a principled ranking signal — a pattern directly applicable to any large-scale people or item recommendation system.",
+    "possible_use_cases": [
+      "Cold-start user onboarding in social apps where new users have few connections",
+      "Scaling people-you-may-know features beyond 2-hop graph limits in professional networks",
+      "Replacing or augmenting collaborative filtering in recommendation pipelines with graph-aware user embeddings"
+    ],
+    "generated_at": "2026-03-21T18:38:42Z"
+  },
+  "deep": {
+    "method_breakdown": "The system generates dense user embeddings via Graph Neural Networks (GNNs) that encode each user's social graph topology and connection strengths into a fixed-size vector. These embeddings are indexed in an Approximate Nearest Neighbor (ANN) structure, enabling sub-linear retrieval of the top-K most similar users at query time. EBR runs alongside the traditional Friends-of-Friends graph traversal, complementing it by surfacing candidates beyond 2-hop reach and providing a continuous similarity score for ranking FoF candidates.",
+    "key_innovation": "Prior friend recommendation systems relied solely on discrete graph traversal (FoF), which is bounded to 1-2 hops due to latency and cannot capture nuanced connection strength. This work introduces embedding-based retrieval as a parallel retrieval source at Snapchat scale (billions of users), using GNN-derived embeddings rather than hand-crafted features, enabling semantic similarity across disconnected graph components and cold-start users who have few connections.",
+    "technical_insight": "Using GNN embeddings rather than shallow ID embeddings or feature-engineered vectors is the critical design choice — GNNs aggregate neighborhood information, so a user's embedding implicitly encodes their social context (who they know, how dense their cluster is). This means two users with structurally similar but graph-disconnected friend circles get nearby embeddings, allowing the ANN index to retrieve them as mutual candidates even when no FoF path exists.",
+    "limitations": "GNN embeddings for billions of users require expensive periodic recomputation, making them stale between refreshes — fast-growing or new users may have outdated representations. Cold-start is only partially solved: users with no edges provide weak GNN signals. ANN retrieval introduces approximation error, potentially missing some high-quality candidates. The system also inherits graph bias: users in denser markets get richer embeddings, widening recommendation quality gaps between high- and low-density network regions.",
+    "interview_questions": [
+      "Why did FoF retrieval fail for cold-start users, and how does EBR specifically address this?",
+      "What graph neural network architecture did you use to generate user embeddings, and how did you handle the scale of billions of nodes?",
+      "How do you combine or rank candidates from EBR and FoF — is there a unified scoring function?",
+      "How do you keep embeddings fresh for a network that changes continuously, and what staleness threshold is acceptable?",
+      "What were the primary metrics in your A/B test, and why did you see larger gains in low-density markets?"
+    ],
+    "interview_answers": [
+      "FoF cold-start users have few or no edges, so graph traversal returns zero or very few candidates. EBR addresses this by using GNN embeddings that encode whatever sparse edge signal exists plus node features (profile, activity), then retrieves candidates via ANN similarity — decoupling candidate generation from requiring a graph path to exist.",
+      "The paper uses GNNs (likely GraphSAGE-style neighborhood aggregation) with mini-batch sampling to handle billion-scale graphs that cannot fit in memory. Embeddings are computed offline in a distributed pipeline, then pushed to an ANN index (e.g., FAISS or a similar system) for online serving.",
+      "Candidates from both sources are merged and fed into a downstream ranking model that scores each candidate using richer features. EBR's embedding dot-product similarity also serves as a natural continuous relevance signal that can be used directly as a ranking feature, unlike FoF's binary hop-count.",
+      "Embeddings are refreshed periodically (e.g., daily or weekly batch jobs). Staleness is tolerable as long as core social structure doesn't change drastically within the refresh window. Fast-changing users (e.g., new signups) are the hardest case; one mitigation is more frequent incremental updates for recently active users.",
+      "The primary metric was number of friendships formed. Low-density markets saw larger gains because FoF has almost no reach there — any connected user pool is tiny — so EBR's ability to cross graph components provided the most incremental lift. High-density markets already had good FoF coverage, so EBR's marginal contribution was meaningful but smaller."
+    ],
+    "generated_at": "2026-03-21T18:39:09Z"
+  }
+}

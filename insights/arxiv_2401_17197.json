@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a data pruning method for efficiently fine-tuning LLMs on recommendation tasks, using only a small fraction of training data while maintaining or exceeding full-data performance. It introduces two scoring metrics—influence score (using a surrogate model) and effort score (targeting hard samples for LLMs)—to select the most representative training examples.",
+    "key_idea": "Use a lightweight surrogate model to estimate per-sample influence on LLM fine-tuning performance, then combine it with an effort score that prioritizes samples the surrogate model finds easy but LLMs find hard, enabling effective few-shot fine-tuning with just 2% of the data.",
+    "why_it_matters": "Fine-tuning LLMs on large recommendation datasets is expensive and slow; this method cuts fine-tuning costs by 97% while improving performance, making LLM-based recommenders practical for production systems that must adapt frequently to new user interaction data.",
+    "possible_use_cases": [
+      "Rapidly adapting recommendation models to new user behavior data in e-commerce or streaming platforms without full retraining",
+      "Reducing infrastructure costs for teams running LLM-based personalization at scale",
+      "Enabling continual learning pipelines where models must be updated frequently on streaming interaction logs"
+    ],
+    "generated_at": "2026-03-21T18:41:36Z"
+  },
+  "deep": {
+    "method_breakdown": "The method assigns two scores to each training sample: an influence score (estimating how much removing a sample degrades overall model performance, computed via a lightweight surrogate model instead of the full LLM) and an effort score (identifying samples that are hard for the LLM specifically but easy for the surrogate, bridging the capability gap between surrogate and LLM). Samples are ranked by a combination of these two scores to select a small coreset for few-shot fine-tuning of LLM-based recommenders.",
+    "key_innovation": "Prior coreset selection methods either use heuristic metrics (loss value, gradient norm) that are suboptimal proxies for true influence, or require expensive optimization on full-scale data. This work introduces the surrogate-model-based influence score paired with an effort score to compensate for surrogate-LLM mismatch — enabling influence estimation at a fraction of the cost while recovering LLM-specific hard cases that the surrogate would otherwise miss.",
+    "technical_insight": "The most important design choice is the decoupling of 'influence' (what matters for performance) from 'effort' (what is uniquely hard for the LLM). Using a small surrogate makes influence estimation tractable, but the surrogate's blind spots would cause it to under-select samples where LLM and surrogate disagree. The effort score specifically targets this gap by prioritizing samples where the LLM struggles but the surrogate does not, ensuring the selected 2% coreset is representative for the actual fine-tuning target model rather than just the proxy.",
+    "limitations": "The surrogate model choice is not systematically justified — a poorly chosen surrogate (too dissimilar to the target LLM) would corrupt influence estimates and limit the effort score's ability to compensate. The method is validated on only two LLM-based recommender architectures and three datasets, leaving generalization to other LLM paradigms (e.g., generative vs. ranking-based) unclear. Influence score computation still requires forward/backward passes over all data via the surrogate, so the approach may not scale well when the full dataset is extremely large. The 2% threshold is dataset-dependent and requires tuning.",
+    "interview_questions": [
+      "How does the influence score differ from standard gradient-based data valuation methods like TracIn or LESS, and what approximations are made?",
+      "Why is a surrogate model sufficient to estimate influence, and what theoretical or empirical guarantees exist that surrogate influence rankings transfer to the target LLM?",
+      "How is the effort score defined and computed precisely — is it based on loss difference, prediction disagreement, or something else between the surrogate and LLM?",
+      "How are the influence score and effort score combined — is it a weighted sum, a two-stage filter, or a Pareto-style selection, and how sensitive are results to this combination?",
+      "What is the computational complexity of the full pipeline relative to naive full-data fine-tuning, and at what dataset scale does the crossover point occur where this approach is no longer cost-effective?"
+    ],
+    "interview_answers": [
+      "The influence score estimates the change in validation loss when a training sample is removed, conceptually similar to influence functions (Koh & Liang 2017) or TracIn, but computed using a small surrogate model rather than the full LLM to avoid the O(N × model_size) cost. The key approximation is that the surrogate's influence rankings are assumed to be monotonically correlated with the LLM's true influence rankings.",
+      "The justification is largely empirical — if the surrogate is trained on the same task distribution, its loss landscape should approximate the LLM's for most samples. The effort score is the designed fallback for cases where this assumption breaks down, so the method does not require strong theoretical guarantees on surrogate fidelity.",
+      "The effort score identifies samples where the surrogate model has low loss (considers them easy) but which are expected to challenge the LLM — operationalized as samples with high disagreement between surrogate predictions and ground truth relative to what the LLM would predict, or equivalently samples in regions of input space where the surrogate underfits relative to LLM capacity.",
+      "Based on the paper's framing, the two scores are likely combined via a weighted linear combination or by first filtering high-influence samples and then re-ranking by effort score. Results are likely moderately sensitive to the weighting, as ablations on removing either score individually would demonstrate each contributes independently to the final 2% vs. full-data performance gap.",
+      "The surrogate-based pipeline avoids LLM-scale gradient computation during pruning, reducing pruning cost to O(N × surrogate_size) instead of O(N × LLM_size). For the reported 97% time reduction, this implies the surrogate is at least ~30× smaller than the target LLM, and the crossover point where the overhead of running the surrogate exceeds the savings from reduced fine-tuning steps would occur only at very small datasets where full fine-tuning is already cheap."
+    ],
+    "generated_at": "2026-03-21T18:42:05Z"
+  }
+}
