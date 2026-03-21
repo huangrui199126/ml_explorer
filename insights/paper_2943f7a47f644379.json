@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "EXHANS improves cross-domain sequential recommendation by better identifying true hard negative samples, using source-domain user preferences to filter out false negatives and correcting for popularity bias. It combines a replay buffer with curriculum learning to balance exploring new hard negatives and exploiting cached ones during training.",
+    "key_idea": "Cross-domain user preference signals can distinguish genuine hard negatives from false negatives, since items a user truly dislikes should be inconsistent with their preferences across both domains.",
+    "why_it_matters": "False negatives silently corrupt recommendation model training; this method provides a principled, cross-domain-aware way to mine reliable hard negatives, leading to measurably better recommendation quality without requiring additional data sources.",
+    "possible_use_cases": [
+      "E-commerce platforms recommending products across categories (e.g., books → electronics)",
+      "Streaming services doing cross-genre or cross-content-type recommendations (e.g., movies → podcasts)",
+      "Retail personalization systems that need to transfer user taste signals from one department to another"
+    ],
+    "generated_at": "2026-03-21T21:10:03Z"
+  },
+  "deep": {
+    "method_breakdown": "EXHANS uses cross-domain user preference signals to distinguish hard negatives from false negatives: items consistent with user preference in both source and target domains are likely false negatives, not true hard negatives. An adaptive popularity-based score correction adjusts sampling probability based on user affinity for popular items, reducing false negative contamination. A replay buffer caches high-quality hard negatives and a curriculum learning framework progressively increases negative sample difficulty during training.",
+    "key_innovation": "Prior work selects hard negatives by high predicted score or popularity without filtering false negatives, and existing false-negative reduction methods ignore cross-domain signals. EXHANS is the first to leverage source-domain user preference as a cross-domain consistency signal to identify and suppress false negatives in the target domain, combined with user-personalized popularity correction rather than a global popularity penalty.",
+    "technical_insight": "The most important design choice is the cross-domain consistency criterion: a candidate negative that aligns with user preference in the source domain is likely a false negative in the target domain. This works because user interests are partially shared across domains, so source-domain signals provide orthogonal evidence about true vs. false negatives that the target-domain model alone cannot distinguish—especially early in training when target-domain scores are unreliable.",
+    "limitations": "The method assumes meaningful behavioral overlap between source and target domains; if domains are too dissimilar, source-domain signals may mislead rather than help. The replay buffer introduces staleness: cached negatives become easier as the model trains, potentially reducing their training utility unless carefully managed. The curriculum schedule and popularity correction introduce additional hyperparameters that may require domain-specific tuning. Scalability to many-domain or cold-start users with sparse cross-domain history is not addressed.",
+    "interview_questions": [
+      "How does EXHANS use source-domain preference to identify false negatives in the target domain, and what is the underlying assumption that makes this valid?",
+      "Why is popularity-based hard negative selection problematic, and how does EXHANS's adaptive correction improve over a simple global popularity discount?",
+      "What is the role of the replay buffer in EXHANS, and what staleness or distribution shift issues does it introduce?",
+      "How does the curriculum learning framework balance exploration of new hard negatives versus exploitation of cached ones, and what drives the curriculum schedule?",
+      "Under what conditions would EXHANS fail or degrade compared to simpler hard negative sampling baselines?"
+    ],
+    "interview_answers": [
+      "EXHANS scores each candidate negative in both domains; if an item scores high under the user's source-domain preference model, it is treated as a potential false negative in the target domain and down-weighted or excluded. The assumption is partial preference transfer: users who like a category in the source domain are also likely to like related items in the target domain, so source-domain affinity is a proxy for latent target-domain interest.",
+      "High-popularity items are genuinely liked by many users, so they are often false negatives for any given user. A global discount hurts users who actually favor popular items (e.g., mainstream consumers) by removing potentially informative negatives for them. EXHANS personalizes the correction: users with strong historical preference for popular items receive a smaller penalty, preserving hard negatives that are truly negative for them.",
+      "The replay buffer stores recently identified high-quality hard negatives so they can be reused across multiple training steps without re-running the expensive cross-domain scoring each iteration. The staleness issue arises because the model continuously updates, so a sample that was a hard negative at step t may be trivially easy by step t+k; the curriculum framework partially mitigates this by retiring old samples, but the optimal eviction policy is non-trivial.",
+      "The curriculum starts with moderately hard negatives from the buffer (exploitation) and gradually introduces freshly explored, harder negatives as training progresses. The schedule is typically driven by training epoch or loss plateau signals. The intuition is that early training benefits from stable, reusable negatives to establish basic preference structure, while later training needs fresh, challenging negatives to push the model toward finer-grained discrimination.",
+      "EXHANS degrades when source and target domains share little user behavior overlap, making source-domain signals noisy or misleading. It also underperforms when users have very sparse cross-domain history, leaving the cross-domain consistency signal unreliable. If the source-domain model is poorly trained, the false-negative filter may incorrectly discard true hard negatives. Finally, in highly dynamic domains where user interests shift rapidly, the replay buffer's cached negatives may become systematically stale."
+    ],
+    "generated_at": "2026-03-21T21:10:30Z"
+  }
+}

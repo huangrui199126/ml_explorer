@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates using LLMs to automatically predict how much a user enjoys a human-robot conversation turn-by-turn, without needing the user's actual response — only the proposed robot utterance and prior dialogue context. The LLM predictor matches the performance of expert human annotators and correlates better with users' self-reported enjoyment.",
+    "key_idea": "An LLM can serve as a real-time enjoyment signal for human-robot dialogue by rating proposed robot utterances in context, enabling annotation-free feedback for LLM adaptation.",
+    "why_it_matters": "Removing reliance on costly human annotators and enabling real-time feedback signals unlocks scalable, automatic evaluation and online adaptation of conversational AI in social robotics and HRI systems.",
+    "possible_use_cases": [
+      "Real-time RL/RLHF-style adaptation of dialogue policies in social robots without human labelers",
+      "Automated A/B testing of robot utterance candidates to select the most enjoyable response before speaking",
+      "Scalable evaluation of human-robot dialogue datasets where recruiting expert annotators is impractical"
+    ],
+    "generated_at": "2026-03-21T21:09:01Z"
+  },
+  "deep": {
+    "method_breakdown": "The system prompts an LLM (evaluated both with and without user responses) to rate enjoyment of proposed robot utterances given the dialogue context, producing turn-level enjoyment scores. These LLM-generated scores are compared against expert human annotator ratings and user self-reported perceptions across 25 older adults' conversations with a companion robot. The evaluation uses correlation metrics to assess how well each signal tracks actual user enjoyment.",
+    "key_innovation": "The key novelty is demonstrating that an LLM can predict user enjoyment *prospectively* — scoring a robot utterance before the user responds — achieving parity with expert annotators who have access to the full conversation. This enables real-time feedback loops for LLM adaptation in HRI without requiring human annotation or waiting for user reactions.",
+    "technical_insight": "The critical design choice is framing enjoyment prediction as a zero-shot or few-shot LLM inference task over dialogue context plus a candidate utterance, rather than training a supervised classifier. This works because LLMs encode rich pragmatic and social knowledge about what makes conversation engaging, allowing them to generalize to the niche domain of elder-companion HRI without domain-specific training data.",
+    "limitations": "The dataset is very small (25 participants, 7-minute dialogues) and demographically narrow (older adults with a companion robot), limiting generalizability. The study does not ablate which LLM, prompt formulation, or context window length drives performance. Enjoyment is self-reported and subjective, making ground truth noisy. The approach has not been tested in a live closed-loop adaptation setting, so real-time latency and drift remain unvalidated.",
+    "interview_questions": [
+      "How exactly is the LLM prompted to produce enjoyment scores — is it a numeric rating, a ranking, or a classification, and how sensitive are results to prompt phrasing?",
+      "What is the baseline for 'human expert annotator' performance — are annotators given the same information as the LLM (utterance + prior context) or the full post-hoc transcript?",
+      "How do you plan to close the loop — what LLM adaptation technique (RLHF, DPO, prompt steering) would consume these turn-level enjoyment signals at inference time?",
+      "Given the tiny dataset of 25 users, how do you rule out that LLM performance reflects overfitting to surface features (e.g., utterance length, sentiment) rather than genuine enjoyment modeling?",
+      "Does the LLM predictor degrade gracefully across different robot platforms, dialogue domains, or user populations beyond older adults, and how would you evaluate that?"
+    ],
+    "interview_answers": [
+      "The paper likely uses a Likert-scale numeric rating elicited via a structured prompt, but prompt sensitivity analysis is typically absent in early HRI-LLM work — this is a real gap worth probing since LLM outputs are known to be unstable under paraphrase.",
+      "If annotators have the full transcript including user response while the LLM only sees context up to the proposed utterance, then matched performance is actually a *stronger* result for the LLM, not an equivalent one — the comparison is asymmetric in the LLM's favor.",
+      "The most natural integration is using the enjoyment scores as a reward signal in a best-of-N or constrained decoding scheme at inference time, or as preference labels for offline DPO fine-tuning — the paper frames this as future work.",
+      "With n=25 this concern is legitimate; the correlations reported are likely Pearson/Spearman over turn-level ratings which gives more data points, but systematic controls for confounders like utterance sentiment or length are needed to establish causality.",
+      "Generalization is the central open question — the companion robot domain (social chat with elders) is unusually narrow, and enjoyment signals in task-oriented or adversarial dialogues may look very different; cross-domain evaluation is not covered."
+    ],
+    "generated_at": "2026-03-21T21:09:24Z"
+  }
+}

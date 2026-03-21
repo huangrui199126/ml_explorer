@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LimeQO is an offline query optimization framework that models database workloads as a low-rank matrix to predict query plan latencies without running them, using active learning to efficiently find better query plans. It reduces a 3-hour workload to 1.5 hours after just 1.5 hours of exploration, with a no-regressions guarantee.",
+    "key_idea": "Treat query plan latency across a workload as a partially observed low-rank matrix, then use matrix completion to predict unobserved plan costs — turning query optimization into a linear algebra problem instead of a neural network inference problem.",
+    "why_it_matters": "Practitioners get the benefits of learned query optimization (better plans, faster workloads) without the overhead of neural networks in the critical query path, and without risk of performance regressions — making it practical to deploy in production databases.",
+    "possible_use_cases": [
+      "Offline workload tuning for data warehouses where a recurring query workload can be pre-optimized before peak hours",
+      "Database migration scenarios where query plans need re-evaluation on new hardware or after schema changes",
+      "Cost-based optimizer hint generation to override suboptimal default plans in production OLAP systems"
+    ],
+    "generated_at": "2026-03-21T21:11:48Z"
+  },
+  "deep": {
+    "method_breakdown": "LimeQO models a query workload as a partially observed low-rank matrix where rows are queries and columns are alternative query plans, then uses matrix completion (linear methods) to predict unobserved plan latencies without executing them. It formalizes plan exploration as an active learning problem, selecting which (query, plan) pairs to actually execute to maximize information gain. A transductive Tree CNN variant encodes query plan tree structure to improve latency predictions with fewer executed samples.",
+    "key_innovation": "Rather than deploying neural networks in the query execution hot path (as prior learned optimizers do), LimeQO moves optimization entirely offline and exploits the empirically observed low-rank structure of the query-plan latency matrix — meaning a small number of latent factors explain most variation across plans and queries. This enables cheap linear matrix completion instead of expensive neural inference at query time.",
+    "technical_insight": "The critical design choice is treating the latency matrix as low-rank, which is justified because query plans for similar queries tend to share performance characteristics driven by a small number of underlying factors (e.g., join order sensitivity, index usage). This lets matrix factorization generalize across unobserved cells cheaply, and the active learning framing ensures exploration budget is spent on maximally informative (query, plan) executions rather than random sampling.",
+    "limitations": "Low-rank assumption may break for highly heterogeneous workloads where queries have little structural similarity. The framework is offline-only, so it cannot adapt to runtime data distribution shifts or cardinality estimation errors encountered during live execution. Exploration cost (1.5 hours) may be prohibitive for latency-sensitive or frequently changing workloads. The no-regressions guarantee depends on the quality of latency predictions, which degrade when the matrix is not well approximated by low rank.",
+    "interview_questions": [
+      "Why does modeling the query-plan latency matrix as low-rank make intuitive sense, and what would violate this assumption?",
+      "How does the active learning formulation decide which (query, plan) pairs to execute during exploration, and what objective does it optimize?",
+      "What is the transductive TCNN, and why does 'transductive' matter here compared to standard inductive learning?",
+      "How does LimeQO provide a no-regressions guarantee, and what are the conditions under which this guarantee could fail?",
+      "How does LimeQO's offline approach compare to online learned optimizers like Bao or neo in terms of deployment trade-offs?"
+    ],
+    "interview_answers": [
+      "The low-rank assumption holds because query performance is driven by a small number of structural factors — join ordering, index selectivity, operator choice — that are shared across queries in a workload. It breaks when queries are structurally heterogeneous (e.g., mixed OLTP/OLAP) so latencies are driven by independent factors per query, making the matrix full-rank.",
+      "The active learning policy selects pairs that maximize uncertainty reduction or expected improvement in the matrix completion model — essentially picking cells whose execution will most constrain the latent factor estimates. Simple heuristics (e.g., selecting high-variance predicted cells) approximate this, while the TCNN provides richer uncertainty estimates enabling better selection with fewer samples.",
+      "A transductive model is trained specifically on the test set of plans it will predict, rather than learning a general mapping from plan features to latency. This matters because transductive learning can overfit productively to the specific query-plan instances at hand, achieving higher accuracy on those exact predictions without needing to generalize beyond the current workload matrix.",
+      "LimeQO guarantees no regressions by only deploying a plan if its predicted latency improvement over the default plan exceeds a confidence threshold — conservatively falling back to the DBMS default when uncertain. This guarantee fails if the latency matrix is poorly approximated as low-rank (predictions are systematically biased) or if the workload distribution shifts after exploration.",
+      "Bao/Neo deploy neural models inline during query compilation, incurring inference latency on every query and requiring continuous online feedback. LimeQO pays exploration cost once offline and then applies the discovered better plans statically, making it safer and lower-overhead in production but unable to adapt to new queries or data changes without re-running exploration."
+    ],
+    "generated_at": "2026-03-21T21:12:12Z"
+  }
+}
