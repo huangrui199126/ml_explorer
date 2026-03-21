@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a hybrid cross-lingual retrieval system that converts spoken Hindi queries to English via ASR and translation, then retrieves documents using BM25F (tuned with Bayesian optimization) followed by a neural re-ranker trained with AdamW. The system addresses the lack of labeled Hindi-English data by using synthetic data for BM25F parameter tuning.",
+    "key_idea": "Combining Bayesian-optimized BM25F retrieval with a neural re-ranking stage bridges the gap between Hindi spoken queries and English document collections without requiring large parallel labeled datasets.",
+    "why_it_matters": "Practitioners building multilingual search systems for low-resource language pairs can adopt this lightweight pipeline pattern — ASR + translation + tuned sparse retrieval + neural re-ranking — without needing expensive labeled cross-lingual training data.",
+    "possible_use_cases": [
+      "Enterprise knowledge base search for multilingual workforces where employees speak Hindi but documents are in English",
+      "Government or public service portals enabling Hindi-speaking citizens to retrieve English-language legal or administrative documents via voice",
+      "Cross-lingual information retrieval research benchmark for other low-resource Indian language pairs such as Tamil-English or Bengali-English"
+    ],
+    "generated_at": "2026-03-21T21:25:34Z"
+  },
+  "deep": {
+    "method_breakdown": "The system converts spoken Hindi queries to text via ASR, translates them to English, then retrieves documents from a pre-indexed English corpus using BM25F (a field-weighted BM25 variant via Whoosh that upweights document body over title). A neural re-ranker trained with AdamW optimization then re-scores the top retrieved documents based on semantic relevance between the translated query and document.",
+    "key_innovation": "The primary novelty is using Bayesian optimization on synthetic data to tune BM25F parameters (b1, k1) as a workaround for the absence of labeled Hindi-English relevance judgments — effectively bootstrapping retrieval calibration without parallel annotated corpora.",
+    "technical_insight": "Weighting document body content over titles in BM25F is the most important design choice: since the target corpus likely lacks rich metadata or titles, standard BM25 would underperform on content-heavy documents; BM25F's field-weighting compensates by directing scoring mass toward the body where semantic content resides.",
+    "limitations": "The pipeline is a cascade of error-prone components (ASR → MT → retrieval → re-ranking), so ASR or translation errors propagate unrecoverably downstream. The system is evaluated only on Hindi-English and lacks real labeled evaluation data, relying on synthetic proxies for tuning. The neural re-ranker's architecture and training data are underspecified, making reproducibility and generalization claims difficult to validate.",
+    "interview_questions": [
+      "How does BM25F differ from standard BM25, and why is field weighting important for this task?",
+      "Why was Bayesian optimization chosen for BM25F parameter tuning, and what are the risks of tuning on synthetic data?",
+      "What are the compounding error risks in a pipeline of ASR → MT → retrieval, and how does the system mitigate them?",
+      "How is the neural re-ranker trained — what is the loss function, input representation, and what labeled data is used?",
+      "How would you evaluate this system rigorously given the absence of labeled Hindi-English relevance judgments?"
+    ],
+    "interview_answers": [
+      "BM25F extends BM25 to multi-field documents (e.g., title, body, abstract) by computing a weighted combination of per-field term frequencies before applying the standard BM25 saturation and length normalization. This matters here because documents may lack meaningful titles, so down-weighting the title field and up-weighting the body prevents sparse or missing metadata from degrading retrieval quality.",
+      "Bayesian optimization is sample-efficient for expensive black-box functions — it builds a surrogate model of the objective and selects the next evaluation point by maximizing an acquisition function, making it well-suited for tuning 2–3 BM25 parameters without exhaustive grid search. The risk is that synthetic data may not mirror the true query-document relevance distribution, so optimized parameters may overfit to synthetic patterns and underperform on real Hindi queries.",
+      "Errors in ASR (wrong transcription) or MT (wrong translation) produce a query string that no longer reflects user intent, and BM25/neural re-ranking cannot recover the original meaning. The paper implicitly mitigates this by using context enrichment in re-ranking, but there is no explicit error correction or query reformulation step — a mistranslated query with confident but wrong output is the hardest failure case.",
+      "The paper does not fully specify the re-ranker architecture, but the use of AdamW suggests a transformer-based model (AdamW was designed for weight-decay-correct optimization of transformers). The training data source is unclear — the paper implies synthetic or weakly supervised data given the stated lack of labeled Hindi-English pairs, which is a significant gap in the paper's empirical grounding.",
+      "A rigorous evaluation would require constructing a test set of real Hindi spoken queries with human-annotated relevant English documents (relevance judgments), then computing NDCG, MRR, and MAP. In absence of this, one could use back-translation to create pseudo-parallel pairs, employ pooling across multiple systems to build a judgment set, or leverage existing CLIR benchmarks (e.g., CLEF, FIRE) that include Hindi-English pairs as an approximation."
+    ],
+    "generated_at": "2026-03-21T21:25:58Z"
+  }
+}

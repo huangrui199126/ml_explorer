@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates whether LLMs can generate synthetic hard negatives for training dense retrieval models, eliminating the need for corpus access and expensive index construction. The results show that LLM-generated negatives consistently underperform traditional BM25 and cross-encoder mining strategies, and that larger generator models do not reliably produce better training data.",
+    "key_idea": "Synthetic hard negatives generated directly from query-passage pairs by LLMs are insufficient substitutes for corpus-mined hard negatives in dense retrieval training.",
+    "why_it_matters": "Practitioners considering LLM-based data augmentation to avoid costly corpus indexing should be cautious — this study shows the shortcut does not match traditional mining quality, and blindly scaling up the generator model is not a reliable fix.",
+    "possible_use_cases": [
+      "Benchmarking synthetic vs. corpus-based hard negative strategies for dense retrieval",
+      "Low-resource settings where corpus access is unavailable and trade-offs must be understood",
+      "Guiding model selection decisions when choosing LLM generators for retrieval data pipelines"
+    ],
+    "generated_at": "2026-03-21T21:27:38Z"
+  },
+  "deep": {
+    "method_breakdown": "The method prompts LLMs (Qwen3, LLaMA3, Phi4 at 4B–30B parameters) to generate synthetic hard negative passages given only a query and its positive passage, bypassing the need for a full document corpus. These synthetic negatives are used to fine-tune DistilBERT as a dense retrieval model. The pipeline is evaluated zero-shot across 10 BEIR benchmark datasets to assess cross-domain generalization.",
+    "key_innovation": "Prior hard negative mining requires full corpus access and expensive BM25/cross-encoder indexing pipelines. This work proposes corpus-free hard negative generation purely via LLM prompting — the negatives are hallucinated/synthesized from scratch rather than retrieved from existing documents, eliminating corpus dependency entirely.",
+    "technical_insight": "The core design choice is conditioning negative generation on both the query and the positive passage simultaneously, so the LLM can craft semantically plausible but factually divergent negatives. However, the paper's most important finding is negative: this approach consistently underperforms corpus-based mining, revealing that LLM-generated negatives lack the distributional realism of actual corpus documents, which is critical for training robust dense retrievers.",
+    "limitations": "Synthetic negatives are not grounded in a real corpus, so they may be too easy, too artificial, or out-of-distribution relative to test-time retrieval candidates. Scaling generator size does not monotonically help — the 14B model beats the 30B model — suggesting prompt sensitivity and generation variance dominate over raw model capacity. The approach is evaluated only with DistilBERT as the retrieval backbone, limiting generalizability of conclusions. BEIR is an out-of-domain benchmark, so in-domain settings may behave differently.",
+    "interview_questions": [
+      "Why do you think LLM-generated hard negatives underperform corpus-mined ones, even with very capable generators like 30B-parameter models?",
+      "The 14B model outperforms the 30B model — what hypotheses do you have for this non-monotonic scaling behavior?",
+      "How sensitive is your pipeline to the prompt template used to elicit hard negatives from the LLM?",
+      "Could a hybrid approach — using LLM negatives to augment rather than replace corpus-mined negatives — recover some of the performance gap?",
+      "How does the quality or difficulty of synthetic negatives compare to BM25 or cross-encoder negatives — did you do any analysis of false negative rate or semantic similarity distributions?"
+    ],
+    "interview_answers": [
+      "Corpus-mined negatives are real documents that share vocabulary, style, and topical distribution with test-time candidates. LLM-generated negatives, while semantically plausible, are hallucinated text that may not match the lexical or factual patterns the retriever encounters at inference, creating a train-test distribution mismatch that hurts generalization.",
+      "Larger models may generate negatives that are too obviously wrong (over-confident refusal to confabulate) or too nuanced (near-duplicates of positives), both of which are poor training signal. Smaller models may inadvertently produce harder, more useful negatives through controlled hallucination. Prompt calibration effects could also scale differently with model size.",
+      "Prompt sensitivity is likely high — the framing of 'generate a passage that looks relevant but is not' requires careful instruction to avoid degenerate outputs. Small wording changes can shift the model from producing trivially easy negatives to near-positives, and this effect likely compounds with model scale.",
+      "Yes, a hybrid strategy is a natural next step. LLM negatives could serve as cheap augmentation when corpus access is unavailable, and mixing them with even a small fraction of BM25 negatives might close much of the gap. The synthetic negatives may also be more valuable in low-resource domains where corpus mining yields few hard candidates.",
+      "This is a key gap in the paper. Without analyzing the hardness distribution — e.g., BM25 score of synthetic negatives against the real corpus, or cross-encoder similarity to positives — it is difficult to diagnose whether synthetic negatives are too easy or too hard. Such analysis would clarify whether the failure is a difficulty calibration problem or a distributional realism problem."
+    ],
+    "generated_at": "2026-03-21T21:28:05Z"
+  }
+}

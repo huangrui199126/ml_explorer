@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This study compares IndoBERT (a Transformer-based model) against LSTM for information retrieval in Indonesian, using 5,000 query-document pairs scraped from Indonesian news portals. IndoBERT significantly outperforms LSTM across all metrics, achieving MAP of 0.82 vs 0.63 and MRR of 0.84 vs 0.65.",
+    "key_idea": "Transformer-based language models pre-trained on domain-specific corpora (IndoBERT) capture semantic query-document relevance far more effectively than sequential LSTM models, even for low-resource languages with limited training data.",
+    "why_it_matters": "Practitioners building search or retrieval systems for low-resource languages should prefer fine-tuned BERT-style models over LSTMs, as the performance gap is substantial even with modest dataset sizes (~5K examples).",
+    "possible_use_cases": [
+      "Building semantic search engines for Indonesian news and media platforms",
+      "Developing question-answering or document retrieval systems for Indonesian government or legal corpora",
+      "Ranking and filtering Indonesian-language content in recommendation systems or content aggregators"
+    ],
+    "generated_at": "2026-03-21T21:26:05Z"
+  },
+  "deep": {
+    "method_breakdown": "The study fine-tunes IndoBERT (a BERT-based transformer pre-trained on Indonesian text) for relevance scoring between query-document pairs, comparing it against a baseline LSTM model on 5,000 scraped Indonesian news query-document pairs. Both models are trained to score semantic relevance, evaluated using standard IR metrics (MAP, MRR, P@5, R@5). IndoBERT leverages bidirectional self-attention to capture contextual semantics, while LSTM processes sequences recurrently with limited long-range dependency modeling.",
+    "key_innovation": "The primary contribution is an empirical benchmark for Indonesian-language IR using a domain-specific scraped dataset from major Indonesian news portals, filling a gap in low-resource language IR evaluation. There is no novel architectural innovation — the novelty is the application and dataset construction for Bahasa Indonesia, a language underrepresented in NLP benchmarks.",
+    "technical_insight": "The most important design choice is using IndoBERT rather than multilingual BERT (mBERT), as a monolingual Indonesian pre-trained model better captures language-specific morphology and semantics. This works because Indonesian has agglutinative morphology and domain-specific vocabulary that general multilingual models underrepresent in their tokenization and pre-training distribution.",
+    "limitations": "The dataset is small (5,000 pairs) and domain-restricted to news portals, limiting generalizability to other IR domains (legal, biomedical, conversational). Relevance labels were likely heuristically assigned via scraping rather than human annotation, introducing label noise. The LSTM baseline lacks attention mechanisms, making it an uncharitably weak comparison — a fairer baseline would be a BiLSTM with attention or a CNN-based model. No cross-encoder vs bi-encoder distinction is discussed, and retrieval efficiency at scale is unaddressed.",
+    "interview_questions": [
+      "How were relevance labels constructed from the scraped news data, and what assumptions does this labeling strategy make about query-document relevance?",
+      "Why was a vanilla LSTM chosen as the baseline rather than a stronger sequence model like BiLSTM with attention or a BM25 lexical baseline?",
+      "How does IndoBERT's tokenizer handle out-of-vocabulary Indonesian terms, slang, or code-switching that commonly appear in online news?",
+      "What are the computational trade-offs of deploying IndoBERT for real-time IR versus LSTM, and how does inference latency compare between the two?",
+      "How would the performance gap between IndoBERT and LSTM change if the dataset were scaled to 50,000 or 500,000 pairs, given that transformers are known to be data-hungry?"
+    ],
+    "interview_answers": [
+      "Relevance labels were likely derived by treating query-article pairs from the same news portal scrape as positive pairs and random pairs as negatives — a distant supervision heuristic. This assumes the scraping logic correctly pairs queries with their source documents, but noisy or ambiguous pairings could inflate or deflate metrics without true human relevance judgments.",
+      "A vanilla LSTM is a weak baseline that makes the transformer look stronger by comparison. A BiLSTM+attention baseline, a TF-IDF/BM25 baseline, or even a fine-tuned mBERT would have provided a more informative comparison. The choice may reflect simplicity of implementation rather than rigor.",
+      "IndoBERT uses a WordPiece tokenizer trained on Indonesian corpora, so common Indonesian words are tokenized more efficiently than with mBERT. However, informal slang, regional dialects, and code-switching (Indonesian-English mixing common in news) may still be fragmented into many subword tokens, degrading representation quality for informal queries.",
+      "IndoBERT requires significantly more compute — BERT-base has ~110M parameters versus an LSTM's ~1-10M — leading to 10-100x higher inference latency. For real-time IR with large document corpora, a bi-encoder architecture (encoding queries and documents independently) would be necessary, but the paper does not address this retrieval-vs-reranking distinction.",
+      "Transformers typically require more data to outperform strong sequence models due to their large parameter count, but IndoBERT is already pre-trained, so fine-tuning benefits persist even at small scales. As dataset size grows, the gap may narrow if the LSTM is also given more capacity, but the pre-training advantage of IndoBERT would likely maintain its lead unless the domain shifts significantly from IndoBERT's pre-training distribution."
+    ],
+    "generated_at": "2026-03-21T21:26:31Z"
+  }
+}

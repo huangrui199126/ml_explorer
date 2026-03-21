@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FESeq is a CTR prediction model that combines automatic feature interaction engineering with a Transformer-based sequential recommender, using cascading layers to extract high-order feature combinations before modeling user behavior sequences. It adds time interval embeddings and attention-based sequence pooling to better capture temporal patterns and target-item relevance.",
+    "key_idea": "Prepending an automatic feature interaction layer to a Transformer creates richer input representations that expose high-order feature combinations the self-attention mechanism alone would miss.",
+    "why_it_matters": "Most production recommendation systems treat feature engineering and sequence modeling as separate concerns; FESeq shows that cascading them improves CTR metrics on both public and industrial datasets, offering a practical architectural pattern for e-commerce and ad platforms.",
+    "possible_use_cases": [
+      "E-commerce product recommendation ranked by predicted click probability",
+      "Online advertising CTR prediction to optimize ad auction bidding",
+      "Streaming or content platforms personalizing feed rankings based on temporal user behavior"
+    ],
+    "generated_at": "2026-03-21T21:24:25Z"
+  },
+  "deep": {
+    "method_breakdown": "FESeq cascades a feature interaction layer before a Transformer encoder, automatically engineering high-order feature combinations as input to the self-attention mechanism. A linear time interval embedding and positional embedding are added to capture temporal dynamics alongside sequence order. Finally, a scaled bilinear attention pooling layer aggregates historical behavior representations by computing relevance against the target item.",
+    "key_innovation": "The cascading integration of explicit feature interaction (auto feature engineering) as a preprocessing stage for the Transformer, rather than treating feature crossing and sequential modeling as independent modules. Most prior sequential recommenders (e.g., SASRec, BERT4Rec) rely solely on raw item/feature embeddings fed into attention, ignoring cross-feature interactions before sequence modeling.",
+    "technical_insight": "Placing the feature interaction layer upstream of the Transformer is the critical design choice — it enriches the token representations with high-order combinatorial signals before self-attention computes dependencies, meaning attention heads operate on semantically richer inputs rather than having to implicitly learn feature crosses from scratch. This division of labor lets each component focus on what it does best: feature crossing vs. sequential dependency modeling.",
+    "limitations": "The cascading structure increases model complexity and inference latency, which may be problematic in real-time CTR serving with strict SLA constraints. The paper evaluates on specific public and one industrial dataset, leaving generalizability across diverse domains unclear. The automatic feature interaction layer may introduce noisy or redundant high-order combinations that could hurt performance on sparse feature spaces. Time interval embedding is linear, which may not capture non-linear temporal decay patterns common in user behavior.",
+    "interview_questions": [
+      "Why does placing feature interaction before the Transformer (cascading) outperform treating them as parallel or post-hoc modules?",
+      "How does the scaled bilinear attention pooling differ from standard mean/last-position pooling, and when does it matter most?",
+      "What are the computational trade-offs of adding an automatic feature engineering layer before the Transformer in an industrial CTR system?",
+      "How does the linear time interval embedding handle irregular or very long time gaps between interactions, and what are its failure modes?",
+      "If you were to extend FESeq to handle cold-start users with very short histories, what modifications would you make?"
+    ],
+    "interview_answers": [
+      "Cascading ensures the Transformer receives pre-enriched token representations with explicit high-order feature combinations baked in. Parallel modules would require a fusion step that may not optimally combine the two signal types, and post-hoc interaction would miss the benefit of attention operating on crossed features — the self-attention heads would still need to implicitly re-learn feature relationships from raw embeddings.",
+      "Bilinear attention computes a relevance score between each historical item and the target item via a learned weight matrix (s = h_i^T W h_target), enabling the pooling to selectively weight items most related to what the user might click next. Standard mean pooling treats all history equally; last-position pooling ignores older but potentially relevant items. It matters most for users with diverse or long histories where recency alone is a poor proxy for relevance.",
+      "The feature interaction layer adds O(d^2) or higher complexity per item depending on the interaction method (e.g., inner products over all feature pairs), increasing both memory and FLOPs. In industrial systems with millisecond latency budgets this may require pruning low-value feature pairs, quantization, or moving interaction computation offline. The benefit must be weighed against the added serving cost, particularly for high-QPS recommendation endpoints.",
+      "A linear embedding maps time gaps to a fixed-dimensional vector proportionally, which breaks down for very large gaps (e.g., a user returning after months) where the embedding saturates or becomes an outlier far from the training distribution. It also cannot model the non-linear decay of interest (e.g., exponential forgetting curves). A log-transformed or learned piecewise embedding would handle long-tail time distributions more robustly.",
+      "For cold-start users, the bilinear attention pooling degrades since there are few historical items to pool over, and the Transformer has little sequence context. Mitigations include: (1) incorporating user demographic or contextual features as additional tokens, (2) using a hybrid fallback that blends the sequential model output with a popularity-based or content-based score weighted by history length, and (3) pre-training the feature interaction layer on item co-occurrence data independently of user sequences to provide better initial embeddings."
+    ],
+    "generated_at": "2026-03-21T21:24:51Z"
+  }
+}
