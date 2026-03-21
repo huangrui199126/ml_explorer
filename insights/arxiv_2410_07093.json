@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LaMP is a language-motion pretraining model that replaces CLIP (designed for image-text pairs) with a dedicated language-motion latent space, improving alignment between text descriptions and human motion sequences. It advances three tasks simultaneously: text-to-motion generation, motion-text retrieval, and motion captioning, along with a new evaluation metric (LaMP-BertScore).",
+    "key_idea": "By pretraining directly on language-motion pairs instead of borrowing image-text embeddings from CLIP, the model learns motion-informative text representations that better capture the temporal and semantic structure of human movement.",
+    "why_it_matters": "Practitioners building motion synthesis, animation, or human-robot interaction systems gain a unified backbone that outperforms CLIP-based approaches on generation quality, retrieval accuracy, and captioning — without needing separate models for each task.",
+    "possible_use_cases": [
+      "Generating realistic human animations from natural language scripts for game or film production",
+      "Retrieving motion clips from large databases using text queries for choreography or sports coaching tools",
+      "Automatically captioning motion capture data to build labeled datasets for downstream ML tasks"
+    ],
+    "generated_at": "2026-03-21T20:45:31Z"
+  },
+  "deep": {
+    "method_breakdown": "LaMP pretrains a dual-encoder transformer (text + motion) in a shared latent space using contrastive learning on motion-text pairs, replacing CLIP's image-text embeddings with motion-aware text representations. For generation, it conditions an autoregressive masked prediction transformer on LaMP text embeddings with a novel masking strategy to avoid rank collapse. For retrieval, cross-attention query tokens bridge the two modalities, and for captioning, a frozen LLM is finetuned on LaMP's motion features.",
+    "key_innovation": "The core novelty is replacing CLIP (pretrained on static image-text pairs) with a purpose-built language-motion contrastive pretraining framework, producing text embeddings that encode motion-specific semantics (dynamics, temporality, body part interactions) rather than visual appearance. The rank-collapse-avoiding masked autoregressive prediction for motion tokens is also new.",
+    "technical_insight": "The most critical design choice is joint pretraining on motion-text pairs rather than image-text pairs — CLIP embeddings conflate visual and motion semantics (e.g., 'running' looks similar to 'jogging' visually but differs greatly in dynamics), whereas LaMP's space captures temporal structure and kinematic intent. This alignment is what allows the same backbone to serve generation, retrieval, and captioning without task-specific encoders.",
+    "limitations": "LaMP depends on the quantity and quality of annotated motion-text datasets, which are far smaller than image-text corpora used for CLIP, potentially limiting generalization to rare or complex motion descriptions. The rank collapse mitigation in masked prediction is heuristic and may not fully solve the degeneration problem at scale. Motion captioning quality is upper-bounded by the finetuned LLM's ability to interpret motion features, which remains an indirect grounding.",
+    "interview_questions": [
+      "Why does CLIP underperform for motion generation, and what properties of motion make image-text pretraining a poor fit?",
+      "How does LaMP's masked autoregressive prediction differ from standard masked modeling, and what causes rank collapse in this setting?",
+      "How does the retrieval mechanism in LaMP handle the asymmetry between text and motion modalities during cross-modal query?",
+      "What is the LaMP-BertScore metric, and how does it improve on existing motion-text alignment evaluation?",
+      "What are the key trade-offs in finetuning a large language model on motion features versus training a captioning head from scratch?"
+    ],
+    "interview_answers": [
+      "CLIP is trained on static image-text pairs, so its text embeddings encode visual appearance rather than temporal dynamics. Motion descriptions are inherently kinematic — they reference velocity, sequence, and body part coordination — which are absent from images. CLIP thus conflates visually similar but dynamically distinct actions (e.g., 'walking slowly' vs 'marching'), leading to poor semantic grounding for motion generation.",
+      "Standard masked modeling in transformers can suffer from rank collapse when the attention mechanism degenerates to uniform attention across tokens, producing low-rank representations with poor diversity. LaMP uses autoregressive masked prediction — predicting masked tokens in a causal order conditioned on unmasked context — which introduces sequential dependency that forces attention to remain structured and diverse, mitigating collapse.",
+      "LaMP uses learned query tokens in a cross-attention mechanism: for text-to-motion retrieval, motion encoder features are attended to by query tokens to produce a motion summary vector compared against text embeddings, and vice versa. This asymmetric cross-attention allows each modality to 'ask' the other modality for relevant information rather than relying on a single shared pooling operation, improving retrieval precision.",
+      "LaMP-BertScore adapts the BERTScore metric by computing semantic similarity between generated motion descriptions and ground-truth captions using LaMP's motion-aware text embeddings instead of generic BERT embeddings. This means the metric penalizes descriptions that are textually plausible but motion-semantically wrong (e.g., 'the person moves forward' vs 'the person walks briskly'), providing a more faithful alignment score than standard NLP metrics like BLEU or METEOR.",
+      "Finetuning an LLM on motion features leverages the LLM's strong language priors and fluency, producing more natural and detailed captions, but risks the LLM hallucinating plausible-sounding descriptions not grounded in the actual motion features. Training a captioning head from scratch gives tighter grounding but sacrifices language quality and generalization. LaMP mitigates this by ensuring motion features are linguistically informative through pretraining, making them more interpretable to the LLM."
+    ],
+    "generated_at": "2026-03-21T20:45:57Z"
+  }
+}

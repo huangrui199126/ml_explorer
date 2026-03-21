@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes using LLMs as planners for recommendation systems to optimize both immediate and long-term user engagement, addressing the instability and overfitting issues of training RL models from scratch on sparse data. The Bi-level Learnable LLM Planner framework splits learning into macro-level guidance and micro-level personalized policies.",
+    "key_idea": "LLMs' strong generalization over sparse data can be harnessed via a two-tier learning framework—macro-learning for high-level engagement principles and micro-learning for personalized action policies—to enable stable, effective long-term recommendation planning.",
+    "why_it_matters": "Practitioners building recommendation systems can leverage pre-trained LLMs to overcome the data scarcity and instability challenges of pure RL approaches, achieving better long-term user retention without needing massive interaction datasets.",
+    "possible_use_cases": [
+      "Streaming platforms optimizing watch-time and reducing churn by planning content sequences that sustain long-term engagement",
+      "E-commerce recommendation engines balancing immediate purchase likelihood with long-term customer lifetime value",
+      "News or content aggregators curating personalized reading paths that maintain user interest over weeks or months"
+    ],
+    "generated_at": "2026-03-21T20:44:56Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework uses a Bi-level Learnable LLM Planner that decomposes planning into macro-learning and micro-learning stages. Macro-learning trains LLM instances to generate high-level guidance plans grounded in long-term engagement principles, while micro-learning personalizes these plans into concrete, executable recommendation actions for individual users. Multiple LLM instances collaborate to bridge the gap between abstract planning objectives and actionable item recommendations.",
+    "key_innovation": "Rather than training RL agents from scratch on sparse recommendation data, the framework leverages LLMs' pre-trained planning capabilities over sparse data as a prior. The bi-level decomposition is novel — separating strategy generation (macro) from personalized execution (micro) allows LLMs to contribute meaningful structural guidance without requiring dense reward signals that RL typically needs.",
+    "technical_insight": "The most critical design choice is grounding macro-level LLM plans into micro-level personalized policies rather than using LLMs end-to-end. This works because LLMs are strong at generating coherent behavioral strategies but weak at user-specific preference modeling, while learned micro-policies can exploit user history effectively. The separation prevents LLM hallucination from corrupting personalization while still injecting long-horizon planning structure.",
+    "limitations": "The framework's effectiveness likely depends heavily on prompt engineering quality for macro-level plan generation, introducing brittleness. Inference cost is high given multiple LLM instances at serving time. The approach may struggle when user preferences shift rapidly (concept drift) since macro plans may lag behind. Evaluation on standard offline benchmarks may not capture true long-term benefit since cumulative reward proxies are notoriously misaligned with real engagement. Scalability to extremely large item catalogs is unclear.",
+    "interview_questions": [
+      "How does the bi-level framework specifically handle the credit assignment problem — how does the macro plan know whether its guidance actually caused long-term improvements at the micro level?",
+      "What stops the macro-learning LLM from generating vague or generic plans that provide no meaningful signal to the micro-level policy?",
+      "How do you evaluate long-term recommendation quality in offline experiments where you cannot actually observe the causal effect of recommendations on future user behavior?",
+      "Why use multiple LLM instances rather than a single LLM with chain-of-thought prompting, and how do the instances interact or ensemble their outputs?",
+      "How does your approach compare against simpler baselines like using LLM-generated user interest summaries as contextual features in a standard RL recommender?"
+    ],
+    "interview_answers": [
+      "The paper likely uses a form of hierarchical reward shaping where micro-level immediate rewards are augmented with macro-plan alignment signals, but this credit assignment remains fundamentally indirect and is a genuine weakness — the macro planner receives delayed and noisy feedback about whether its strategic guidance was useful.",
+      "Grounding is enforced by constraining macro plans to follow predefined principles (e.g., diversity, novelty, sustained engagement) and by training the macro LLM with feedback from downstream micro-policy performance, creating a learnable loop rather than pure zero-shot generation.",
+      "Offline evaluation likely uses replay-based methods or constructs simulated environments from logged data, treating long sessions in the dataset as proxies for engagement. This is a significant limitation since offline metrics systematically underestimate the counterfactual impact of exploratory recommendations.",
+      "Multiple instances likely handle different aspects of planning (e.g., short-term satisfaction vs. long-term diversity vs. category exploration) and their outputs are aggregated, providing more structured guidance than a single chain-of-thought pass which may conflate competing objectives.",
+      "The LLM-as-context-feature baseline is a valid and likely strong competitor that the paper should address directly. The key claimed advantage of the full framework is that the LLM actively learns to plan rather than passively describing users, but the empirical delta over such a baseline is the most important number to scrutinize."
+    ],
+    "generated_at": "2026-03-21T20:45:22Z"
+  }
+}
