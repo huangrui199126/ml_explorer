@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses approximate nearest neighbor (ANN) search with numeric range filters, where you need to find similar vectors but only among items whose labels fall within a specified range (e.g., find similar images taken between 2020–2022). The authors propose a tree-based framework that wraps existing ANN indexes to handle these window queries efficiently.",
+    "key_idea": "By organizing dataset points into a hierarchical tree structure based on their numeric labels, queries with range filters can be routed to only the relevant subtrees of an existing ANN index, avoiding exhaustive search over out-of-range points.",
+    "why_it_matters": "Filtered vector search is ubiquitous in production semantic search systems (e.g., e-commerce price filters, document date filters), and this approach achieves up to 75x speedup over existing solutions without sacrificing recall, making real-time filtered retrieval far more practical at scale.",
+    "possible_use_cases": [
+      "E-commerce product search filtered by price range using embedding similarity",
+      "Document or news retrieval filtered by publication date or time window",
+      "Image search restricted to photos taken within a specific timestamp range"
+    ],
+    "generated_at": "2026-03-21T20:50:18Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework wraps any existing c-approximate nearest neighbor (ANN) index (e.g., HNSW, IVF) into a tree-based data structure that partitions the dataset by numeric label ranges. At query time, only the nodes whose label ranges intersect the query window are searched, and results are merged across partitions. This modular design allows any base ANN index to gain window-filter capability without modifying its internals.",
+    "key_innovation": "Prior work handled filtered ANN by either post-filtering (retrieve many neighbors, discard out-of-range) or pre-filtering (scan only in-range points brute-force), both of which degrade badly at extreme filter selectivities. This work introduces a label-range tree that adapts search effort to the filter width, achieving near-optimal recall-speed tradeoffs across the full spectrum of filter selectivities without requiring a custom index.",
+    "technical_insight": "The critical design choice is building a hierarchical partition tree over label values and maintaining a separate ANN sub-index per node, so the number of sub-index probes scales with the width of the query window rather than the full dataset size. This works because narrow windows hit few tree nodes (small candidate set, fast) while wide windows hit many nodes but each contributes densely (approximating a full ANN query), preserving recall in both regimes.",
+    "limitations": "Memory overhead is significant because multiple overlapping sub-indexes cover the same points at different tree levels. The framework's guarantees assume label values are distributed in a way amenable to balanced partitioning; adversarially skewed label distributions or very high-dimensional label spaces are not addressed. The theoretical analysis relies on standard ANN approximation assumptions that may not hold for all base indexes or data distributions.",
+    "interview_questions": [
+      "How does the tree partition structure ensure correctness — i.e., that no true nearest neighbor within the window is missed?",
+      "What is the asymptotic space complexity of the framework relative to the base ANN index, and how does the tree depth affect it?",
+      "How does the method compare to hybrid approaches like ACORN or filtered HNSW that modify graph connectivity to handle attribute filters?",
+      "How sensitive is performance to the choice of tree branching factor and leaf node size, and how should practitioners tune these?",
+      "Can this framework be extended to multi-dimensional or non-numeric filters (e.g., categorical attributes or conjunctive filters), and what theoretical changes would be needed?"
+    ],
+    "interview_answers": [
+      "The tree is constructed so that for any query window [lo, hi], the union of leaf nodes whose label ranges are fully contained in [lo, hi] covers exactly the set of in-range points. The search visits all tree nodes whose ranges intersect the query window, guaranteeing no in-range point is excluded from consideration, so correctness reduces to the correctness of the base ANN index within each partition.",
+      "Each point appears in O(log N) tree nodes (one per level on its root-to-leaf path), so total space is O(N log N) times the per-point cost of the base index. Deeper trees give finer label granularity and faster narrow-window queries but increase this multiplicative overhead proportionally.",
+      "Graph-based filtered methods like ACORN embed filter awareness into edge traversal, requiring index reconstruction when filters change and coupling the filter logic to a specific index type. This framework is index-agnostic and requires no retraining when the filter schema changes, but pays a higher memory cost; graph methods can be more cache-efficient for moderate selectivities.",
+      "The branching factor controls the tradeoff between tree depth (and thus memory) and the number of sub-indexes probed per query. A branching factor of 2 (binary tree) minimizes memory overhead per level but maximizes depth; larger branching reduces depth but increases per-level fan-out cost. The leaf size should be tuned so that brute-force search within a leaf is competitive with the base ANN index overhead — typically a few hundred to a few thousand points.",
+      "Extension to categorical filters would require replacing the linear order with a set-containment hierarchy, which loses the clean interval-arithmetic properties that make the tree efficient. Conjunctive multi-attribute filters could in principle use a k-d tree over label space, but the number of tree nodes intersecting a query box grows exponentially with the number of filter dimensions, making the approach impractical beyond two or three attributes without additional pruning heuristics."
+    ],
+    "generated_at": "2026-03-21T20:50:46Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RevGNN addresses the false negative problem in academic reviewer recommendation, where unobserved reviewer-submission interactions are incorrectly treated as negative samples due to anonymous review mechanisms. It proposes a Pseudo Neg-Label strategy within a graph contrastive learning framework to better distinguish true negatives from missing interactions.",
+    "key_idea": "Use an unsupervised pseudo-labeling strategy to identify likely false negatives among unobserved edges before applying contrastive graph learning, enabling a two-stage encoder to separately model scientific knowledge and behavioral preferences.",
+    "why_it_matters": "Any recommendation system built on implicit feedback suffers from false negatives, and this work provides a practical technique to mitigate that bias — directly applicable beyond academia to sparse interaction domains like cold-start recommendations or expert matching.",
+    "possible_use_cases": [
+      "Academic peer review assignment systems that need to match papers to qualified, willing reviewers",
+      "Expert-finding and talent matching platforms where interaction data is sparse and confidential",
+      "Contrastive learning pipelines for any recommendation domain with high rates of unobserved but plausible positive interactions"
+    ],
+    "generated_at": "2026-03-21T20:54:16Z"
+  },
+  "deep": {
+    "method_breakdown": "RevGNN is a graph contrastive learning framework for reviewer recommendation that addresses the false negative problem in unobserved edges. It uses a two-stage encoder: a scientific knowledge encoder (likely based on paper/reviewer embeddings from text) and a behavior encoder that models interaction patterns, both trained with a Pseudo Neg-Label strategy. The Pseudo Neg-Label strategy identifies likely true negatives among unobserved edges to improve contrastive learning signal quality.",
+    "key_innovation": "The core novelty is the unsupervised Pseudo Neg-Label strategy that disambiguates unobserved edges in the reviewer-submission bipartite graph. Unlike standard GCL that treats all unobserved edges as negatives, RevGNN estimates which unobserved pairs are genuine negatives (reviewer actually not suitable) versus false negatives (reviewer suitable but never exposed due to anonymous review blind spots), producing cleaner contrastive training signals without requiring additional supervision.",
+    "technical_insight": "The most critical design choice is recognizing that academic peer review has a structurally different missing-data mechanism than typical recommendation: anonymity and limited reviewer pools cause far more false negatives than user disinterest does in e-commerce. By incorporating this domain knowledge into the negative sampling process — filtering out high-confidence false negatives before contrastive training — the model avoids pushing apart embeddings of genuinely compatible reviewer-paper pairs, which is the root cause of degraded GCL performance in this domain.",
+    "limitations": "The Pseudo Neg-Label strategy relies on an unsupervised confidence heuristic to separate true negatives from false negatives, which may be unreliable when the graph is extremely sparse or the reviewer pool is small. The two-stage encoder assumes scientific knowledge and behavioral signals are separable and complementary, which may not hold for interdisciplinary venues. Evaluation on only three datasets limits generalizability claims, and the method does not address cold-start for new authors or emerging topics. Anonymous review also means ground-truth labels are inherently noisy, so benchmark reliability is questionable.",
+    "interview_questions": [
+      "How does the Pseudo Neg-Label strategy technically distinguish false negatives from true negatives without ground-truth supervision?",
+      "Why does the standard GCL assumption of treating unobserved edges as negatives fail more severely in reviewer recommendation than in typical collaborative filtering?",
+      "How are the scientific knowledge encoder and behavior encoder combined, and how do their gradients interact during training?",
+      "What would happen if the pseudo-label confidence threshold is set too aggressively, and how sensitive is the model to this hyperparameter?",
+      "How does RevGNN handle the cold-start problem for newly submitted papers with no prior review history?"
+    ],
+    "interview_answers": [
+      "The Pseudo Neg-Label strategy likely estimates the probability that an unobserved reviewer-paper pair is a true negative using features such as topical similarity, reviewer load, and graph structural signals (e.g., common neighbors). Pairs with low estimated affinity are labeled as pseudo-negatives and used as hard negatives in contrastive training, while high-affinity unobserved pairs are masked or down-weighted to avoid false negative contamination.",
+      "In standard e-commerce recommendation, a user not interacting with an item is a reasonable proxy for disinterest because exposure is broad and driven by the platform. In peer review, reviewer-paper interactions are gated by editorial assignment decisions, area chair preferences, and reviewer availability — so the majority of unobserved pairs are missing due to process constraints, not incompatibility. This inflates the false negative rate far beyond typical recommendation scenarios.",
+      "The two-stage structure likely processes paper text and reviewer publication history through a knowledge encoder (e.g., pretrained language model or citation graph GNN) to produce semantic embeddings, then feeds these into a behavior encoder (GNN over the reviewer-submission bipartite graph) that refines representations using interaction structure. The Pseudo Neg-Label contrastive loss is applied at the behavior encoder stage, with the knowledge encoder either frozen or jointly fine-tuned with a smaller learning rate.",
+      "If the threshold is too aggressive, many true negatives are masked as potential false negatives, shrinking the effective negative sample set and weakening the contrastive signal — the model would produce poorly discriminated embeddings and rank many irrelevant reviewers highly. The model is likely moderately sensitive to this threshold, and the paper probably reports ablations showing performance degradation at boundary values, suggesting a need for dataset-specific tuning.",
+      "RevGNN's behavior encoder relies on existing reviewer-paper interaction edges, so cold-start papers with no history would receive embeddings purely from the scientific knowledge encoder. This is a known limitation — the model degrades to content-based retrieval for new submissions, which may be adequate for topic matching but loses the behavioral preference signal that differentiates between topically qualified reviewers."
+    ],
+    "generated_at": "2026-03-21T20:54:45Z"
+  }
+}
