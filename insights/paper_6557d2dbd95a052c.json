@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CARE is a framework for predicting how information spreads through social networks by retrieving similar historical cascade patterns as in-context examples for a GPT-style model, analogous to how LLMs use in-context learning.",
+    "key_idea": "Retrieve semantically similar past information cascades as dynamic prompts to condition a transformer model, enabling cross-cascade dependency learning without platform-specific feature engineering.",
+    "why_it_matters": "Practitioners building viral content detection, misinformation tracking, or influencer identification systems can use this approach to get more robust predictions across different social platforms without retraining heavy platform-specific models.",
+    "possible_use_cases": [
+      "Misinformation and rumor spread early detection on social media",
+      "Influencer identification and viral campaign planning",
+      "Epidemic or information outbreak modeling for public health communication"
+    ],
+    "generated_at": "2026-03-21T19:08:30Z"
+  },
+  "deep": {
+    "method_breakdown": "CARE builds a prompt pool from historical diffusion cascades, then uses ranking-based retrieval (similar to BM25 or dense retrieval) to find cascades with structurally similar propagation patterns to a query cascade. The retrieved cascades serve as in-context examples fed into a GPT-style transformer, which processes the query alongside these analogous cascades to produce a contextualized representation that is projected into a next-infected-user prediction.",
+    "key_innovation": "Prior work treats each cascade in isolation or relies on hand-engineered feature augmentation per platform. CARE borrows in-context learning from LLMs — instead of fine-tuning on platform-specific features, it retrieves similar historical cascades as dynamic context, allowing the model to implicitly learn cross-cascade dependency patterns without explicit feature engineering or retraining per domain.",
+    "technical_insight": "The ranking-based retrieval of structurally similar cascades is the critical design choice. By selecting cascades with similar propagation topology or temporal patterns as context, the model receives implicit prior knowledge about how information spread in analogous situations, effectively giving the GPT-style decoder a 'few-shot' signal at inference time. This is what drives both effectiveness and cross-platform robustness — the retrieval adapts the context to the query without changing model weights.",
+    "limitations": "Retrieval quality is a hard ceiling: if the prompt pool lacks cascades similar to the query (cold-start or novel propagation patterns), performance degrades. The ranking-based search relies on a fixed similarity metric that may not capture all semantically relevant cascade structures. Computational cost scales with prompt pool size at inference. The framework still requires a sufficiently large historical pool per domain, limiting applicability to sparse or nascent platforms. Social relationship enhancement depends on network graph availability, which is often incomplete or unavailable.",
+    "interview_questions": [
+      "How do you define 'similarity' between cascades for retrieval, and how sensitive is performance to this similarity metric?",
+      "How does CARE handle the cold-start problem when a new platform has very few historical cascades in the prompt pool?",
+      "What is the computational overhead of retrieval at inference time, and how does prompt pool size affect latency?",
+      "How do the two augmentation strategies interact with the retrieved in-context cascades — are they applied to the query, the retrieved prompts, or both?",
+      "Why is a GPT-type (causal/autoregressive) architecture chosen over a bidirectional encoder, given that diffusion prediction is not a sequential generation task in the traditional sense?"
+    ],
+    "interview_answers": [
+      "Cascade similarity is typically defined over structural or temporal features — e.g., propagation tree topology, user sequence overlap, or temporal spreading patterns — and is used by a ranking function analogous to BM25 or learned dense retrieval. Performance is moderately sensitive: retrieving topologically dissimilar cascades degrades results, which is why the ranking step is central to the design rather than random sampling.",
+      "Cold-start is a genuine weakness. With a sparse prompt pool, retrieved cascades may be poor matches, reducing the in-context signal to noise. The framework does not explicitly address this; one mitigation is cross-platform transfer of the pool, but this is not fully explored in the paper.",
+      "Retrieval adds O(|pool|) similarity computation per query, which can be bottlenecked for large pools. In practice, approximate nearest-neighbor indexes (e.g., FAISS) could reduce this, but the paper's experiments likely use moderate-sized pools where brute-force retrieval is feasible.",
+      "The augmentation strategies — which include social relationship enhancement — enrich the query cascade's representation before it is paired with retrieved prompts. This means the query side is enriched, and the retrieved prompts serve as structural context; both contribute to the final transformer input.",
+      "The GPT-type architecture is used because diffusion prediction is framed autoregressively — predicting the next infected user given the sequence of previously infected users. The causal attention mask naturally models the temporal ordering of cascade spread, and it aligns with the in-context learning paradigm borrowed from LLMs where the model conditions on preceding context tokens."
+    ],
+    "generated_at": "2026-03-21T19:08:57Z"
+  }
+}
