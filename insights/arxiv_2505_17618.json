@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "EvoSearch applies evolutionary algorithms to test-time scaling for image and video diffusion/flow models, using selection and mutation mechanisms to explore denoising trajectories without additional training. It consistently outperforms existing inference-time methods while maintaining sample diversity across both image and video generation tasks.",
+    "key_idea": "Reformulate the denoising trajectory search as an evolutionary optimization problem, iteratively selecting and mutating noise samples to produce higher-quality outputs at inference time.",
+    "why_it_matters": "Practitioners can boost generation quality of existing diffusion/flow models at inference time without retraining, fine-tuning, or expanding model size, making it a plug-in quality upgrade for production pipelines.",
+    "possible_use_cases": [
+      "Improving image quality for text-to-image models like FLUX or Stable Diffusion without retraining",
+      "Enhancing video generation coherence and fidelity in models like CogVideoX or Wan",
+      "Optimizing outputs against custom reward functions (e.g., aesthetic scores, domain-specific metrics) while preserving diversity"
+    ],
+    "generated_at": "2026-03-21T20:56:34Z"
+  },
+  "deep": {
+    "method_breakdown": "EvoSearch reformulates test-time scaling for diffusion/flow models as an evolutionary search problem operating over the denoising trajectory space. At each inference step, it maintains a population of candidate noise trajectories, applies selection (keeping higher-reward samples) and mutation (adding controlled stochastic perturbations consistent with the SDE denoising process) to iteratively refine candidates. This produces a final generation by evolving the population across denoising steps without any additional training.",
+    "key_innovation": "Prior TTS methods for vision either require task-specific verifiers, suffer from reward over-optimization (mode collapse toward the reward), or scale poorly. EvoSearch's core novelty is adapting evolutionary algorithms to the continuous SDE denoising trajectory — specifically, mutation is designed to be SDE-aware, injecting noise that remains on the valid denoising manifold rather than arbitrary perturbations, which preserves sample diversity while improving quality.",
+    "technical_insight": "The most important design choice is coupling mutation to the SDE's noise schedule: perturbations are injected at intermediate denoising steps in a way that respects the diffusion kernel, ensuring mutated offspring are plausible samples rather than out-of-distribution artifacts. This is why EvoSearch avoids reward over-optimization — population diversity is structurally preserved by the stochasticity of the SDE rather than requiring explicit diversity penalties.",
+    "limitations": "EvoSearch requires running multiple parallel denoising trajectories (population size N), increasing inference compute by a factor of N, which may be prohibitive for high-resolution video. The method still relies on an external reward/verifier signal to perform selection, so quality gains are bounded by reward model accuracy. Generalization to unseen metrics is demonstrated empirically but not theoretically guaranteed. The evolutionary dynamics (selection pressure, mutation strength) require tuning per domain.",
+    "interview_questions": [
+      "How does EvoSearch's mutation operator differ from simply adding random noise, and why does staying on the SDE manifold matter?",
+      "What selection mechanism is used — is it top-k truncation, tournament selection, or something else — and how does this affect diversity vs. quality trade-off?",
+      "How does EvoSearch compare to best-of-N sampling, which is also a test-time scaling baseline? What does the evolutionary structure add beyond independent sampling?",
+      "The abstract claims strong generalizability to unseen evaluation metrics — what is the mechanism for this, given that selection is driven by a specific reward signal?",
+      "What are the compute scaling laws observed — does generation quality improve log-linearly with population size N, and is there a point of diminishing returns?"
+    ],
+    "interview_answers": [
+      "Standard random noise injection would move samples off the data manifold, producing blurry or incoherent outputs. EvoSearch's mutation samples perturbations from the diffusion kernel conditioned on the current denoising step, so mutated trajectories remain consistent with what the model would naturally generate — they are valid alternative continuations of the denoising path, not arbitrary corruptions.",
+      "The paper uses fitness-proportionate or top-k selection at intermediate denoising steps. Top-k truncation maximizes selection pressure toward the reward but risks premature convergence; maintaining a diverse population via soft selection or stochastic acceptance mitigates this. The SDE mutation inherently re-diversifies the population each step, partially compensating for selection-induced collapse.",
+      "Best-of-N generates N independent samples and picks the best by reward — it has no information sharing across candidates. EvoSearch's evolutionary structure allows high-fitness trajectory prefixes to be recombined and mutated, so the search is guided rather than random. Empirically this achieves better quality at the same N because the population converges toward high-reward regions of trajectory space faster than independent sampling.",
+      "The generalization claim rests on the diversity preservation argument: because EvoSearch maintains a population rather than collapsing to a single mode, the selected output is more likely to score well on correlated metrics it was not directly optimized for. Reward over-optimization (Goodhart's law) degrades unseen metrics, so diversity is the mechanism — not explicit multi-objective optimization.",
+      "The paper shows consistent improvement as population size increases, broadly log-linear in quality metrics up to moderate N (e.g., 8–16 candidates). Diminishing returns appear at large N because the SDE mutation diversity saturates — all population members converge to similar high-reward trajectories. The practical sweet spot balances compute cost against quality gain, typically around N=8 for image and smaller N for video due to memory constraints."
+    ],
+    "generated_at": "2026-03-21T20:57:02Z"
+  }
+}

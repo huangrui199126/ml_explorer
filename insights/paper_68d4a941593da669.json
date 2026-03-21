@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DIGRA is a dynamic graph index for approximate nearest neighbor search that supports range filters (e.g., find similar items within a price range) while allowing efficient dataset updates. It combines a dynamic multi-way tree structure with ANNS indices and a lazy weight-based update mechanism to balance query speed, update cost, and result quality.",
+    "key_idea": "A dynamic multi-way tree partitions vectors by attribute ranges, each node hosting a small ANNS graph index, with lazy rebalancing to amortize update costs without sacrificing query accuracy.",
+    "why_it_matters": "Real-world vector databases constantly change (new products, deleted records), yet existing range-filtered ANNS indexes are static; DIGRA is the first to handle both range filters and dynamic updates efficiently, making it practical for production e-commerce, recommendation, and search systems.",
+    "possible_use_cases": [
+      "E-commerce product search filtering by price or rating while finding visually similar items",
+      "Real-time recommendation systems that filter candidates by recency or popularity thresholds",
+      "Geospatial or time-range constrained similarity search over frequently updated embedding stores"
+    ],
+    "generated_at": "2026-03-21T20:59:03Z"
+  },
+  "deep": {
+    "method_breakdown": "DIGRA builds a dynamic multi-way tree structure over the scalar attribute domain (e.g., price ranges), where each tree node maintains a small ANNS graph index over the vectors whose attributes fall within that node's range interval. Queries are answered by identifying the relevant tree nodes covering the query range and searching their embedded ANNS indices, merging results across nodes. Updates (inserts/deletes) are handled via a lazy weight-based mechanism that defers expensive index rebuilds until a node's index becomes sufficiently stale, amortizing update costs.",
+    "key_innovation": "Prior range-filtered ANNS indexes (SeRF, iRangeGraph, SuperPostFiltering) are all static — they require full reconstruction to accommodate data changes. DIGRA is the first dynamic graph-based index for range-filtered ANNS, introducing a lazy weight-based update policy that decides when to propagate changes into the underlying ANNS subindices rather than updating eagerly, and selecting ANNS index types per node that minimize construction/update overhead while preserving recall.",
+    "technical_insight": "The lazy weight-based update mechanism is the critical design choice: instead of immediately rebuilding or patching a subindex on every insert/delete (which would be prohibitively expensive for graph-based ANNS), DIGRA accumulates changes and triggers a rebuild only when the ratio of stale entries crosses a threshold. This works because graph ANNS indices degrade gracefully under small perturbations, so recall loss is bounded until the lazy threshold is hit, giving a controllable quality-vs-update-cost tradeoff.",
+    "limitations": "The lazy update policy introduces a tunable staleness threshold whose optimal value is workload-dependent, making it hard to set without domain knowledge. The multi-way tree partitioning of the attribute domain can become unbalanced under skewed attribute distributions, causing hotspot nodes with disproportionately large subindices. The approach is evaluated on a single scalar attribute; extending to multi-dimensional attribute filters (e.g., price AND date) is non-trivial. Memory overhead is higher than static indexes due to storing multiple overlapping subindices across tree levels.",
+    "interview_questions": [
+      "How does DIGRA decide the granularity of the multi-way tree partitioning over the attribute domain, and how does this affect query and update performance?",
+      "What triggers a lazy rebuild of a subindex in DIGRA, and how is the staleness threshold calibrated to balance recall and update throughput?",
+      "How does DIGRA handle a query whose range spans many tree nodes — does it search all relevant subindices independently, and how are results merged?",
+      "Why does DIGRA's choice of ANNS index type matter at the node level, and what criteria are used to select among candidate graph structures (e.g., HNSW vs. NSG)?",
+      "What is the theoretical recall guarantee (if any) of DIGRA under the lazy update model, and how does staleness accumulation bound worst-case recall degradation?"
+    ],
+    "interview_answers": [
+      "The tree partitioning is typically chosen to balance the number of vectors per node, using either a fixed fanout or data-adaptive splits. Finer partitioning reduces per-node index size and query scope but increases the number of subindices to search for wide ranges; coarser partitioning does the opposite. The tradeoff means query latency for narrow ranges improves with finer trees while wide-range queries benefit from coarser ones.",
+      "A rebuild is triggered when the fraction of stale (inserted or deleted but not yet reflected) vectors in a subindex exceeds a weight threshold. Calibration is done empirically: the threshold is tuned on a validation workload to find the point where recall drops below an acceptable level, then set conservatively. In practice this means rebuilds happen infrequently enough to amortize cost while keeping recall above target.",
+      "DIGRA identifies the minimal set of tree nodes whose attribute intervals together cover the query range, searches each node's subindex for approximate nearest neighbors, and merges the candidate sets by distance, returning the top-k overall. This is analogous to a union query across partitions; the overhead scales with the number of covering nodes, which is O(log N) for balanced trees and narrow ranges but can grow for wide ranges.",
+      "Different ANNS graph structures have very different construction and incremental update costs. For example, HNSW supports O(log N) insertions natively while NSG requires batch construction. DIGRA selects the index type per node based on expected update frequency and node size — nodes that are updated frequently prefer structures with cheaper incremental updates, while stable nodes can use higher-quality but harder-to-update structures.",
+      "DIGRA does not provide hard recall guarantees under the lazy model; instead it offers empirical bounds. The argument is that graph ANNS indices lose recall roughly proportionally to the fraction of stale entries, so keeping staleness below threshold k% bounds recall loss to approximately f(k) for a monotone function f characterized on the dataset. This is an approximation guarantee contingent on the staleness threshold, not a worst-case theoretical guarantee."
+    ],
+    "generated_at": "2026-03-21T20:59:31Z"
+  }
+}

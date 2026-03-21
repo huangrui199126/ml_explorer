@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses multi-task ML inference in vehicular edge computing by exploiting shared model structures across tasks to jointly optimize model deployment on roadside units and task offloading decisions, minimizing total response time. The proposed TPA algorithm achieves at least 73.72% reduction in response time compared to state-of-the-art methods.",
+    "key_idea": "By recognizing and leveraging shared neural network components across different inference tasks, joint deployment and offloading decisions can be made that avoid redundant computation and storage, dramatically reducing end-to-end latency.",
+    "why_it_matters": "Autonomous vehicles and smart transportation systems require real-time ML inference under tight latency constraints; this work shows that co-designing task scheduling with model architecture sharing at edge nodes can yield massive throughput gains without additional hardware.",
+    "possible_use_cases": [
+      "Autonomous vehicle perception pipelines running simultaneous object detection, lane segmentation, and depth estimation on shared edge servers",
+      "Smart city traffic management systems offloading multiple CV tasks (vehicle counting, speed estimation, incident detection) to roadside compute units",
+      "Industrial IoT deployments where multiple sensor-fusion inference tasks share backbone models across a fleet of edge devices"
+    ],
+    "generated_at": "2026-03-21T20:59:39Z"
+  },
+  "deep": {
+    "method_breakdown": "TPA (Time Period Aware algorithm) jointly optimizes which multi-task learning models to deploy on roadside units (RSUs) and how to offload inference tasks from vehicles, exploiting shared neural network structures across tasks to reduce redundant computation and storage. The algorithm iteratively maximizes system throughput within a candidate time period, then binary-searches for the minimum time period that completes all requests. Shared model components (e.g., a shared backbone in multi-task models) are counted once in storage and computation, reducing both deployment cost and inference latency.",
+    "key_innovation": "Prior work treats different inference task types as independent, ignoring that multi-task learning models share backbone layers. TPA explicitly models this sharing: deploying a multi-task model on an RSU amortizes the cost across all task types it handles, enabling more efficient packing of models onto RSUs and lower per-task response time. This share-aware formulation is the primary novelty over existing model deployment and task offloading literature.",
+    "technical_insight": "The critical design choice is decomposing the NP-hard joint problem into a throughput-maximization subproblem solved iteratively, then using that to approximate the minimum makespan. This works because maximizing throughput per unit time is a tighter surrogate for minimizing total response time than greedy latency-minimization, and the iterative refinement of the time period allows convergence to a bounded approximation ratio rather than an arbitrary heuristic.",
+    "limitations": "The approach assumes static or slowly-varying task arrival patterns (Google cluster trace is batch-simulated, not truly online); it may degrade under highly dynamic or bursty traffic. The approximation ratio guarantee depends on the quality of the throughput-maximization subproblem solver, which itself may be heuristic. The model sharing structure must be known and fixed at deployment time, so it does not adapt to emerging task types or model updates. Evaluation is simulation-only with no real vehicular deployment, and only two CPUs/GPUs are tested, limiting scalability claims.",
+    "interview_questions": [
+      "How does TPA handle the trade-off between deploying a larger shared multi-task model versus smaller single-task models when RSU storage is limited?",
+      "What is the approximation ratio of TPA, and under what conditions does it become tight or loose?",
+      "How does the algorithm account for heterogeneous RSU hardware (CPU vs GPU) when making deployment and offloading decisions?",
+      "If a new task type arrives that was not part of the original multi-task model, how would the system adapt, and what are the re-deployment costs?",
+      "How does the iterative throughput-maximization converge, and what is its computational complexity relative to the size of the RSU network?"
+    ],
+    "interview_answers": [
+      "TPA models the storage constraint explicitly: a shared multi-task model occupies less total storage than the sum of its single-task counterparts because backbone parameters are counted once. The optimization weighs the throughput gain from sharing against the storage budget, preferring multi-task deployment when the per-task storage savings enable more diverse model coverage across RSUs.",
+      "The paper proves an approximation ratio for TPA relative to the optimal makespan, derived from the gap between the iterative throughput bound and the true optimum. The ratio tightens when task arrival distributions are uniform and RSU capacities are homogeneous; it loosens under heavy skew in task types or highly imbalanced RSU resources.",
+      "The algorithm incorporates hardware-specific inference latency profiles for CPU and GPU as input parameters to the deployment cost model. Offloading decisions account for whether the target RSU's hardware can meet per-task response time constraints, effectively treating hardware type as a resource dimension alongside storage and compute capacity.",
+      "The current framework does not natively support online model updates; accommodating a new task type would require retraining or fine-tuning the multi-task model offline and then re-solving the deployment problem. Re-deployment costs include the communication overhead of pushing updated model weights to RSUs, which could be significant for large backbone models in bandwidth-constrained vehicular networks.",
+      "Convergence of the iterative throughput-maximization relies on the monotonic relationship between the time period parameter and achievable throughput; each iteration tightens the time period estimate. Complexity scales with the number of RSUs, task types, and candidate model configurations, making it polynomial in practice for the tested scales but potentially intractable for very large networks without further approximation."
+    ],
+    "generated_at": "2026-03-21T21:00:02Z"
+  }
+}
