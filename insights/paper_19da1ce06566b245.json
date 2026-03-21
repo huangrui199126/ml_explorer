@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses the problem of approximate nearest neighbor search with numeric range filters on streaming data, where both vectors and queries arrive dynamically. The authors propose a 'dynamic segment graph' that compresses multiple HNSW graphs into a compact index supporting efficient insertion and range-filtered search.",
+    "key_idea": "A dynamic segment graph compresses the exponential set of per-range HNSW graphs into a single structure that adds only O(log|D|) edges per insertion, enabling lossless range-filtered ANN search on streaming data.",
+    "why_it_matters": "Many real-world retrieval systems (e-commerce, document search with timestamps, financial data) need to filter by metadata ranges while doing vector search on live data streams — this work makes that practical without rebuilding indexes from scratch.",
+    "possible_use_cases": [
+      "Semantic search over product catalogs filtered by price range with real-time inventory updates",
+      "Retrieval-augmented generation over document corpora filtered by publication date as new documents are ingested",
+      "Time-windowed similarity search in financial or IoT sensor data streams"
+    ],
+    "generated_at": "2026-03-21T20:03:24Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a 'dynamic segment graph' that compresses the naive approach of maintaining O(|D|^2) HNSW graphs (one per possible query range) into a single compact structure. When a new vector arrives, it adds only O(log|D|) new edges in expectation, keeping the index size near-linear. Queries are answered by traversing relevant subgraphs of this compressed structure that correspond to the queried attribute range.",
+    "key_innovation": "Prior RFANNS work assumes static data and builds indexes sorted by attribute value, making streaming insertion fundamentally incompatible. This paper is the first to handle dynamic (streaming) RFANNS by proving that the naive multi-HNSW approach can be losslessly compressed into a segment graph with logarithmic edge growth per insertion, plus practical heuristics that further reduce index cost without sacrificing recall.",
+    "technical_insight": "The critical design choice is the 'lossless compression' of range-specific HNSW graphs into a shared graph with segment-tagged edges — edges are only retained when they are 'useful' for at least one canonical range segment, not all O(|D|^2) ranges. This works because HNSW proximity graphs have significant structural overlap across nearby ranges, so a single edge can serve multiple range queries, and the segment tree decomposition of ranges ensures any query range is covered by O(log|D|) canonical segments.",
+    "limitations": "The log|D| edge growth guarantee holds only 'under certain conditions' (likely uniform or well-behaved attribute distributions), potentially degrading for skewed or adversarial arrival orders. The heuristics that reduce index cost in practice may break the losslessness guarantee, reintroducing approximation error beyond the ANN tolerance. The approach inherits HNSW's known weaknesses with high-dimensional data (dimensionality curse) and does not address deletion of vectors, which is critical for many streaming scenarios.",
+    "interview_questions": [
+      "Why is maintaining one HNSW per possible query range considered the 'naive' baseline, and what is its exact complexity?",
+      "What does 'lossless compression' mean in the context of the dynamic segment graph, and under what conditions does it hold?",
+      "How does the segment tree decomposition help reduce the number of HNSW graphs that must be maintained?",
+      "What is the expected number of new edges added when inserting a new vector, and how is that derived?",
+      "How do the practical heuristics trade off index size against search quality, and what guarantees are lost?"
+    ],
+    "interview_answers": [
+      "For a dataset of size |D|, there are O(|D|^2) distinct contiguous ranges over attribute values. The naive approach builds one HNSW per range, each requiring O(|D| log|D|) construction time and O(|D|) space, yielding O(|D|^3 log|D|) total construction cost and O(|D|^2) space — completely intractable at scale.",
+      "Lossless compression means that for any query range [l, r] and query vector q, the approximate nearest neighbors found via the segment graph are identical to those found via the corresponding dedicated HNSW for that range. The conditions typically require that the graph's proximity edges for a range are fully captured by the union of edges from the O(log|D|) canonical segment graphs covering that range — this holds when the HNSW edge set for any range is a subset of the union of edges from its segment decomposition.",
+      "A segment tree over attribute values decomposes any arbitrary range [l, r] into O(log|D|) canonical nodes. Instead of maintaining a separate HNSW for every possible range, the method only maintains graphs for these O(|D| log|D|) canonical segments. Any query range is answered by combining results from the relevant canonical segments, reducing the number of graphs from O(|D|^2) to O(|D| log|D|).",
+      "When a new vector v with attribute value a is inserted, it only needs to be added to the O(log|D|) canonical segments that contain a in the segment tree. Each insertion into an HNSW adds O(log|D|) edges on average, so the total new edges per insertion is O(log^2|D|) — or O(log|D|) amortized under certain assumptions — keeping the total index size near O(|D| log^2|D|).",
+      "The heuristics prune edges from the segment graph that appear redundant — e.g., edges that are dominated by shorter paths within the same segment or that appear in too many overlapping segments. This reduces index size and query latency but may cause the graph to miss some true approximate nearest neighbors for certain ranges, converting the theoretical lossless guarantee into a best-effort approximation. The paper validates empirically that recall remains high despite this pruning."
+    ],
+    "generated_at": "2026-03-21T20:03:51Z"
+  }
+}

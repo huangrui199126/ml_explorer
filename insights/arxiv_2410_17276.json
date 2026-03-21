@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper benchmarks six negative sampling strategies for large-scale sequential recommendation models across three datasets, revealing how the choice of method affects both overall accuracy and fairness across item popularity tiers. It shows that commonly used random sampling amplifies popularity bias, favoring head items at the expense of mid and tail items.",
+    "key_idea": "Aggregate recommendation metrics mask per-popularity-band imbalances, and no single negative sampling method optimizes both overall performance and equitable coverage across head, mid, and tail items simultaneously.",
+    "why_it_matters": "Practitioners building recommendation systems can use this as a decision guide to consciously trade off raw accuracy against popularity bias, avoiding the trap of optimizing aggregate metrics while silently degrading recommendations for long-tail items.",
+    "possible_use_cases": [
+      "Choosing a negative sampling strategy for a new e-commerce or media recommendation system where catalog coverage matters",
+      "Auditing an existing recommendation model for popularity bias by comparing per-band metrics rather than aggregate scores",
+      "Hyperparameter tuning for sequential models like SASRec or BERT4Rec where negative sampling configuration significantly impacts convergence and fairness"
+    ],
+    "generated_at": "2026-03-21T20:03:59Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper implements and compares six negative sampling strategies — random, popularity-based, in-batch, mixed, adaptive, and adaptive-mixed — for training large-scale sequential recommendation models. Each method selects a small set of non-interacted items per positive example to form the training signal, with variants differing in how they weight or select candidates from the item catalog. Experiments use hyperparameter optimization and 20 repeated runs across three benchmark datasets to produce statistically reliable comparisons.",
+    "key_innovation": "The primary contribution is a rigorous, apples-to-apples empirical benchmark of negative sampling methods under controlled hyperparameter tuning and repeated trials, which prior work lacked. More critically, the paper introduces the lens of popularity-band disaggregation (head/mid/tail items) to reveal that aggregate metrics like NDCG or Recall mask systematic biases — e.g., random sampling inflates head-item performance while harming tail items — a nuance not previously highlighted at this scale.",
+    "technical_insight": "The most important design choice is measuring performance separately across popularity bands rather than only reporting aggregate metrics. This reveals that no single method dominates universally: random sampling optimizes for head items (reinforcing popularity bias), while popularity-based methods (in-batch, global popularity) redistribute attention toward mid/tail items at the cost of overall metrics. This insight directly informs practitioners on when to accept aggregate metric trade-offs for fairness or diversity objectives.",
+    "limitations": "The study is limited to sequential recommendation architectures and three benchmark datasets, which may not generalize to non-sequential or collaborative filtering settings. The benchmarks, while varied in popularity bias, are still public academic datasets that may not reflect the scale (billions of items) or data distributions of true industrial systems. Adaptive methods require online score computation which is computationally expensive and may be impractical in real deployments, yet this cost is not fully analyzed.",
+    "interview_questions": [
+      "Why does random negative sampling reinforce popularity bias, and what is the mechanistic explanation?",
+      "How does in-batch negative sampling differ from global popularity-based sampling, and what are the practical trade-offs?",
+      "What statistical methodology did the authors use to ensure their comparisons are reliable, and why does it matter?",
+      "How would you decide which negative sampling method to use in a production recommendation system?",
+      "What does disaggregating metrics by popularity band reveal that aggregate metrics hide, and why is this practically important?"
+    ],
+    "interview_answers": [
+      "Random sampling draws negatives uniformly or proportionally from the catalog, so popular items appear as negatives more often simply because there are more of them — but they also appear as positives more. The net effect is that the model sees popular items in both roles frequently, sharpening its boundary for head items while rarely seeing tail items as negatives, leaving their representations undertrained. This biases the model toward confidently ranking popular items higher.",
+      "In-batch sampling treats other items in the same training batch as negatives, so the sampling distribution implicitly reflects the batch's popularity distribution (more popular items appear more as positives and thus as negatives for other examples). Global popularity sampling explicitly samples negatives proportional to item popularity. Both expose the model to popular items as negatives more than random, which paradoxically helps tail items by reducing the model's over-reliance on popularity as a proxy for relevance, but it lowers overall hit-rate metrics since popular items are often genuinely relevant.",
+      "The authors used hyperparameter optimization for each method and dataset combination and repeated each experiment 20 times to account for variance from random seeds. This is critical because single-run comparisons are unreliable — variance across seeds can easily exceed the performance differences between methods, leading to false conclusions about which method is superior.",
+      "The choice depends on the business objective: if maximizing aggregate metrics (NDCG, Recall@K) is the goal and the catalog is popularity-skewed, random sampling is a strong baseline. If the system needs to surface long-tail or niche items (e.g., for diversity, novelty, or fairness), popularity-based methods like in-batch or global popularity sampling are preferable despite lower aggregate scores. Adaptive methods may be worth the computational cost only if online score computation is feasible at serving scale.",
+      "Aggregate metrics like NDCG@10 average performance over all test users and items, so a method that performs excellently on the 10% of head items but poorly on the 90% of tail items can still report a high aggregate score. Disaggregating by popularity band exposes this imbalance — practitioners may discover their model effectively ignores tail items entirely. This matters for fairness (tail items often correspond to minority interests), catalog utilization, and long-term user engagement beyond short-term click optimization."
+    ],
+    "generated_at": "2026-03-21T20:04:26Z"
+  }
+}

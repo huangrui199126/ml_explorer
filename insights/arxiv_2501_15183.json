@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "NegGen is a framework that uses multi-modal large language models to generate high-quality negative samples for recommendation systems, ensuring they are both contrastive to positive samples and balanced across modalities like text and images.",
+    "key_idea": "Use MLLMs with carefully designed prompt templates to synthesize negative training examples that manipulate item attributes across modalities, combined with causal learning to isolate key features from noise.",
+    "why_it_matters": "Better negative samples are a critical but often overlooked component of recommendation model training — NegGen directly improves supervision signal quality, leading to more accurate user preference modeling in multi-modal settings.",
+    "possible_use_cases": [
+      "E-commerce product recommendation using both product images and text descriptions",
+      "Content recommendation platforms combining visual and textual metadata",
+      "Fashion recommendation requiring nuanced understanding of visual style and item attributes"
+    ],
+    "generated_at": "2026-03-21T20:07:29Z"
+  },
+  "deep": {
+    "method_breakdown": "NegGen uses multi-modal large language models (MLLMs) with three carefully designed prompt templates to generate hard negative samples that are semantically contrastive to positive items while maintaining balanced representation across modalities (e.g., visual, textual). The generated negatives introduce fine-grained supervision signals by manipulating specific item attributes. A causal learning module then disentangles the effect of intervened key features from irrelevant attributes, enabling the recommender to learn precise user preference boundaries rather than spurious correlations.",
+    "key_innovation": "Prior negative sampling in MMRS either samples random items (easy negatives, weak signal) or uses embedding-space proximity (hard but modality-imbalanced negatives). NegGen is the first to leverage MLLMs as a generative engine for constructing negatives — producing items that don't exist in the corpus but are semantically calibrated to be hard and modality-balanced. The causal module to isolate intervened attributes from noise is also novel in this context.",
+    "technical_insight": "The most critical design choice is the three-prompt template system that controls attribute-level manipulation across modalities. By instructing the MLLM to alter specific attributes (e.g., change visual style but preserve category semantics), NegGen ensures the negative is contrastive on a targeted dimension rather than globally dissimilar — this creates discriminative training signal that teaches the model exactly what features matter to the user, rather than just 'this item is bad'.",
+    "limitations": "Generating negatives via MLLMs at scale is computationally expensive and adds significant preprocessing overhead compared to sampling-based methods. The quality of negatives is tightly coupled to MLLM capabilities and prompt design, making the approach sensitive to prompt engineering and potentially brittle across domains. The causal module adds modeling complexity and may require careful tuning. Evaluation is limited to existing benchmarks which may not capture all real-world recommendation dynamics.",
+    "interview_questions": [
+      "How does NegGen ensure the generated negative samples are genuinely hard and not trivially distinguishable from positives?",
+      "What do the three prompt templates target specifically, and how are they designed to balance modality influence?",
+      "How does the causal learning module work, and why is disentangling intervened features from irrelevant attributes important?",
+      "What are the computational trade-offs of using MLLMs for negative generation versus traditional hard-negative mining?",
+      "How would NegGen generalize to domains with weak multi-modal signals (e.g., sparse image data or noisy text descriptions)?"
+    ],
+    "interview_answers": [
+      "NegGen uses MLLMs to manipulate specific item attributes in a targeted way — altering key features that are relevant to user preference while preserving enough semantic overlap to make the negative non-trivial. The contrastive nature is enforced by prompt design that explicitly instructs the model to produce items that differ on preference-critical dimensions.",
+      "The three templates correspond to different manipulation strategies across modalities — likely single-modality attribute change, cross-modal attribute swap, and combined manipulation — ensuring no single modality dominates the supervision signal. Modality balance is maintained by designing prompts that explicitly target each modality's attributes proportionally.",
+      "The causal module applies intervention-based reasoning to separate the effect of the deliberately changed features (the cause of negative signal) from confounding item attributes. This is important because a generated negative may inadvertently change irrelevant attributes alongside target ones; without disentanglement, the model could learn spurious correlations instead of true preference signals.",
+      "MLLM-based generation is significantly more expensive at preprocessing time but the cost is amortized at training time since negatives can be pre-generated. Traditional hard-negative mining (e.g., ANCE, in-batch negatives) is cheaper but produces noisier or modality-skewed negatives; NegGen trades compute for supervision quality.",
+      "NegGen's effectiveness depends on the MLLM's ability to understand and manipulate item attributes, which degrades with weak or noisy modality inputs. In sparse or noisy settings, prompt templates may fail to generate meaningful contrastive negatives, and the causal module may struggle to identify meaningful intervention targets. Domain-specific prompt tuning or fallback sampling strategies would be needed."
+    ],
+    "generated_at": "2026-03-21T20:07:54Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DietQA is an end-to-end chatbot system that combines a Neo4j knowledge graph, RAG, and LLMs to enable personalized, multi-diet recipe search with ingredient substitutions and nutritional reasoning. It crawls Greek recipe websites, infers dietary tags automatically, and lets users query recipes via natural language with complex dietary constraints.",
+    "key_idea": "Combine structured knowledge graph querying (Cypher) with RAG-based LLM generation so that precise nutritional/dietary filtering and flexible natural language interaction reinforce each other.",
+    "why_it_matters": "Most food recommender systems lack support for compound dietary restrictions and ingredient-level exclusions; this architecture shows how KG + RAG + LLM can jointly handle structured constraints and conversational flexibility in a domain where accuracy and personalization both matter.",
+    "possible_use_cases": [
+      "Personalized meal planning assistants that respect multiple simultaneous dietary restrictions (e.g., gluten-free + low-fat + vegan)",
+      "Ingredient substitution recommendation for users with allergies or pantry limitations",
+      "Nutrition-aware recipe search APIs for health apps or clinical diet management platforms"
+    ],
+    "generated_at": "2026-03-21T20:08:01Z"
+  },
+  "deep": {
+    "method_breakdown": "DietQA crawls Greek recipe websites to build a Neo4j knowledge graph storing recipes, ingredients, quantities, and inferred dietary tags computed from validated food composition databases. An LLM performs intent and entity extraction from natural language queries to generate Cypher queries against the KG, while a RAG pipeline combines retrieved recipes, statistical summaries, and substitution logic to produce contextualized responses. The system supports multi-diet filtering by returning both fully compliant recipes and adaptable ones with ingredient substitution explanations.",
+    "key_innovation": "The primary novelty is the tight integration of structured KG retrieval (Cypher-based) with RAG and LLM-driven intent parsing for multi-diet compound queries — enabling reasoning like 'gluten-free AND dairy-free with substitutions' rather than simple keyword search. The automatic inference of dietary tags and substitution logic from ingredient-level composition data, rather than relying on user-annotated labels, is also a meaningful contribution.",
+    "technical_insight": "Using the LLM only for intent/entity extraction to drive rule-based Cypher queries — rather than letting it generate free-form answers directly — is the key design choice. This preserves factual grounding and nutritional accuracy by keeping the structured KG as the authoritative source, while RAG handles natural language generation, avoiding hallucinated nutritional values.",
+    "limitations": "The system is evaluated only on Greek-language content from a narrow corpus of crawled websites, raising serious questions about generalizability. There is no rigorous quantitative benchmark reported in the abstract — evaluation methodology and metrics are unclear. Dietary tag inference from ingredient composition alone can fail for ambiguous or processed ingredients. Cypher query generation from LLM intent extraction is brittle for complex or ambiguous queries, and the substitution logic appears rule-based rather than learned, limiting coverage.",
+    "interview_questions": [
+      "How does the LLM extract intents and entities from user queries, and what happens when the extracted entities don't match nodes in the knowledge graph?",
+      "How are dietary tags inferred automatically from ingredient composition, and how do you handle ambiguous or processed ingredients that don't map cleanly to a dietary category?",
+      "The RAG pipeline uses retrieved recipes plus substitution logic — how is the substitution logic implemented, and how do you ensure substitutions preserve nutritional goals?",
+      "What evaluation metrics were used to assess retrieval accuracy and response quality, and how did you construct the test set for a Greek-language domain?",
+      "How does the system handle compound multi-diet queries where the constraints conflict or where very few recipes satisfy all constraints simultaneously?"
+    ],
+    "interview_answers": [
+      "The LLM maps free-text queries to structured intents and named entities (ingredients, diet types, nutrients), which are then used to construct Cypher queries. When entities don't match KG nodes, the system likely falls back to fuzzy matching or returns no results — a known fragility point for KG-grounded systems.",
+      "Tags are inferred by checking ingredient lists against food composition databases for disqualifying substances (e.g., presence of gluten-containing grains → not gluten-free). This is reliable for whole ingredients but can fail for processed foods with hidden derivatives or for culturally specific ingredient naming.",
+      "Substitution logic is described as rule-based: identifying non-compliant ingredients and mapping them to compliant alternatives from a predefined substitution table. Nutritional preservation is approximated by selecting substitutes with similar macronutrient profiles, but this is heuristic rather than optimization-based.",
+      "Evaluation methodology is not detailed in the abstract, which is a significant gap. Likely involves human evaluation or small held-out query sets, but without a standardized benchmark the results are hard to interpret or compare against prior food recommendation systems.",
+      "The system retrieves recipes compliant with all constraints first, then falls back to partially-compliant recipes with substitution paths explained. For conflicting constraints the system would likely return an empty result or a minimal substitution path, but handling of truly unsatisfiable constraint combinations is not explicitly addressed."
+    ],
+    "generated_at": "2026-03-21T20:08:21Z"
+  }
+}
