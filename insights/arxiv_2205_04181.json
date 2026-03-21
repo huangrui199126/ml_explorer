@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CoHHN introduces price preferences alongside interest preferences in session-based recommendation, using a heterogeneous hypergraph to model item features and a co-guided learning scheme to capture the interplay between price and interest signals. Experiments on three real-world datasets show that explicitly modeling price significantly improves recommendation quality.",
+    "key_idea": "A heterogeneous hypergraph with dual-channel aggregation and co-guided learning jointly models price and interest preferences so each signal reinforces the other during session-based recommendation.",
+    "why_it_matters": "Most recommenders ignore price, yet purchase decisions are strongly price-sensitive; incorporating price preferences into session models can substantially reduce irrelevant recommendations and improve conversion rates in e-commerce settings.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where budget constraints drive purchase decisions",
+      "Flash sale or discount platform personalization where price sensitivity varies by user segment",
+      "Retail basket completion systems that respect both style preferences and price range expectations"
+    ],
+    "generated_at": "2026-03-21T20:37:52Z"
+  },
+  "deep": {
+    "method_breakdown": "CoHHN constructs a heterogeneous hypergraph where nodes represent items with multiple feature types (including price) and hyperedges capture complex multi-way relations among them. A dual-channel aggregating mechanism processes the heterogeneous hypergraph to separately extract price preferences and interest preferences via attention layers. A co-guided learning scheme then models the mutual influence between these two preference channels before combining them with item features for final purchase prediction.",
+    "key_innovation": "Prior session-based recommendation methods treat items as atomic units capturing only sequential interest patterns, completely ignoring price as a behavioral signal. CoHHN is the first to explicitly model price preferences as a parallel, co-equal preference channel alongside interest preferences, and to learn their mutual reinforcement through a co-guided scheme rather than treating price as a simple item feature or filter.",
+    "technical_insight": "The co-guided learning scheme is the critical design choice — instead of naively concatenating price and interest representations, it lets each preference channel guide the learning of the other through cross-attention or gating, reflecting the real-world dynamic where price sensitivity shapes which interests get acted upon and vice versa. This bidirectional coupling prevents one channel from dominating and captures the joint decision boundary users actually use.",
+    "limitations": "The model assumes price is a stable, discrete-enough attribute to bin or embed meaningfully, which breaks for highly volatile pricing or marketplaces with extreme price ranges. It relies on session-level anonymity assumptions that may not generalize to logged-in users with long histories where richer preference modeling dominates. The hypergraph construction and dual-channel aggregation add significant computational overhead, likely limiting scalability to very large item catalogs. Evaluation on only three datasets leaves open questions about generalization across domains where price sensitivity varies (e.g., luxury vs. commodity goods).",
+    "interview_questions": [
+      "How does CoHHN represent price in the heterogeneous hypergraph — is price treated as a continuous value, binned category, or learned embedding, and what are the trade-offs of each choice?",
+      "The co-guided learning scheme is central to the method — can you explain the exact mechanism by which price preferences and interest preferences guide each other during training?",
+      "Session-based recommendation typically suffers from data sparsity. How does the hypergraph formulation help with sparsity compared to standard graph or sequence models?",
+      "How sensitive is CoHHN's performance to price granularity — for example, does it work better when prices are coarsely bucketed vs. finely binned, and why?",
+      "In domains where price is not a strong purchase driver (e.g., free apps, uniform-price catalogs), does the co-guided scheme risk introducing noise into the interest preference channel, and how would you detect or mitigate this?"
+    ],
+    "interview_answers": [
+      "Price is most likely represented as a bucketed categorical embedding to avoid issues with scale and outliers, trading off fine-grained price discrimination for stable gradient signals. Continuous embeddings risk domination by outliers; too-coarse bins lose sensitivity signals. The right granularity is dataset-dependent and ideally validated by ablation over bucket counts.",
+      "The co-guided scheme likely uses each preference representation as a query or gate to attend over or re-weight the other channel's representations — price context suppresses interest signals for out-of-budget items while interest context focuses price sensitivity on relevant product categories. This mutual modulation is applied before the final fusion, ensuring neither channel is independently decoded.",
+      "Hyperedges can connect multiple items sharing a price tier, category, or co-occurrence pattern simultaneously, capturing higher-order correlations that pairwise edges in standard graphs miss. This is especially valuable in sparse sessions where two items may never co-occur directly but share hyperedge membership, providing indirect connectivity that enriches node representations.",
+      "Coarser bucketing typically improves robustness because it creates denser hyperedge memberships and smoother preference signals, but loses the ability to distinguish near-threshold price sensitivity. Finer bins are better when session data is abundant and price differences within a narrow range meaningfully change purchase probability. The paper's ablation on price granularity would be the definitive answer.",
+      "Yes, this is a real risk — if price variance is low or irrelevant, the price channel produces near-uniform representations that inject noise into the co-guided interest channel via spurious attention weights. Mitigation strategies include a learned gate controlling how much co-guidance is applied, domain-specific pretraining to detect low-price-signal regimes, or simply ablating the co-guidance and using independent channels when price entropy in the session data is below a threshold."
+    ],
+    "generated_at": "2026-03-21T20:38:20Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ReKV is a training-free method that enables streaming video question-answering by storing video KV-caches in RAM/disk and retrieving only the query-relevant ones at inference time, avoiding full video reprocessing per query.",
+    "key_idea": "By offloading processed video KV-caches to CPU memory and disk with a sliding-window attention mechanism, ReKV decouples video encoding from QA so queries can be answered instantly without re-encoding the video.",
+    "why_it_matters": "Practitioners building video understanding applications can dramatically reduce latency and compute costs for long-video QA, enabling real-time interactive querying over hours-long videos without reprocessing footage for each question.",
+    "possible_use_cases": [
+      "Real-time QA over live or recorded surveillance footage without re-ingesting video per query",
+      "Interactive educational video assistants that answer student questions on-the-fly over long lecture recordings",
+      "Efficient sports analytics pipelines where analysts query game footage repeatedly without redundant GPU computation"
+    ],
+    "generated_at": "2026-03-21T20:40:52Z"
+  },
+  "deep": {
+    "method_breakdown": "ReKV processes video frames incrementally using a sliding-window attention mechanism, where each frame attends only to a bounded number of preceding frames rather than the full video context. The resulting KV-caches are offloaded to RAM/disk in a hierarchical memory system and selectively reloaded to GPU when a query arrives. Query-relevant KV-cache retrieval is performed either via an external retriever (e.g., CLIP-based similarity) or by exploiting the attention weights within the Video-LLM itself to identify the most relevant frame caches.",
+    "key_innovation": "Prior VideoQA systems require full video ingestion before answering any query, and must re-encode the entire video per new question. ReKV decouples video encoding (streaming, done once) from QA (on-demand, query-driven retrieval), enabling real-time responses without reprocessing. The use of the model's own internal attention parameters as a zero-shot retriever — avoiding a separate retrieval model — is particularly novel.",
+    "technical_insight": "The most critical design choice is hierarchical KV-cache offloading (GPU → RAM → disk) combined with selective reloading based on query relevance. This works because transformer inference cost is dominated by attention over long sequences; by never materializing the full video KV-cache on GPU simultaneously and only pulling query-relevant frame caches, the memory bottleneck is eliminated while preserving the information that matters for a given question.",
+    "limitations": "Retrieval quality directly caps QA accuracy — if the retriever fails to surface relevant frames, the model never sees the necessary context. Sliding-window attention breaks long-range temporal dependencies across windows, potentially hurting questions requiring global video understanding. Disk I/O latency for cache reloading may be a bottleneck for very long videos or high-query-rate scenarios. The approach also inherits whatever temporal reasoning limitations exist in the base Video-LLM.",
+    "interview_questions": [
+      "How does ReKV decide which KV-cache frames are relevant to a given query, and what are the trade-offs between using an external retriever versus the model's own attention weights?",
+      "The sliding-window attention mechanism breaks full temporal context — how does ReKV mitigate information loss at window boundaries, and for which question types would this be most problematic?",
+      "What are the latency characteristics of the hierarchical memory system (GPU/RAM/disk) under different video lengths and query rates, and how does this compare to standard VideoQA baselines?",
+      "Since ReKV is training-free, how sensitive is its performance to the choice of base Video-LLM, and would fine-tuning the base model to be 'retrieval-aware' improve results?",
+      "How does ReKV handle questions that require integrating information from multiple temporally distant segments of a video, given that only a subset of KV-caches is loaded per query?"
+    ],
+    "interview_answers": [
+      "The external retriever (e.g., CLIP) computes semantic similarity between the query text and frame-level embeddings to rank and select top-K frames. The internal retriever uses the cross-attention scores from a lightweight forward pass over the query tokens against cached frame representations to identify high-attention frames. External retrieval is faster and modality-decoupled but requires a separate model; internal retrieval is self-contained and potentially more semantically aligned with how the LLM would use the frames, but adds a forward-pass cost.",
+      "ReKV stores all KV-caches (offloaded to RAM/disk) even for frames outside the current window, so no information is permanently discarded — the window only limits what is on GPU at encoding time. The retrieval step can then reload any frame's cache regardless of its original window position. The most problematic cases are causal temporal reasoning questions (e.g., 'what caused X that happened later?') where dense sequential context across windows is needed.",
+      "The paper reports that ReKV significantly reduces GPU memory and per-query latency versus full-video baselines, with the RAM tier serving as a fast cache to avoid frequent disk reads. Exact numbers depend on video length and SSD bandwidth, but the architecture is designed so that only O(K) frames are on GPU at inference time rather than O(T). Compared to reprocessing the full video per query, ReKV amortizes encoding cost across all queries on the same video.",
+      "Since the method wraps any Video-LLM without modifying weights, performance is bounded by the base model's video understanding capability. A model with stronger temporal grounding will produce more meaningful attention weights for the internal retriever. Fine-tuning with a retrieval-augmented objective — teaching the model to answer well from sparse frame subsets — would likely improve robustness, especially for questions requiring multi-segment synthesis.",
+      "ReKV retrieves the top-K most relevant frame caches per query, so if the answer requires frames from multiple distant segments, it relies on the retriever correctly identifying all of them in the top-K. This is a fundamental limitation: K must be large enough to cover multi-segment answers, but increasing K reduces efficiency. The internal attention-based retriever may be better at this if the model implicitly learns that some questions require distributed evidence, but there is no explicit multi-hop retrieval mechanism in the current design."
+    ],
+    "generated_at": "2026-03-21T20:41:21Z"
+  }
+}
