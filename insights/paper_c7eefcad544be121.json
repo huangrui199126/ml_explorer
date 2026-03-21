@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a continuous evaluation framework for Information Retrieval systems that accounts for the dynamic nature of search settings over time. It outlines an 'IR Life Cycle' based on CRISP-DM methodology and identifies four research areas: classifying changes, comparing results, repeating evaluations, and aligning evaluation methods.",
+    "key_idea": "IR evaluations become temporally invalid as search settings evolve, so systematic re-evaluation strategies and cross-method alignment are needed to maintain trustworthy assessments.",
+    "why_it_matters": "Practitioners deploying ranking systems risk making decisions based on stale benchmarks that no longer reflect real user needs, leading to silent quality degradation in production.",
+    "possible_use_cases": [
+      "Detecting when a deployed search engine needs re-evaluation due to query distribution shift",
+      "Comparing ranking model versions across time while controlling for testbed drift",
+      "Reducing re-evaluation cost by identifying which offline metrics best predict online performance changes"
+    ],
+    "generated_at": "2026-03-21T18:59:49Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a continuous evaluation framework for IR systems modeled after the CRISP-DM methodology, framed as an 'IR Life Cycle' covering development, maintenance, and improvement stages. It addresses four research areas: formally classifying changes in search settings, developing comparison strategies for results across time as a reproducibility problem, estimating uncertainty to decide when re-evaluation is warranted, and aligning evaluation methods to find synergies and cheaper alternatives. The framework aims to systematically reintroduce real-world dynamics into evaluations rather than treating testbeds as static.",
+    "key_innovation": "The core novelty is treating IR evaluation itself as a temporally-aware, continuous process rather than a one-shot benchmark exercise. Prior work treats evaluation as static — a fixed testbed measures a fixed system — whereas this work explicitly models the drift between testbed and real-world search setting, introduces the concept of 'temporal validity' of evaluations, and proposes uncertainty estimation to determine when re-evaluation is actually necessary rather than routine.",
+    "technical_insight": "The most critical design choice is framing result comparison across time as a reproducibility problem rather than a performance problem. This reframing is powerful because it separates the question 'did the system improve?' from 'did the search setting change?' — without this separation, measured effectiveness deltas are confounded by testbed drift, making longitudinal system comparison fundamentally unreliable.",
+    "limitations": "The paper is a research agenda/vision paper with no implemented framework or empirical validation yet — all proposed methods are future work. The proposal to estimate 'uncertainty' of testbed validity is underspecified with no concrete metric or threshold defined. Aligning diverse evaluation methods (offline, online, user studies) is known to be difficult and the paper does not address the fundamental disagreements between these paradigms. The CRISP-DM analogy may not map cleanly to IR since IR lacks the clean feedback loops of supervised ML pipelines.",
+    "interview_questions": [
+      "How would you formally define the 'temporal validity' of an IR testbed, and what signals would you use to detect when it has degraded below an acceptable threshold?",
+      "You frame cross-time result comparison as a reproducibility problem — what specific reproducibility techniques from that literature do you think transfer most directly, and which ones break down for IR?",
+      "The gap between observable queries and latent information needs is central to your framework — how do you propose to track latent needs over time given they are by definition unobservable?",
+      "When you say 'aligning evaluation methods,' how do you reconcile the known disagreements between offline metrics like NDCG and online metrics like click-through rate, which measure fundamentally different constructs?",
+      "Your uncertainty estimation component is meant to decide whether re-evaluation is worth the cost — what is your target decision model here, and how would you validate that it makes correct cost-benefit tradeoffs in practice?"
+    ],
+    "interview_answers": [
+      "Temporal validity could be operationalized as the expected rank correlation between relevance judgments made at time T and those that would be made at time T+Δ for the same query-document pairs. Signals include document content drift (detectable via crawl diffs), query distribution shift (KL divergence on query logs), and topic emergence rates — when these exceed learned thresholds, validity is considered degraded.",
+      "Techniques like system output comparison via statistical tests and selective sampling of re-runs transfer well. What breaks down is the assumption of a stable ground truth: reproducibility research typically assumes the oracle is fixed and only the system varies, whereas in IR the relevance oracle itself drifts, so you need a two-factor model separating system change from oracle change.",
+      "One approach is to use implicit feedback signals — dwell time, reformulations, abandonment — as proxies for need satisfaction over time. Another is longitudinal user studies with consistent cohorts. However, these are noisy and expensive; more practically, one could model needs as latent variables in a topic model fitted to query-document interaction logs and track the evolution of topic distributions.",
+      "The alignment is not about making them agree but about understanding the conditions under which they correlate and when they diverge. If NDCG and CTR disagree, that is informative signal — it likely means the model learned to exploit presentation biases. The framework should model these as complementary views and flag systematic divergence as a reliability warning rather than trying to collapse them into a single score.",
+      "The decision model would be a cost-benefit threshold: re-evaluate if the expected cost of deploying a miscalibrated system exceeds the cost of running an updated evaluation. This requires estimating both the probability that the current ranking is wrong given testbed drift and the business cost of ranking errors. Validation would use historical cases where systems were re-evaluated and checking whether the uncertainty signal predicted the magnitude of rank-order changes."
+    ],
+    "generated_at": "2026-03-21T19:00:18Z"
+  }
+}

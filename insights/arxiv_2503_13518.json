@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "EaP automatically selects representative labeled examples to serve as few-shot prompts for LLMs in e-commerce, eliminating the need for manual prompt engineering by domain experts. EaPlite takes this further by replacing all natural language prompt components with examples alone, achieving up to 70% faster inference with no performance loss.",
+    "key_idea": "Unsupervised selection of maximally representative labeled examples can replace hand-crafted natural language prompts, making LLM adaptation more scalable and less biased.",
+    "why_it_matters": "It removes the bottleneck of expert-written prompts and frequent manual updates, while also cutting inference costs significantly — directly translating to measurable revenue gains in production.",
+    "possible_use_cases": [
+      "Automated query understanding in e-commerce search without prompt engineering",
+      "Dynamic product recommendation labeling that adapts to shifting data distributions",
+      "High-throughput customer support intent classification with reduced LLM latency"
+    ],
+    "generated_at": "2026-03-21T18:58:42Z"
+  },
+  "deep": {
+    "method_breakdown": "EaP uses unsupervised example selection to automatically identify the most representative few-shot examples from a dataset, replacing manually crafted natural language prompts. The selection process maximizes coverage of the data distribution without requiring labeled data or domain expert involvement. EaPlite extends this by eliminating natural language instructions entirely, using only labeled examples as the prompt, which reduces token count and speeds up inference by up to 70%.",
+    "key_innovation": "The key novelty is treating example selection itself as the primary prompt engineering mechanism — replacing human-written natural language instructions with algorithmically chosen representative examples. Prior few-shot work focuses on example selection given a fixed prompt template; EaP eliminates the template entirely in EaPlite, and automates selection in an unsupervised, distribution-aware manner that adapts to data drift without manual intervention.",
+    "technical_insight": "The most important design choice is unsupervised representative example selection, likely via clustering or diversity-maximizing sampling over the input space. This works because LLMs are strong in-context learners — if examples sufficiently span the task's input distribution, the model can infer the decision boundary without explicit instructions. It also sidesteps the human bias problem: natural language instructions embed the prompt engineer's assumptions, while examples are ground truth labels that directly encode the desired behavior.",
+    "limitations": "The approach assumes that a sufficiently representative labeled example pool exists; cold-start scenarios with sparse or skewed data will degrade performance. EaPlite's removal of natural language components may hurt on tasks requiring nuanced reasoning or where examples alone are ambiguous. The 0.06% revenue gain, while statistically significant at scale, is modest and may not justify complexity in smaller deployments. The method's robustness to adversarial or out-of-distribution inputs is untested, and the unsupervised selection may fail when the data distribution has long tails.",
+    "interview_questions": [
+      "How does EaP select representative examples in an unsupervised way — what algorithm or criterion is used?",
+      "EaPlite removes all natural language from the prompt. How does the LLM infer task intent (e.g., classification vs. generation) with zero instruction?",
+      "How does EaP handle distribution shift — does it continuously re-select examples as data evolves, and at what frequency?",
+      "The 70% inference speedup from EaPlite seems very large. What accounts for it — purely token reduction, or something else?",
+      "In the A/B test, revenue gain was 0.06%. How do you attribute this to EaP specifically vs. other pipeline changes, and is this statistically significant given the noise in revenue metrics?"
+    ],
+    "interview_answers": [
+      "EaP likely uses a clustering-based approach (e.g., k-medoids or greedy diversity sampling) over embedding space to select examples that maximize coverage of the input distribution. The unsupervised nature means no labels are needed for selection — only the final chosen examples carry labels for the prompt.",
+      "EaPlite relies on the LLM's ability to infer task structure from input-output pairs alone. For well-defined tasks like classification, consistent label formatting across examples implicitly signals the task type. This works because modern LLMs have seen enough few-shot formats during pretraining to recognize patterns without explicit instruction.",
+      "EaP is designed to be adaptive to distribution shifts by periodically re-running the example selection process on recent data. The selection is cheap (unsupervised, no model training), so it can be triggered on a schedule or when drift is detected via monitoring, making it more agile than prompt re-engineering.",
+      "The speedup comes primarily from token reduction — natural language instructions can be hundreds of tokens, while a label is a few tokens. Fewer input tokens reduce both prefill compute and, in some serving setups, KV cache pressure. The effect compounds across millions of inference calls in production.",
+      "A/B tests for revenue metrics typically use sequential testing or pre-registered power analysis to establish significance. The 0.06% gain is likely measured as a composite metric aggregating multiple downstream signals. Attribution to EaP is controlled by the A/B split — the treatment group uses EaP-labeled data throughout the pipeline, isolating the labeling quality improvement as the causal factor."
+    ],
+    "generated_at": "2026-03-21T18:59:06Z"
+  }
+}

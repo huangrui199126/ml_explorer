@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a multimodal RAG framework that combines retrieval-augmented generation with multimodal large language models to make Eurobarometer survey data (text and images) more accessible and analyzable across multiple survey editions.",
+    "key_idea": "By indexing both textual and visual survey content and pairing it with MLLM-powered retrieval, the framework enables targeted queries, trend analysis, and image-grounded insights over large-scale public opinion datasets.",
+    "why_it_matters": "Practitioners building analytics tools over heterogeneous document corpora (PDFs, charts, tables) can adopt this modular RAG+MLLM pattern to unlock multimodal question-answering and trend synthesis without retraining models.",
+    "possible_use_cases": [
+      "Policy research portals that let analysts query years of survey data in natural language and get chart-grounded answers",
+      "Journalism tools that surface trend visualizations and narrative summaries from public opinion datasets on demand",
+      "E-governance dashboards enabling NGOs and citizens to explore comparative cross-country sentiment without SQL or data-science skills"
+    ],
+    "generated_at": "2026-03-21T18:57:03Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework combines multimodal indexing of Eurobarometer survey data (text + charts/figures) with a RAG pipeline that retrieves relevant chunks using dense embeddings before passing them to a multimodal LLM for synthesis. Queries trigger targeted retrieval across multiple survey editions, enabling trend analysis and cross-edition comparisons. The modular architecture separates indexing, retrieval, and generation components to allow swapping individual parts based on deployment requirements.",
+    "key_innovation": "The primary novelty is applying multimodal RAG specifically to structured social science survey corpora (Eurobarometer), combining visual content indexing (charts, infographics) with textual survey data so that an MLLM can answer queries grounded in both modalities. Prior RAG work focused mostly on text-only or generic document corpora; this targets a domain with recurring structured releases and a known stakeholder audience.",
+    "technical_insight": "The most important design choice is multimodal indexing — encoding both textual and visual survey elements into a shared retrieval index. This works because Eurobarometer data is heavily visualization-centric (bar charts, trend lines), and restricting retrieval to text alone would miss the majority of the analytical signal embedded in figures that analysts actually reference.",
+    "limitations": "The paper is largely a framework proposal without rigorous empirical evaluation — no retrieval metrics (MRR, Recall@k), no generation quality benchmarks, and no ablations comparing multimodal vs. text-only retrieval. It is unclear how well off-the-shelf MLLMs handle domain-specific survey charts versus natural images. Scalability claims are unvalidated, and the modular design introduces latency and integration complexity that is not characterized. Hallucination risk from the LLM generation stage is acknowledged but not measured.",
+    "interview_questions": [
+      "How do you encode the visual survey elements (charts, infographics) for dense retrieval — are you using CLIP-style embeddings, OCR+text, or something else?",
+      "What is your retrieval granularity: do you index at the page level, individual figure level, or question/answer block level, and how does that choice affect precision?",
+      "How do you handle temporal alignment across Eurobarometer editions when a user asks a trend question spanning 10+ years of surveys?",
+      "What evaluation protocol would you use to validate that the MLLM-generated synthesis is factually grounded in the retrieved evidence rather than hallucinated?",
+      "How does the framework degrade when the relevant answer is embedded purely in a chart with no accompanying caption or textual description?"
+    ],
+    "interview_answers": [
+      "The paper does not specify the exact visual embedding model; it references MLLMs and multimodal indexing generically, leaving the specific encoder (e.g., CLIP, BEiT, or vision encoders within GPT-4V-style models) as an architectural choice to be made per deployment.",
+      "The paper describes modular indexing but does not commit to a specific granularity strategy; this is a critical unresolved design decision that would significantly affect both retrieval precision and index size.",
+      "Cross-edition trend queries are identified as a use case, but the technical mechanism — whether via metadata filtering, time-aware embeddings, or simply returning chunks from multiple editions and letting the LLM synthesize — is not specified.",
+      "The paper explicitly acknowledges the need for performance assessment but does not propose a concrete evaluation suite; standard RAG evaluation (RAGAS, TruLens, or human annotation) would be the natural next step.",
+      "This is a core vulnerability: if visual content lacks textual anchors, dense text embeddings will fail to retrieve it, and the framework's effectiveness collapses to text-only RAG — a limitation the paper does not deeply address."
+    ],
+    "generated_at": "2026-03-21T18:57:24Z"
+  }
+}

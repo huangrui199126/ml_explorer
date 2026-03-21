@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CORONA is a three-stage retrieval framework that integrates LLMs into the candidate filtering process of graph-based recommender systems, progressively narrowing candidates via preference reasoning, intent reasoning, and GNN-based collaborative filtering. It achieves 18.6% improvement in recall and 18.4% in NDCG over prior state-of-the-art methods.",
+    "key_idea": "Rather than using LLMs only for re-ranking or data augmentation, CORONA injects LLM reasoning at each stage of graph-based candidate retrieval to iteratively shrink the search space before applying GNNs.",
+    "why_it_matters": "Practitioners building recommendation systems can significantly boost retrieval quality by using LLMs as active reasoning agents during filtering—not just as post-processors—while retaining the collaborative filtering strengths of GNNs.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where LLM preference reasoning helps surface niche but relevant items from large catalogs",
+      "Content streaming platforms using intent-assisted retrieval to better distinguish between a user's habitual consumption and current session intent",
+      "Research or knowledge platforms that leverage interaction graphs and LLMs to recommend papers, courses, or tools based on nuanced user profiles"
+    ],
+    "generated_at": "2026-03-21T18:59:14Z"
+  },
+  "deep": {
+    "method_breakdown": "CORONA implements a three-stage coarse-to-fine retrieval pipeline on interaction graphs: (1) LLM performs preference reasoning from user profiles to extract a broad set of relevant users/items via graph traversal; (2) LLM conducts intent reasoning using the narrowed subgraph plus target user history to further prune candidates; (3) a GNN runs on the final compact subgraph to capture collaborative filtering signals and produce ranked recommendations. Each stage progressively reduces the candidate space, allowing LLMs to reason over manageable graph neighborhoods rather than the full item corpus.",
+    "key_innovation": "Prior LLM-based RS work uses LLMs only as post-hoc re-rankers or offline data augmenters, leaving the core retrieval/filtering stage to traditional methods. CORONA is the first to inject LLM reasoning directly into the candidate filtering loop on interaction graphs, using LLM outputs as dynamic graph query signals at two distinct semantic granularities (preference-level and intent-level) before GNN scoring.",
+    "technical_insight": "The critical design choice is the two-tier LLM reasoning decomposition — separating coarse preference reasoning (who shares my tastes?) from fine intent reasoning (what am I trying to buy right now?). This works because preference and intent operate at different semantic abstractions: preference reasoning benefits from broad social signals while intent reasoning requires session-level context, and conflating them in one prompt degrades both. Keeping them sequential lets each LLM call condition on progressively richer, more focused context.",
+    "limitations": "LLM inference at retrieval time adds significant latency and cost per query, making real-time serving challenging at scale. The framework assumes rich user profiles and textual item metadata for effective LLM reasoning — sparse or non-textual domains (e.g., music, images) will degrade gracefully. The coarse-to-fine pipeline is sequential, so errors in the preference retrieval stage compound through intent retrieval into GNN scoring with no backtracking mechanism. Evaluation appears limited to public benchmark datasets which may not reflect production distribution shift.",
+    "interview_questions": [
+      "How does CORONA handle the latency budget of two sequential LLM calls during online retrieval, and what serving optimizations would you consider?",
+      "In the preference-assisted retrieval step, how are LLM responses converted into graph queries — what is the exact retrieval mechanism over the interaction graph?",
+      "Why is GNN applied only to the pruned subgraph rather than the full graph, and what are the tradeoffs of this design in terms of recall vs. efficiency?",
+      "How sensitive is CORONA's performance to the quality of user profiles, and how does it behave in cold-start scenarios where profiles are sparse?",
+      "The paper reports 18.6% recall improvement on average — what baselines are included, and how is the comparison fair given CORONA's additional LLM compute budget?"
+    ],
+    "interview_answers": [
+      "The paper does not deeply address production latency; the likely mitigations are async prefetching of preference subgraphs, batched LLM calls, and caching LLM outputs for recurring user profile patterns. A real deployment would need to measure P99 latency vs. the retrieval SLA and potentially fall back to GNN-only for latency-sensitive paths.",
+      "LLM preference reasoning outputs textual descriptions of user taste; these are embedded (likely via the same LLM or a bi-encoder) and used for semantic similarity search over item/user node features in the graph, retrieving a k-hop neighborhood around top-matching nodes. The exact retrieval operator (ANN search, BM25, etc.) is a key implementation detail the paper should clarify.",
+      "Running GNN on the full interaction graph is computationally expensive and includes noise from unrelated users/items. The pruned subgraph focuses GNN message passing on semantically relevant neighborhoods, improving signal-to-noise in aggregation. The tradeoff is that items excluded by LLM reasoning are permanently lost — if LLM retrieval has low recall, GNN cannot recover those items.",
+      "CORONA's LLM reasoning step is heavily dependent on descriptive user profiles; with sparse profiles, preference reasoning degenerates to generic outputs and the retrieved subgraph becomes near-random. The paper likely shows degraded but still competitive performance in cold-start via the GNN fallback, but this is a genuine weakness compared to pure collaborative filtering methods that handle sparsity implicitly.",
+      "The baselines should include strong GNN-only models (LightGCN, SimGCL), LLM re-ranking methods (e.g., LLMRank), and LLM augmentation methods. Fairness requires controlling for total compute — an LLM re-ranker operating on GNN candidates uses similar resources. The 18.6% figure is meaningful only if CORONA is not given strictly more information or a larger candidate pool than baselines."
+    ],
+    "generated_at": "2026-03-21T18:59:42Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LinkedIn presents a multi-dimensional relevance definition for content search that goes beyond simple topical matching to include document originality, depth, and recency. They design a search system that optimizes Precision-based quality metrics using this richer relevance framework.",
+    "key_idea": "Relevance in content search should be defined as a composite of on-topicness, originality, depth, and recency — and the ranking system must use deep language understanding to optimize for this multi-faceted definition.",
+    "why_it_matters": "Practitioners building search systems often conflate engagement metrics with quality; this paper offers a principled framework for explicitly defining and optimizing relevance quality independently, which drives long-term engagement more sustainably.",
+    "possible_use_cases": [
+      "Designing relevance judgment guidelines for human annotators in Learning-to-Rank pipelines",
+      "Improving content feed ranking systems by incorporating document quality signals beyond click-through rate",
+      "Auditing existing search systems to identify gaps between optimized engagement metrics and true content quality"
+    ],
+    "generated_at": "2026-03-21T19:00:26Z"
+  },
+  "deep": {
+    "method_breakdown": "The system defines a multi-dimensional relevance framework for content search that extends beyond simple on-topicness to include document originality, depth, and recency. It then trains a learning-to-rank model optimized for Precision under this richer relevance definition, requiring the model to deeply understand language to capture these nuanced quality signals. Relevance labels are collected via human annotation guided by the multi-faceted definition, and the ranker is trained to maximize precision at top positions.",
+    "key_innovation": "The core innovation is decomposing 'relevance' into explicit quality dimensions (on-topicness, originality, depth, recency) rather than treating it as a monolithic label, and then building a ranker that jointly optimizes for this compound definition rather than proxying quality through engagement signals alone. This decouples short-term engagement from long-term search value.",
+    "technical_insight": "The most important design choice is using a Precision-based optimization target rather than NDCG or engagement-based targets — Precision is more aligned with user trust (every result shown should be good) and is more interpretable for product decisions. This works because content search users have low tolerance for irrelevant results; even one bad result in a short feed degrades perceived quality disproportionately.",
+    "limitations": "Defining multi-dimensional relevance requires expensive, subjective human annotation that may not scale to all content verticals or languages. Recency and depth are inherently time-sensitive and domain-specific, making the definition brittle across content types. Optimizing for Precision can hurt Recall, potentially missing relevant but stylistically different content. The framework may overfit to LinkedIn's professional content norms and not generalize to other search domains.",
+    "interview_questions": [
+      "Why is optimizing engagement metrics alone insufficient for a content search engine?",
+      "How do you operationalize abstract quality dimensions like 'depth' or 'originality' into actionable annotation guidelines?",
+      "Why choose Precision as the primary optimization metric over NDCG or MRR?",
+      "How do you handle the tension between recency (freshness) and depth (thoroughness) when they conflict for a given query?",
+      "What are the risks of training a ranker on human-labeled quality judgments that reflect annotator biases about professional content?"
+    ],
+    "interview_answers": [
+      "Engagement metrics like clicks or dwell time reflect short-term user behavior but can be gamed by clickbait, are subject to position bias, and conflate relevance with novelty or social signals. Quality metrics capture the actual informational value of results, which drives long-term trust and retention even if it occasionally sacrifices immediate engagement.",
+      "Operationalization requires writing detailed rubrics with concrete examples: e.g., 'depth' might be defined as a minimum argument count or evidence of citations, while 'originality' might require that the content adds a perspective not found in the top-5 web results for the same query. Inter-annotator agreement (Cohen's kappa) is then used to validate that the rubric is sufficiently precise.",
+      "Precision is preferred when the result set is small (e.g., a feed of 10 posts) and user trust is fragile — one bad result is more damaging than missing a good one. NDCG is better when rank position matters across a long list, but for short content feeds, binary quality at the top positions is the dominant user experience signal.",
+      "The system likely uses separate relevance dimensions as features rather than collapsing them into a single score, allowing the ranker to learn context-dependent trade-offs. For breaking news queries, recency should dominate; for evergreen how-to queries, depth should dominate. This can be modeled via query-type classifiers that modulate dimension weights at inference time.",
+      "Training on annotator judgments encodes the annotators' professional and cultural norms, which at LinkedIn skew toward formal, English-language business content. This can systematically downrank valid content in other languages, informal styles, or niche domains. Mitigation requires stratified annotation sampling, multilingual annotators, and periodic audits of ranking disparities across demographic slices."
+    ],
+    "generated_at": "2026-03-21T19:00:52Z"
+  }
+}
