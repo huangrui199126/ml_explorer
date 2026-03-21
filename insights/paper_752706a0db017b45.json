@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper explores how to reduce computational costs in web search ranking by using a two-stage neural cascade system where a cheap MLP filters documents first, then a more powerful MLP re-ranks only the top candidates. Experiments on Yahoo, Istella, and MSLR-WEB30K show up to 40% feature extraction cost savings with negligible NDCG@10 degradation.",
+    "key_idea": "A two-stage MLP cascade that uses a reduced feature set in stage one to aggressively filter documents lets the expensive stage two focus only on promising candidates, achieving a favorable cost-quality trade-off.",
+    "why_it_matters": "For large-scale search engines processing billions of queries, even small per-query cost reductions translate to massive infrastructure savings, and this work provides concrete configuration guidelines for tuning that trade-off.",
+    "possible_use_cases": [
+      "Reducing inference costs in production web search ranking pipelines without retraining expensive models",
+      "Guiding feature engineering decisions by identifying which features matter most at each cascade stage",
+      "Applying the same cascade framework to e-commerce or ad ranking systems where query volume makes compute costs critical"
+    ],
+    "generated_at": "2026-03-21T20:13:11Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a two-stage MLP-based cascade ranking system where Stage 1 scores all candidate documents using a reduced feature subset to filter down to a top-k set, and Stage 2 re-ranks only those top-k documents using a full or richer feature set. The key experimental contribution is a systematic grid search over (1) which features to include in Stage 1, (2) the cutoff k for filtering, and (3) the feature set for Stage 2, measuring the Pareto frontier between NDCG@10 and total feature extraction cost across Yahoo, Istella, and MSLR-WEB30K benchmarks.",
+    "key_innovation": "Rather than proposing a new model architecture, the innovation is an empirical framework for navigating the cost-quality trade-off space in cascade rankers by treating feature selection and document filtering as first-class design variables. Prior work typically fixed one of these dimensions; this paper jointly optimizes both and surfaces the diminishing-returns curve, providing actionable configuration recipes for practitioners deploying at scale.",
+    "technical_insight": "The most important design choice is using cheap-to-compute features exclusively in Stage 1 to aggressively prune the candidate set before expensive features are ever extracted. This works because ranking quality is largely preserved as long as relevant documents are not erroneously discarded at Stage 1 — the recall of the top-k filter is the binding constraint, not the precision, so a lightweight model that avoids false negatives is sufficient and avoids paying the cost of expensive features on the vast majority of documents.",
+    "limitations": "The study is limited to MLP rankers in both stages, leaving open whether the same trade-off curves hold for transformer-based or cross-encoder rankers where feature extraction is entangled with inference. The experiments use offline LTR benchmarks with pre-computed feature vectors, so the results do not account for latency variability from online feature computation pipelines. The cost metric is feature extraction FLOP count rather than wall-clock latency, which may not reflect real deployment bottlenecks such as I/O or caching. Generalization to query distributions outside these three datasets (especially tail queries) is not evaluated.",
+    "interview_questions": [
+      "How does the two-stage cascade architecture reduce computational cost without significantly degrading NDCG@10, and what is the key assumption that makes this possible?",
+      "Why is recall of the Stage 1 filter more important than its precision, and how does this inform the choice of cutoff k?",
+      "The paper reports up to 40% cost reduction on Yahoo but only 16% on MSLR-WEB30K — what structural differences between datasets could explain this gap?",
+      "What are the risks of using feature extraction cost as a proxy for deployment latency, and how might a practitioner validate the reported savings in a real serving stack?",
+      "How would the cascade framework need to change if Stage 2 were replaced with a cross-encoder neural ranker that cannot reuse Stage 1 feature representations?"
+    ],
+    "interview_answers": [
+      "The cascade prunes the candidate set early so expensive features are extracted only for top-k documents. The key assumption is that Stage 1, even with a reduced feature set, has high enough recall — i.e., it rarely discards documents that Stage 2 would have ranked in the top positions — so the quality loss is bounded by the recall gap rather than the model capacity gap.",
+      "A false negative at Stage 1 (dropping a relevant document) permanently removes it from consideration, causing an irreversible NDCG loss. A false positive (keeping an irrelevant document) is harmless because Stage 2 will down-rank it. Therefore the optimal Stage 1 operates at high recall even at the cost of low precision, which justifies a larger k and a conservative filter model.",
+      "Yahoo has a larger average candidate set per query and a feature space with clearer cheap/expensive partitions, giving more headroom to prune without recall loss. MSLR-WEB30K has more uniform feature costs and a harder ranking distribution where cheap features are less discriminative, so the Stage 1 filter must retain a larger fraction of documents to preserve recall, limiting the savings.",
+      "Feature extraction FLOP count ignores memory bandwidth, cache hit rates, and network I/O for features fetched from external stores, which often dominate latency in production. A practitioner should profile the actual serving pipeline end-to-end, measure p99 latency under realistic query load, and verify that the features dropped in Stage 1 are actually among the expensive ones in the live system rather than just in the offline benchmark.",
+      "Cross-encoders process query-document pairs jointly, so their representations cannot be computed independently per document and reused across stages. The cascade would need to treat the cross-encoder as a black-box scorer and pay its full inference cost for every document it receives, meaning the savings must come entirely from aggressive Stage 1 pruning. This raises the stakes for Stage 1 recall and may require a stronger (and costlier) Stage 1 model, potentially eroding the overall savings."
+    ],
+    "generated_at": "2026-03-21T20:13:40Z"
+  }
+}
