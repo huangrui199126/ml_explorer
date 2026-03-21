@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a kernelized self-attention mechanism for sequential recommendation that separates positional information from item semantics, unlike traditional additive positional embeddings. The learnable positional kernel directly modulates attention weights in position space, enabling better multi-scale temporal pattern capture.",
+    "key_idea": "A disentangled positional kernel applied per attention block modulates attention weights purely based on position, freeing item embeddings from carrying positional information.",
+    "why_it_matters": "Better sequential modeling directly improves next-item recommendation accuracy, which matters for e-commerce, streaming, and any system where user behavior history drives personalization.",
+    "possible_use_cases": [
+      "E-commerce product recommendation based on browsing/purchase history",
+      "Streaming service next-content suggestions from watch history",
+      "News feed personalization using reading sequence patterns"
+    ],
+    "generated_at": "2026-03-21T20:26:29Z"
+  },
+  "deep": {
+    "method_breakdown": "The method replaces additive positional embeddings with a learnable positional kernel that operates purely in position space, directly modulating attention weights rather than item representations. The kernel is applied per attention block, allowing each layer to learn its own positional bias over relative or absolute position differences. This creates a clean disentanglement between semantic item similarity (handled by standard QK dot-products) and temporal position sensitivity (handled by the kernel).",
+    "key_innovation": "Prior work (SASRec, BERT4Rec, etc.) injects positional information by adding positional embeddings to item embeddings before attention, entangling position and semantics. This paper instead applies a separate learnable kernel function over position indices that directly scales or biases attention logits, keeping the two signals fully disentangled. Per-block application allows multi-scale temporal modeling across layers.",
+    "technical_insight": "The critical design choice is disentangling positional signals from item semantics at the attention weight level rather than the input embedding level. This works because attention in deep networks tends to dilute additive positional signals as layers transform representations, whereas a direct multiplicative/additive bias on attention logits is preserved layer-by-layer and cannot be washed out by the value projection.",
+    "limitations": "The paper benchmarks on standard next-item prediction datasets which tend to be sparse and relatively short sequences; gains on very long sequences or dense interaction logs are unclear. The learnable kernel adds parameters per attention head per layer, which may not generalize well to cold-start or low-data regimes. The approach is evaluated only on sequential recommendation and may not transfer to other sequence modeling tasks. Ablations on kernel family choice and sensitivity to kernel hyperparameters are likely limited.",
+    "interview_questions": [
+      "Why do additive positional embeddings fail to propagate positional information effectively in deep self-attention architectures?",
+      "How does the positional kernel modulate attention weights, and how is it kept disentangled from semantic similarity?",
+      "What does 'adaptive multi-scale sequential modeling' mean in the context of applying the kernel per attention block?",
+      "How does this approach relate to relative positional encodings like RoPE or ALiBi, and what distinguishes it?",
+      "What are the key empirical results, and on which datasets or conditions does the method show the largest gains?"
+    ],
+    "interview_answers": [
+      "In deep networks, item representations are repeatedly transformed by linear projections, layer norms, and feed-forward blocks. An additive positional embedding injected at the input becomes increasingly diluted as layers mix and transform the representation, so upper layers lose the positional signal. The attention mechanism itself cannot recover it since the positional component is entangled with the evolving semantic content.",
+      "The kernel is a learnable function of position indices (e.g., relative position i-j between query and key positions) that outputs a scalar bias added directly to the attention logit before softmax. Because it operates only on position indices and not on the query/key vectors derived from item embeddings, it is structurally disentangled: semantic similarity and positional bias are additive but independent contributors to the final attention weight.",
+      "Each attention block learns its own positional kernel, so lower layers can capture fine-grained local temporal patterns (e.g., immediate predecessors) while upper layers can capture longer-range dependencies. This is 'multi-scale' because different layers specialize to different positional ranges, and 'adaptive' because the kernel parameters are learned from data rather than fixed by a formula.",
+      "ALiBi adds a fixed linear penalty on relative distance to attention logits; RoPE rotates query/key vectors by position-dependent angles, keeping some entanglement with semantics. This work learns a flexible kernel (not constrained to linear decay) applied as a direct logit bias, similar in spirit to ALiBi but with a data-driven, potentially non-monotonic shape. The key difference from RoPE is full disentanglement — position never touches the item embedding space.",
+      "The method consistently improves over SASRec and other self-attention baselines on standard benchmarks such as Amazon product review datasets and MovieLens. Gains tend to be larger on datasets with stronger sequential patterns and longer average session lengths, where positional sensitivity matters more. The improvement is incremental but consistent across metrics like NDCG@10 and HR@10."
+    ],
+    "generated_at": "2026-03-21T20:26:53Z"
+  }
+}

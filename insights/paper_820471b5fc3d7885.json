@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PrivANN is a privacy-preserving approximate nearest neighbor search system that uses Trusted Execution Environments (TEEs) with oblivious RAM to hide access patterns, achieving practical performance without the heavy overhead of FHE or PIR approaches.",
+    "key_idea": "By combining TEE-based oblivious RAM with a shuffling mechanism that separates offline preparation from online search and an oblivious Top-k selection algorithm, PrivANN enables fast private vector search with formal security guarantees.",
+    "why_it_matters": "Practitioners building privacy-sensitive semantic search or RAG systems can now deploy vector search without exposing user queries to the server, with communication overhead reduced from gigabytes to kilobytes and 2.4x better throughput than FHE-based alternatives.",
+    "possible_use_cases": [
+      "Private semantic search over sensitive document databases (legal, medical, financial)",
+      "Privacy-preserving retrieval-augmented generation (RAG) pipelines where user queries must remain confidential",
+      "Secure similarity search for biometric or embedding-based authentication systems"
+    ],
+    "generated_at": "2026-03-21T20:30:33Z"
+  },
+  "deep": {
+    "method_breakdown": "PrivANN uses Trusted Execution Environments (TEEs) combined with a read-optimized Oblivious RAM (ORAM) protocol to enable private ANN search without leaking access patterns via side-channels. A novel shuffling mechanism separates expensive offline index preparation from lightweight online query operations, allowing fast retrieval at query time. An oblivious Top-k selection algorithm ensures that even the ranking step reveals no information about which candidates were selected.",
+    "key_innovation": "The core novelty is decoupling offline shuffling/preparation from online query execution within a TEE+ORAM framework, which prior FHE and PIR systems cannot do — FHE pays heavy compute costs per query, and PIR pays heavy communication costs. PrivANN achieves obliviousness (hiding access patterns) at TEE hardware level rather than cryptographically, enabling practical throughput with kilobyte-scale client communication instead of gigabytes.",
+    "technical_insight": "The shuffle-then-read design is the critical choice: by pre-randomizing the index layout offline, online ORAM reads become cheap because the access pattern is already obfuscated, avoiding the standard O(log^2 N) ORAM overhead per query at query time. This works because ANN indices are read-heavy and relatively static, making expensive one-time offline shuffling amortized away across many queries.",
+    "limitations": "TEEs introduce a trusted hardware assumption (Intel SGX or similar), which has a history of microarchitectural attacks (Spectre, Foreshadow, SGX-specific side-channels) that can break the security model. The offline preparation cost is high and must be repeated when the index is updated, making this poorly suited for dynamic or frequently-updated vector databases. Approximate (not exact) search means recall is bounded, and the privacy guarantees may degrade under adversarial query distributions that reveal structural information about the index.",
+    "interview_questions": [
+      "How does PrivANN's ORAM protocol defend against side-channel attacks within the TEE, and what threat model does it assume?",
+      "Why does decoupling offline shuffling from online operations improve throughput, and what are the constraints on index update frequency?",
+      "How does the oblivious Top-k selection algorithm work, and why is a naive Top-k selection not oblivious?",
+      "What are the concrete communication costs of PrivANN versus PIR-based approaches, and where does the asymptotic savings come from?",
+      "Under what conditions would PrivANN's security guarantees break down, and how do known TEE vulnerabilities affect the formal security proof?"
+    ],
+    "interview_answers": [
+      "The ORAM protocol hides memory access patterns so an attacker observing cache lines, page faults, or memory bus traffic inside the TEE cannot infer which vectors are being compared. The threat model assumes an honest-but-curious attacker who controls the OS/hypervisor but cannot break TEE attestation or extract enclave memory — it does not protect against physical memory attacks or microarchitectural side-channels beyond what ORAM covers.",
+      "The shuffling pre-randomizes the physical layout of the ANN index so that online reads follow a pattern that leaks no query information; without this, sequential ORAM reads during a query would still require logarithmic re-encryption/reshuffling overhead. The constraint is that any index update (new vectors added or deleted) invalidates the shuffle and requires a full offline re-preparation, making PrivANN best suited for static or batch-updated corpora.",
+      "A naive Top-k selection branches on comparisons (e.g., 'if score > threshold, include'), revealing through timing or branch prediction which candidates scored highly. The oblivious Top-k uses data-oblivious comparisons (constant-time conditional moves, sorting networks, or oblivious priority queues) so the sequence of memory accesses and operations is independent of the actual scores and identities of top candidates.",
+      "PIR-based ANN requires the client to download a large portion of the database (or a heavy encoding of it) to locally decode the result privately, leading to gigabyte-scale downloads. PrivANN offloads all computation to the TEE and returns only the final k results, so client communication is O(k * vector_dimension) — kilobytes. The savings come from trusting the TEE hardware rather than information-theoretic privacy, which requires large downloads.",
+      "The formal proof assumes the TEE is a perfect black box with no side-channel leakage beyond what ORAM hides. Known vulnerabilities like Spectre, Meltdown, Foreshadow, and SGX-specific attacks (e.g., page-fault side-channels, cache-timing attacks) can violate this assumption, potentially allowing an attacker to learn access patterns the ORAM was designed to hide. The proof would break in any scenario where the attacker can observe microarchitectural state of the enclave during execution."
+    ],
+    "generated_at": "2026-03-21T20:31:01Z"
+  }
+}

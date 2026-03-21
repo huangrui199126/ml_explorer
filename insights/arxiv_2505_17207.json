@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces an LLM-based monitoring layer on top of existing TV search systems to flag inappropriate or irrelevant content that slips through the main retrieval pipeline. The flagged cases are used as feedback to iteratively improve the underlying search model.",
+    "key_idea": "Use an LLM as a post-retrieval quality gate that detects intent mismatches between user queries and surfaced content, catching failures that ranking models miss.",
+    "why_it_matters": "Search systems in production regularly surface unintended content due to model quirks or metadata errors; adding an LLM moderation layer provides a practical, low-friction safety net that also generates labeled data to close the feedback loop.",
+    "possible_use_cases": [
+      "Flagging adult or violent content surfaced by child-safe queries on streaming platforms",
+      "Catching metadata errors that cause off-topic results (e.g., a cooking show appearing for a crime drama search)",
+      "Generating training signal to fine-tune retrieval models by labeling intent-mismatched search results"
+    ],
+    "generated_at": "2026-03-21T20:26:00Z"
+  },
+  "deep": {
+    "method_breakdown": "The system adds an LLM-based monitoring layer on top of existing TV search pipelines (candidate generation + ranking) to detect misaligned results — specifically flagging content the user did not intend to search for. The LLM evaluates query-result pairs for policy compliance and relevance, acting as a post-retrieval filter. Flagged cases are collected as feedback to iteratively retrain or refine the upstream retrieval model.",
+    "key_innovation": "Rather than replacing the search stack, the authors introduce LLMs as a lightweight quality-assurance oracle sitting above existing retrieval systems. The novelty is the feedback loop: LLM flags are not just discarded moderation signals but are fed back to improve the base retrieval model, closing the loop between monitoring and training.",
+    "technical_insight": "Using LLMs as a semantic intent-alignment checker — comparing user query intent against retrieved content — is the critical design choice. Traditional keyword or embedding-based filters struggle with semantic misalignment (e.g., a query for a children's show retrieving adult content with similar metadata). LLMs can reason about intent vs. content appropriateness in a way that learned retrieval embeddings cannot, making them well-suited as a corrective layer.",
+    "limitations": "LLM inference latency may be unsuitable for real-time ranking without careful optimization. The approach depends on LLM reliability — hallucinations or inconsistent policy interpretation can generate noisy feedback signals that degrade the base model. The paper appears to describe a monitoring/baseline system without rigorous ablations or metrics comparing against alternative moderation approaches. Generalization to non-English or culturally nuanced content moderation is unaddressed.",
+    "interview_questions": [
+      "How does the LLM moderation layer integrate with the existing candidate generation and ranking pipeline — is it applied pre-ranking, post-ranking, or asynchronously?",
+      "What specific signals or prompt design does the LLM use to determine whether a result matches user intent vs. violating policy?",
+      "How is the feedback loop implemented — are flagged results used as hard negatives in retrieval model fine-tuning, or through some other mechanism?",
+      "How do you handle latency constraints given that LLM inference is orders of magnitude slower than traditional retrieval scoring?",
+      "What metrics do you use to evaluate the moderation layer's precision and recall, and how do you prevent the feedback loop from introducing training distribution shift?"
+    ],
+    "interview_answers": [
+      "Based on the abstract, the LLM layer appears to function as a post-retrieval monitoring step rather than an inline ranker, likely applied asynchronously or on sampled traffic to avoid latency impact on live queries.",
+      "The LLM likely receives a structured prompt containing the user query and the retrieved content metadata (title, description, genre), and is asked to assess intent alignment and policy compliance — essentially acting as a semantic judge.",
+      "Flagged results are collected as a labeled dataset of misaligned query-result pairs, which can serve as hard negatives or policy-violation examples to fine-tune the retrieval or ranking model via contrastive or supervised feedback.",
+      "Latency is likely managed by running the LLM asynchronously off the critical path — logging results for offline analysis and periodic retraining rather than blocking live search responses, though this means real-time enforcement is limited.",
+      "Precision/recall of the moderation layer would typically be evaluated against human-labeled ground truth of policy violations. The feedback loop risk is mitigated by treating LLM flags as soft signals requiring human review before entering training data, rather than automatic labels."
+    ],
+    "generated_at": "2026-03-21T20:26:22Z"
+  }
+}
