@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces a framework (LCU) for predicting how long users spend in the comments section of short videos, using fine-tuned LLMs to understand comment text and auxiliary ranking tasks to model user preferences. They also release KuaiComt, a real-world dataset from Kuaishou with video comments and staytime labels.",
+    "key_idea": "Fine-tune an LLM on domain-specific video-comment bridging tasks, then inject its semantic representations into a staytime prediction model alongside comment ranking auxiliary tasks to capture fine-grained user engagement signals.",
+    "why_it_matters": "Comment staytime is an under-explored engagement signal that complements watchtime; accurately predicting it enables better recommendation ranking and content surfacing on streaming platforms where comment interaction drives retention.",
+    "possible_use_cases": [
+      "Improving recommendation ranking on short-video platforms by incorporating comment engagement as a training signal",
+      "Personalizing comment section layout or comment ordering based on predicted user staytime",
+      "Detecting low-quality or disengaging content by analyzing predicted vs. actual comment staytime discrepancies"
+    ],
+    "generated_at": "2026-03-21T20:15:48Z"
+  },
+  "deep": {
+    "method_breakdown": "LCU is a two-stage framework: first, an LLM is fine-tuned on domain-specific tasks (video-comment bridging) to produce enriched semantic representations of comments; second, these LLM outputs are fed into a downstream staytime prediction model alongside two comment ranking auxiliary tasks that capture fine-grained user preference signals. The prediction model integrates both the LLM-enhanced comment embeddings and traditional behavioral features to estimate how long a user will spend in the comments section.",
+    "key_innovation": "Prior watchtime prediction methods treat content consumption as a monolithic signal, ignoring the granular, interactive nature of comment browsing. LCU introduces comment staytime as a distinct prediction target, proposes the KuaiComt dataset specifically for this task, and uniquely combines LLM-derived semantic understanding of comment text with comment ranking auxiliary tasks — moving beyond simple engagement metrics to model intra-comment-section behavior.",
+    "technical_insight": "The most critical design choice is the two-stage LLM fine-tuning that explicitly bridges video content and comments before integrating into the prediction pipeline. This matters because comments are semantically dependent on the video context; without this alignment, generic LLM embeddings would miss the relevance and sentiment dynamics that drive whether a user lingers on specific comments. The auxiliary ranking tasks further regularize the model toward preference-aware representations rather than pure duration regression.",
+    "limitations": "The framework's reliance on LLM fine-tuning introduces significant computational overhead, limiting real-time applicability and scalability at inference. The dataset is sourced solely from Kuaishou (Chinese short-video platform), raising questions about cross-platform and cross-cultural generalizability. Additionally, staytime as a supervision signal is noisy — background tabs, idle sessions, and multitasking behavior are not filtered, potentially corrupting labels. The ranking auxiliary tasks assume comment ordering reflects user preference, which may not hold when ranking is itself influenced by platform algorithms.",
+    "interview_questions": [
+      "How does LCU handle the cold-start problem for new comments that the LLM has never seen during fine-tuning?",
+      "What specific domain-specific tasks were used to fine-tune the LLM in stage one, and how were they designed to bridge video and comment semantics?",
+      "How is staytime ground truth collected and cleaned — what heuristics are used to filter out passive or idle sessions?",
+      "Why are comment ranking auxiliary tasks more effective than simply using comment engagement signals (likes, replies) as additional features?",
+      "How does the model perform when comment text is sparse, low-quality, or in languages outside the training distribution?"
+    ],
+    "interview_answers": [
+      "Cold-start for new comments is a real vulnerability; the paper likely relies on the LLM's generalization from fine-tuning, but truly novel comment styles or topics at inference time may degrade embedding quality. A robust solution would require continual fine-tuning or retrieval-augmented approaches not described in the paper.",
+      "The domain-specific fine-tuning tasks likely include video-comment relevance scoring and comment sentiment/topic classification conditioned on video metadata, designed to teach the LLM the contextual dependency between video content and user-generated comment text — though exact task formulations are detailed in the paper body.",
+      "Staytime labels are typically derived from server-side session logs with heuristic cutoffs (e.g., sessions under N seconds discarded, gaps over M minutes treated as session boundaries). The paper collected data from Kuaishou's production logs, but label noise from passive viewing remains a known limitation acknowledged in the paper.",
+      "Raw engagement signals are outcome metrics that conflate platform algorithmic amplification with genuine user preference; ranking auxiliary tasks instead teach the model the relative ordering of comments as experienced by the user, providing a preference signal that is more directly tied to browsing behavior and resistant to popularity bias.",
+      "The model's performance likely degrades on sparse or low-quality comments since the LLM embeddings would collapse to generic representations with little discriminative signal; the paper focuses on Kuaishou's Chinese-language content, so cross-lingual generalization is untested and would require retraining the LLM fine-tuning stage on target-language data."
+    ],
+    "generated_at": "2026-03-21T20:16:11Z"
+  }
+}

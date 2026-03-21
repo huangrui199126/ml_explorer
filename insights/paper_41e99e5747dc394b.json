@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a hybrid calibration framework that integrates expert domain knowledge into a multi-objective optimization process (NSGA-II) to estimate parameters for biological models when experimental data is scarce. It combines hard biological measurement constraints with soft qualitative constraints to find biologically plausible parameter sets.",
+    "key_idea": "Encoding expert knowledge as both hard constraints (measured quantities) and soft constraints (expected curve shapes, event timing) into NSGA-II guides parameter search toward biologically meaningful solutions while avoiding overfitting in underdetermined systems.",
+    "why_it_matters": "Biological model calibration is notoriously difficult with limited data; this framework offers a principled, flexible way to inject domain expertise to improve solution quality and interpretability without requiring large datasets.",
+    "possible_use_cases": [
+      "Calibrating pharmacokinetic/pharmacodynamic models where clinical trial data is limited",
+      "Parameter estimation for systems biology models of disease progression or tissue repair",
+      "Tuning agent-based or ODE-based ecological models with sparse observational data"
+    ],
+    "generated_at": "2026-03-21T20:19:24Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework wraps NSGA-II (a Pareto-based multi-objective evolutionary algorithm) with two layers of constraints: hard constraints that enforce biologically measured bounds (e.g., known concentration ranges, steady-state values) and soft constraints that penalize solutions violating qualitative expert knowledge (e.g., expected monotone curve segments, timing of biological events). The multi-objective formulation treats each experimental observable as a separate objective, allowing the algorithm to explore the Pareto front rather than collapsing everything into a weighted scalar loss. Expert constraints are encoded as additional penalty objectives or feasibility filters, steering the evolutionary search away from biologically implausible regions without eliminating them outright.",
+    "key_innovation": "The genuine novelty is the systematic encoding of qualitative, non-quantitative expert knowledge (curve shape expectations, event ordering, monotonicity windows) as computable soft-constraint objectives within a multi-objective evolutionary search — prior work either used purely data-driven fitting (ignoring expert knowledge) or hard-coded constraints that discard solutions, losing search diversity. The dual hard/soft constraint hierarchy preserves Pareto diversity while injecting domain bias, which is especially valuable in the underdetermined regime where data alone cannot distinguish plausible from implausible solutions.",
+    "technical_insight": "The most important design choice is keeping soft constraints as separate Pareto objectives rather than folding them into a penalty scalar. This works because NSGA-II's non-dominated sorting naturally balances data fit against constraint satisfaction without requiring manual weight tuning; solutions that fit data poorly but satisfy biology, or vice versa, both survive on the Pareto front, giving the practitioner interpretable trade-off options and avoiding the sensitivity to penalty coefficients that plagues single-objective penalized formulations.",
+    "limitations": "The framework requires domain experts to manually specify soft constraints, making it labor-intensive and potentially introducing subjective bias — poorly specified constraints could exclude valid parameter regions. Scalability is a concern: NSGA-II's population-based search scales poorly to very high-dimensional parameter spaces (>~50 parameters) and computationally expensive ODE models. The validation is limited to a single benchmark (wound healing), so generalizability to other biological systems or constraint types is unproven. Finally, the Pareto front output shifts model selection responsibility to the user, which may be impractical in automated pipelines.",
+    "interview_questions": [
+      "How do you encode a qualitative expert belief like 'the curve should be unimodal between t=2 and t=10' as a computable objective for NSGA-II?",
+      "Why did you choose NSGA-II over more modern multi-objective algorithms like NSGA-III or MOEA/D, and what are the trade-offs?",
+      "How sensitive are the results to the specific soft constraints chosen — did you run ablations showing which constraints contributed most to biological plausibility?",
+      "In the underdetermined setting, many parameter sets lie on the Pareto front. How do you select a single solution for downstream use, and does that selection reintroduce the subjectivity you tried to avoid?",
+      "How would this framework extend to stochastic or agent-based biological models where the objective function is noisy and expensive to evaluate?"
+    ],
+    "interview_answers": [
+      "A soft constraint like unimodality can be encoded by computing the number of sign changes in the discrete derivative of the simulated curve over the specified time window, or by measuring the deviation from a fitted unimodal template; this count or distance becomes a separate objective to minimize alongside data residuals.",
+      "NSGA-II was chosen for its robustness, wide adoption in biological modeling, and well-understood behavior on moderate-dimensional problems; NSGA-III or MOEA/D would be preferable for many objectives (>3) but add hyperparameter complexity (reference vectors, neighborhood topology) that is harder to justify to biologist collaborators.",
+      "The paper demonstrates aggregate improvement over unconstrained baselines but a full per-constraint ablation appears limited; this is a genuine gap — without ablations it is unclear whether improvement comes from a few critical constraints or the ensemble, which would affect how practitioners should prioritize expert elicitation effort.",
+      "The paper proposes iterative expert review of the Pareto front to progressively tighten constraints, effectively converting soft constraints into hard ones over refinement rounds; while principled, this is a manual loop and the final selection criterion is not formalized, which is a real practical limitation.",
+      "For stochastic or expensive models, the framework would need surrogate-assisted variants (e.g., Gaussian process surrogates for the objectives) or ensemble averaging to estimate expected objectives, substantially increasing implementation complexity and requiring careful uncertainty quantification to avoid surrogate-induced bias."
+    ],
+    "generated_at": "2026-03-21T20:19:52Z"
+  }
+}

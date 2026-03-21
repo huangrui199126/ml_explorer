@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CAVE is a re-ranking framework for recommender systems that estimates the true value of a recommendation list by accounting for the fact that users often exit before seeing all items. It models user-specific exit probabilities using an interest-driven component and a Weibull distribution for random factors like fatigue, then computes list value as a weighted expectation over sub-list values.",
+    "key_idea": "Model recommendation list value as the expectation of sub-list values weighted by personalized exit probabilities, bridging the gap between how lists are generated and how they are actually consumed.",
+    "why_it_matters": "Most re-ranking methods optimize for full-list metrics that assume users see every item, but real users drop off early — CAVE aligns optimization with actual consumption behavior, directly improving user satisfaction and platform revenue.",
+    "possible_use_cases": [
+      "E-commerce product feed re-ranking where purchase likelihood drops sharply after the first few visible items",
+      "Video/content streaming platforms optimizing watch session length by accounting for viewer drop-off patterns",
+      "Search result re-ranking where click-through rates decay with position and user fatigue is a key signal"
+    ],
+    "generated_at": "2026-03-21T20:16:49Z"
+  },
+  "deep": {
+    "method_breakdown": "CAVE formulates list value as an expectation over sub-list values weighted by user-specific exit probabilities at each position, so the estimated value reflects only the items a user is likely to actually consume. Exit probability is decomposed into an interest-driven component (based on item relevance signals) and a stochastic component modeled via a Weibull distribution to capture random fatigue/external factors. The framework plugs into the standard generator-evaluator re-ranking paradigm, replacing the naive full-list value estimator with this consumption-aware expectation.",
+    "key_innovation": "Prior re-ranking evaluators score the full candidate list as if the user will consume all positions, ignoring early exits. CAVE is the first to explicitly model position-wise exit probabilities and compute list value as a weighted expectation over partial consumption, with the Weibull distribution specifically chosen to model the stochastic exit component rather than assuming exits are purely interest-driven.",
+    "technical_insight": "Decomposing exit probability into interest-driven and stochastic (Weibull) components is the critical design choice — it separates learnable, item-dependent signals from unlearnable noise (fatigue, interruptions). Without this decomposition, a purely interest-driven exit model would over-attribute exits to item quality and fail to generalize; the Weibull term absorbs positional fatigue patterns, making the interest component cleaner and the overall exit estimate more calibrated.",
+    "limitations": "Exit probability labels are not directly observed — they must be inferred from implicit signals (clicks, session end), introducing label noise. The Weibull stochastic component assumes a parametric form for fatigue that may not hold across all user populations or content domains. The framework adds inference-time complexity (computing expectations over all sub-lists), which may be non-trivial at production scale. Benchmarks are Kuaishou-specific short-video feeds, so generalization to other modalities (e-commerce, long-form content) is not fully validated despite the two Amazon dataset experiments.",
+    "interview_questions": [
+      "How does CAVE estimate exit probabilities during training when ground-truth exit positions are not directly labeled?",
+      "Why is the Weibull distribution specifically chosen for the stochastic exit component rather than, say, an exponential or learned neural distribution?",
+      "How does the consumption-aware list value formulation change the optimization objective compared to a standard list-value evaluator?",
+      "What is the computational overhead of computing the sub-list value expectation at re-ranking inference time, and how is it managed?",
+      "How does CAVE handle the cold-start problem for new users where personalized exit probability estimates are unreliable?"
+    ],
+    "interview_answers": [
+      "Exit positions are approximated from session-level engagement signals: a user who clicks item k but not k+1 and then leaves is treated as having exited at position k. This implicit supervision is noisy but sufficient at scale; the Weibull component partially absorbs this noise by attributing unexplained exits to the stochastic term rather than forcing the interest model to fit every exit event.",
+      "The Weibull distribution is flexible (its shape parameter interpolates between decreasing, constant, and increasing hazard rates), making it well-suited to model fatigue where early exits are initially rare but accumulate as position increases. It is also analytically tractable for computing the expected exit position, unlike a fully learned distribution that would require Monte Carlo estimation at inference time.",
+      "The objective shifts from maximizing E[value of full list] to maximizing sum_k P(user reaches position k) * value(sub-list ending at k). This means high-value items should be placed early (to be consumed before exit) and the evaluator penalizes lists that bury good items deep, aligning training signal with actual user consumption behavior rather than hypothetical full-list consumption.",
+      "The expectation over T positions requires T sub-list value evaluations, which is linear in list length. In practice, list lengths in re-ranking are short (typically 10–50 items), so the overhead is manageable. Shared encoder representations across sub-lists and early truncation of negligible-probability positions further reduce cost.",
+      "For new users, the interest-driven exit component falls back toward the population-level Weibull baseline since the personalized interest signals are weak. This graceful degradation is a benefit of the decomposed formulation — the stochastic Weibull term provides a reasonable prior while the interest component sharpens with more user history."
+    ],
+    "generated_at": "2026-03-21T20:17:12Z"
+  }
+}

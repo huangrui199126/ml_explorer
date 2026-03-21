@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "A systematic review of real-time ML recommendation systems that analyzes trade-offs between model complexity, inference latency, and scalability, proposing a multi-tiered serving framework with dynamic resource allocation. It covers infrastructure optimization, model serving strategies, quantization, feature stores, and adaptive caching for high-concurrency production environments.",
+    "key_idea": "Combining distributed computing, hybrid model deployment, and intelligent caching in a multi-tiered architecture enables real-time recommendations at scale without sacrificing quality.",
+    "why_it_matters": "Practitioners building production recommendation systems face hard constraints on latency and throughput; this review synthesizes proven strategies—quantization, feature stores, adaptive serving—into an actionable framework for scaling without degrading relevance.",
+    "possible_use_cases": [
+      "E-commerce product recommendation engines requiring sub-100ms response times under millions of concurrent users",
+      "Streaming media platforms balancing personalization quality with real-time content delivery at scale",
+      "Ad serving systems that must dynamically allocate compute resources to meet strict SLA latency budgets"
+    ],
+    "generated_at": "2026-03-21T20:17:53Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a multi-tiered serving architecture that separates model inference into distinct layers (candidate retrieval, ranking, re-ranking) with dynamic resource allocation per tier. It combines distributed computing backends with hybrid deployment strategies (e.g., mixing lightweight approximate models with heavier deep models) and intelligent caching via feature stores to reduce redundant computation. Adaptive serving strategies adjust model complexity at runtime based on observed load and latency budgets.",
+    "key_innovation": "The primary contribution is a systematic framework codifying how to balance model complexity vs. latency vs. scalability as three interdependent variables rather than treating them as independent knobs. Prior work typically optimized one dimension (e.g., model quantization for latency, or sharding for scalability) in isolation; this review synthesizes those techniques into a unified decision framework with explicit trade-off guidance.",
+    "technical_insight": "The most important design choice is the multi-tiered serving architecture with per-tier resource isolation and dynamic allocation. This works because different pipeline stages have asymmetric latency sensitivity and throughput requirements — candidate retrieval can tolerate slightly higher latency at massive scale, while final ranking must be fast on a small set — so decoupling tiers allows each to be optimized independently without sacrificing end-to-end SLA.",
+    "limitations": "As a systematic review rather than an empirical study, the paper lacks controlled ablations or reproducible benchmarks to validate its proposed framework quantitatively. The trade-off recommendations are largely heuristic and may not generalize across domains with different data distributions or infrastructure constraints. The paper also does not deeply address cold-start scenarios, model drift under distribution shift, or the operational complexity introduced by maintaining multi-tiered architectures.",
+    "interview_questions": [
+      "What are the three primary dimensions the paper identifies in real-time recommendation system design, and why are they in tension?",
+      "How does a multi-tiered serving architecture improve both latency and scalability compared to a monolithic serving approach?",
+      "What role do feature stores play in the proposed framework, and what specific bottleneck do they address?",
+      "How does model quantization interact with recommendation quality, and under what conditions does it remain acceptable?",
+      "What is an adaptive serving strategy, and how does it differ from static model deployment in high-concurrency environments?"
+    ],
+    "interview_answers": [
+      "The three dimensions are infrastructure optimization, model serving strategies, and resource utilization patterns. They are in tension because increasing model complexity improves recommendation quality but raises inference latency and resource consumption; scaling infrastructure reduces latency under load but increases cost and operational complexity; optimizing resource utilization can degrade model expressiveness if taken too far.",
+      "A multi-tiered architecture assigns each pipeline stage (retrieval, ranking, re-ranking) to dedicated compute with independent scaling policies. Retrieval can use approximate nearest-neighbor search on cheap hardware at high throughput, while ranking uses GPUs only on a small candidate set, avoiding GPU bottlenecks on the full item corpus and letting each tier scale horizontally without interference.",
+      "Feature stores decouple feature computation from model inference by pre-computing and caching feature vectors for users and items. They address the bottleneck of repeated, redundant feature engineering at serve time — particularly for high-cardinality embeddings and aggregated behavioral features that are expensive to recompute per request but change slowly relative to request rate.",
+      "Quantization reduces model weights from FP32 to INT8 or lower, cutting memory bandwidth and arithmetic cost at the cost of representational precision. For recommendation ranking, empirical results generally show less than 1% quality degradation (in AUC or NDCG) at INT8, making it acceptable for most production settings, but aggressive quantization (INT4 or binary) can hurt quality on items with sparse interaction data where subtle embedding distinctions matter.",
+      "An adaptive serving strategy dynamically selects model depth or complexity at runtime based on current system load, per-request latency budgets, or user segment priority. Unlike static deployment where all requests use the same model, adaptive strategies route low-priority or burst traffic to cheaper approximate models and reserve expensive full models for high-value users or low-load periods, maintaining SLA compliance without over-provisioning."
+    ],
+    "generated_at": "2026-03-21T20:18:18Z"
+  }
+}

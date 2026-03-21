@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a search engine framework combining BERT-based query understanding (intent classification) with LLM-guided reranking, evaluated on MSMARCO. It achieves substantial gains over both BM25 and vanilla BERT baselines.",
+    "key_idea": "Combining a BERT query intent classifier with an LLM reranker creates a two-stage pipeline that narrows the semantic gap between user queries and retrieved documents.",
+    "why_it_matters": "Practitioners building enterprise or product search can apply this pattern to meaningfully improve relevance without replacing existing retrieval infrastructure, just layering neural reranking on top.",
+    "possible_use_cases": [
+      "E-commerce product search where query intent (navigational vs. transactional) affects ranking strategy",
+      "Enterprise knowledge base search requiring semantic understanding beyond keyword matching",
+      "Conversational AI retrieval-augmented generation (RAG) pipelines needing higher-precision document retrieval"
+    ],
+    "generated_at": "2026-03-21T20:18:24Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework combines a BERT-based query understanding module for intent classification with a large language model-guided reranking stage on top of an initial retrieval pass. The pipeline first classifies query intent (94.3% accuracy) to condition downstream retrieval, then applies LLM-based reranking to reorder candidate documents by semantic relevance. Evaluation is done on MSMARCO with NDCG@10 as the primary metric.",
+    "key_innovation": "The primary claimed novelty is the coupling of explicit query intent classification (BERT classifier) with LLM reranking in a single pipeline, rather than using either component in isolation. However, both components individually are well-established: BERT for query understanding dates to 2019 (Nogueira & Cho) and LLM reranking is already standard practice, so the 'novelty' is largely an integration contribution rather than a fundamentally new technique.",
+    "technical_insight": "The most important design choice is using intent classification as a conditioning signal before retrieval/reranking rather than treating all queries uniformly. This works because different intent categories (navigational, informational, transactional) have systematically different relevance signals, and routing them appropriately reduces the variance the reranker must handle.",
+    "limitations": "The paper reports only MSMARCO results, raising serious generalizability concerns across other retrieval benchmarks (BEIR, TREC). The 47% relative NDCG@10 gain over BM25 is not a meaningful bar in 2024 — virtually any neural retriever achieves this. No latency or throughput numbers are given despite claiming 'computationally efficient enough for practice.' The intent classification accuracy of 94.3% is reported without dataset details, making it unverifiable. The paper does not compare against dense retrieval baselines (DPR, ColBERT, E5) which are the actual state of the art.",
+    "interview_questions": [
+      "The paper claims 47% relative NDCG@10 improvement over BM25 — why is this not a compelling baseline comparison in 2024, and what baselines would you insist on seeing?",
+      "How does explicit intent classification before retrieval differ from implicitly conditioning on query type through end-to-end fine-tuning, and when would each approach be preferable?",
+      "The reranker is described as 'LLM-guided' — what are the latency implications of using a generative LLM in the reranking stage for a production search engine serving millions of queries?",
+      "If the intent classifier mispredicts query intent, how does that error propagate through the retrieval and reranking stages, and what mitigation strategies would you consider?",
+      "How would you evaluate this system on out-of-domain queries (e.g., BEIR benchmark) and what failure modes would you expect compared to a dense retrieval baseline like ColBERT?"
+    ],
+    "interview_answers": [
+      "BM25 was surpassed decisively by dense retrievers (DPR, 2020) and even more so by ColBERT and E5 variants. A 47% gain over BM25 simply means the system is better than a 2000s-era lexical baseline, which every modern neural system achieves. The paper should compare against DPR, ColBERT, MonoT5, and RankLLM to establish where it sits in the current landscape.",
+      "End-to-end fine-tuning implicitly learns query-type-specific behavior from data but requires large labeled corpora and can conflate intents in edge cases. Explicit classification is more interpretable and allows targeted routing logic (e.g., different index shards per intent) but adds a failure mode if the classifier errs. Explicit classification is preferable when query types require structurally different retrieval strategies; implicit conditioning suffices when training data is abundant and latency budgets are tight.",
+      "Generative LLM reranking (e.g., pointwise or listwise scoring) can add hundreds of milliseconds per query depending on model size and candidate list length. For production systems, this typically requires aggressive distillation into a cross-encoder, caching of reranking scores for popular queries, or restricting LLM reranking to high-value query segments. The paper's omission of latency numbers is a significant gap for any production credibility claim.",
+      "An intent misclassification propagates by routing the query to the wrong retrieval strategy or applying an inappropriate reranking objective, potentially degrading results below even a vanilla BM25 baseline for that query. Mitigations include: soft routing using intent probability distributions rather than hard argmax, fallback to a universal retriever when confidence is low, and monitoring intent distribution shift in production.",
+      "On BEIR, the system would likely underperform domain-specialized models because BERT-based intent classifiers trained on web search queries have poor transfer to scientific, biomedical, or legal domains. The LLM reranker may also hallucinate relevance signals on out-of-domain content. Expected failure modes include high recall but poor precision on ambiguous queries and near-random reranking on domains absent from training data."
+    ],
+    "generated_at": "2026-03-21T20:18:52Z"
+  }
+}
