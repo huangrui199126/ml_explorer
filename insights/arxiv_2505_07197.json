@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SORT-Gen is a generative re-ranking model for e-commerce that optimizes ordered item lists holistically across multiple business objectives (clicks, conversions, GMV) rather than scoring items independently. It uses a Transformer with ordered regression to evaluate sub-lists and a mask-driven beam-search-style generation algorithm to efficiently construct high-quality ranked lists.",
+    "key_idea": "Treating re-ranking as a sequence generation problem allows the model to capture cross-item interactions and dynamic user intent, enabling true list-level multi-objective optimization instead of greedy item-by-item scoring.",
+    "why_it_matters": "Item-level ranking models ignore how items interact in context (e.g., diversity, complementarity), leaving significant business metric gains on the table; list-level generation closes this gap with demonstrated +4.13% clicks and +8.10% GMV in live Taobao traffic.",
+    "possible_use_cases": [
+      "E-commerce recommendation re-ranking to jointly optimize CTR and GMV",
+      "Search result page diversification while maintaining relevance",
+      "Multi-objective slate optimization for streaming or content recommendation platforms"
+    ],
+    "generated_at": "2026-03-21T10:00:00Z"
+  },
+  "deep": {
+    "method_breakdown": "SORT-Gen uses a Transformer-based Sequential Ordered Regression model that takes variable-length sub-lists as input and jointly estimates multi-objective values (clicks, conversions, GMV) while capturing cross-item interactions via self-attention. The generation phase uses a Mask-Driven algorithm that maintains separate candidate queues per objective, iteratively selects items using a combined score, and applies a diversity mechanism to avoid redundant selections. This decouples the scoring model (trained offline) from the fast online list construction.",
+    "key_innovation": "Prior re-ranking work either optimizes a single objective or scores items independently. SORT-Gen is novel in jointly modeling list-level context with multi-objective ordered regression — treating list generation as a sequential decision process where each selected item updates the context for subsequent selections, while the mask-driven generator avoids recomputing the full model for each candidate swap.",
+    "technical_insight": "The ordered regression formulation for multi-objective estimation is the critical design choice: rather than predicting raw values per objective (which suffer from scale imbalance and label noise), ordered regression discretizes each objective into ordinal buckets and learns cumulative probability distributions. This makes the loss landscape smoother and the model more robust to noisy conversion/GMV labels, which are sparse and heavy-tailed in e-commerce.",
+    "limitations": "The model is evaluated on a single mini-app (Baiyibutie), limiting generalizability claims. The mask-driven generation is greedy and does not guarantee a globally optimal list ordering. Ordered regression requires careful bucket boundary design per objective, which may not transfer across product categories with different value distributions.",
+    "interview_questions": [
+      "Why use ordered regression instead of direct regression for multi-objective value estimation, and what are the tradeoffs?",
+      "How does the Transformer architecture capture cross-item interactions, and why does this matter for re-ranking vs. independent scoring?",
+      "How does the Mask-Driven generation algorithm balance multiple objectives that may conflict — e.g., high GMV items that have low click-through rates?",
+      "What are the latency constraints for online re-ranking at Taobao scale, and how does SORT-Gen's two-stage design address them?",
+      "How would you extend SORT-Gen to handle real-time user feedback during list generation?"
+    ],
+    "interview_answers": [
+      "Ordered regression treats each objective as an ordinal ranking problem, predicting P(value > threshold_k) for K buckets rather than a scalar. This is more robust to label noise and distribution skew common in sparse signals like GMV. The tradeoff is information loss from discretization and sensitivity to bucket boundary choice.",
+      "Self-attention allows each item's representation to be conditioned on all other items in the sub-list — capturing substitution effects (two similar items depress each other's value) and complementarity. Independent scoring ignores these interactions, causing lists that look good item-by-item but are redundant as a set.",
+      "The mask-driven algorithm maintains per-objective candidate queues and uses a weighted combination function to score each candidate given already-selected items. The diversity mechanism penalizes items too similar to already-selected ones. Conflict resolution is implicit in the weight vector tuned via A/B tests.",
+      "Re-ranking must complete within ~10-50ms. SORT-Gen addresses this by running the Transformer once over a small candidate set, then using the lightweight mask-driven generator to construct the final list without additional model forward passes.",
+      "Integrate a real-time feature encoder that updates item embeddings based on recent interactions within the session. Alternatively, re-score remaining candidates after each user action, treating list construction as an online MDP — though distilled representations would be needed to manage latency."
+    ],
+    "generated_at": "2026-03-21T10:00:00Z"
+  }
+}
