@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PLAID SHIRTTT extends the ColBERT/PLAID dense retrieval system to handle streaming document collections by introducing hierarchical incremental indexing, solving the problem where cluster centroids become stale as new documents arrive over time. It demonstrates scalability to terabyte-scale and multilingual collections.",
+    "key_idea": "By using multi-phase hierarchical sharding, the index can be updated incrementally as new documents stream in without suffering representational drift from outdated cluster centroids.",
+    "why_it_matters": "Real-world search systems must handle continuously arriving documents, and this work makes state-of-the-art ColBERT-style dense retrieval practical for live, large-scale corpora rather than just static batch collections.",
+    "possible_use_cases": [
+      "News archive search where articles are continuously ingested and must be searchable in near real-time",
+      "Enterprise document management systems where new files, emails, or reports are added daily and need semantic search",
+      "Multilingual web crawl indexing for search engines that must keep pace with the rate of new content publication"
+    ],
+    "generated_at": "2026-03-21T18:44:01Z"
+  },
+  "deep": {
+    "method_breakdown": "PLAID SHIRTTT extends the PLAID ColBERT implementation to handle streaming document ingestion by introducing multi-phase incremental indexing with hierarchical sharding. Instead of requiring a full corpus to build cluster centroids upfront, it organizes newly arriving documents into shards that are indexed incrementally, with centroids periodically updated to reflect the evolving token distribution. Retrieval is performed across shards using a hierarchical merging strategy that maintains PLAID's efficiency guarantees.",
+    "key_innovation": "The core novelty is the hierarchical shard-based incremental index construction that decouples centroid selection from document arrival order. Prior PLAID assumes a static corpus where all tokens are visible when k-means clustering is run; PLAID SHIRTTT allows centroids to be updated as new shards accumulate, preventing representation drift where late-arriving tokens are poorly approximated by centroids built on earlier tokens.",
+    "technical_insight": "The most important design choice is the multi-phase incremental re-clustering triggered at shard boundaries rather than per-document. This amortizes the cost of centroid recomputation over many documents, preserving retrieval quality without making streaming ingestion prohibitively expensive. It works because token embedding distributions in a domain tend to shift gradually, so batch-level centroid refresh captures distributional drift without requiring continuous re-indexing.",
+    "limitations": "Centroid staleness is mitigated but not eliminated — documents arriving between re-clustering phases are still approximated by outdated centroids, potentially harming recall for rapidly evolving corpora or sudden domain shifts. The hierarchical merging adds query-time overhead compared to single-index PLAID, and the system has been evaluated only on ClueWeb09 and NeuCLIR, leaving open questions about performance on faster-moving streams like news or social media.",
+    "interview_questions": [
+      "Why does PLAID's performance degrade in streaming settings, and what specifically causes representation drift?",
+      "How does hierarchical sharding enable incremental indexing while preserving retrieval quality?",
+      "What triggers a centroid re-clustering phase in PLAID SHIRTTT, and what is the computational cost?",
+      "How does PLAID SHIRTTT handle retrieval across multiple shards with potentially inconsistent centroid spaces?",
+      "What are the tradeoffs between shard granularity and retrieval quality in this architecture?"
+    ],
+    "interview_answers": [
+      "PLAID compresses token embeddings as cluster centroid IDs plus residual vectors, where centroids are learned via k-means over the full corpus before indexing. In streaming settings, centroids are fixed at index creation time, so tokens in new documents that fall in underrepresented regions of embedding space are mapped to the nearest existing centroid, introducing approximation error that worsens as the corpus evolves away from the initial distribution.",
+      "Documents are grouped into shards of manageable size, each indexed independently with locally computed centroids. A hierarchical structure allows shards to be merged bottom-up, with centroid spaces reconciled at each merge level. This means new shards can be built and appended without rebuilding the entire index, and each shard's centroids accurately represent the token distribution of its contained documents.",
+      "Re-clustering is triggered when a shard accumulates enough documents to warrant a new centroid set, typically defined by a fixed document count threshold. The cost is proportional to running k-means on the shard's token embeddings, which is parallelizable and bounded per shard rather than scaling with the full corpus size.",
+      "Query-time retrieval issues candidate centroids from each shard independently using PLAID's approximate search, then merges candidate document lists across shards before final re-ranking with exact late-interaction scores. Because re-ranking uses the original token embeddings rather than centroid approximations, cross-shard inconsistency in centroid spaces does not affect final scoring correctness, only candidate recall.",
+      "Smaller shards mean centroids more accurately reflect local token distributions, improving recall within each shard, but increase the number of shards that must be searched at query time and raise merge overhead. Larger shards reduce query-time cost and shard count but reintroduce the original drift problem. The optimal shard size balances these forces and is likely domain- and velocity-dependent."
+    ],
+    "generated_at": "2026-03-21T18:44:26Z"
+  }
+}

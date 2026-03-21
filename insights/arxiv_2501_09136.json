@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey paper provides a comprehensive overview of Agentic RAG, a paradigm that embeds autonomous AI agents into Retrieval-Augmented Generation pipelines to enable dynamic retrieval strategies, multi-step reasoning, and adaptive workflows beyond static RAG systems. It covers architectures, taxonomies, real-world applications, and implementation challenges.",
+    "key_idea": "By integrating autonomous agents with agentic design patterns (reflection, planning, tool use, multi-agent collaboration) into RAG pipelines, systems can iteratively refine retrieval and reasoning rather than following fixed workflows.",
+    "why_it_matters": "Practitioners building production AI systems need to move beyond static RAG pipelines; Agentic RAG offers a path to handling complex, multi-step queries with real-time adaptability across high-stakes domains like healthcare and finance.",
+    "possible_use_cases": [
+      "Multi-hop question answering over large enterprise knowledge bases requiring iterative retrieval and reasoning",
+      "Clinical decision support systems that dynamically retrieve and synthesize up-to-date medical literature and patient records",
+      "Autonomous research assistants that plan, retrieve, and synthesize information across multiple sources to answer complex queries"
+    ],
+    "generated_at": "2026-03-21T18:46:43Z"
+  },
+  "deep": {
+    "method_breakdown": "Agentic RAG embeds autonomous AI agents into the RAG pipeline, replacing static retrieval workflows with dynamic, multi-step reasoning loops. Agents employ four core design patterns—reflection, planning, tool use, and multi-agent collaboration—to iteratively refine queries, select retrieval strategies, and synthesize responses. The system can decompose complex tasks, spawn specialized sub-agents, and adapt its retrieval behavior based on intermediate results rather than executing a fixed single-pass retrieval.",
+    "key_innovation": "The key departure from traditional RAG is the shift from static, single-shot retrieval to an agentic loop where the system can re-query, self-critique, and dynamically route tasks across multiple specialized agents. Prior RAG work treats retrieval as a fixed preprocessing step; Agentic RAG treats it as an ongoing, plannable action within a reasoning cycle, enabling multi-hop reasoning and tool-augmented workflows that vanilla RAG cannot handle.",
+    "technical_insight": "The most important design choice is decomposing retrieval into a first-class agentic action rather than a pre-LLM step. This works because it allows the LLM to condition subsequent retrievals on partial answers, closing the feedback loop between generation and retrieval—analogous to how a human researcher iteratively refines search queries based on what they've already learned, rather than issuing one query upfront.",
+    "limitations": "As a survey paper, it inherits the limitations of the systems it surveys: Agentic RAG systems face compounding latency from multi-step retrieval loops, high computational cost from repeated LLM calls, and brittleness in agent orchestration (e.g., infinite loops, conflicting sub-agent outputs). Ethical risks around autonomous decision-making and hallucination propagation across retrieval steps are noted but not resolved. The survey also lacks empirical benchmarking across architectures, making comparative claims largely qualitative.",
+    "interview_questions": [
+      "What fundamental limitation of traditional RAG does Agentic RAG address, and how does it address it architecturally?",
+      "How do the four agentic design patterns—reflection, planning, tool use, and multi-agent collaboration—each contribute to the RAG pipeline?",
+      "What are the latency and cost trade-offs of Agentic RAG compared to single-pass RAG, and when would you prefer the simpler approach?",
+      "How does multi-agent collaboration in Agentic RAG differ from a single agent with tool use, and what problems does each solve better?",
+      "What are the key failure modes specific to Agentic RAG that don't exist in traditional RAG, and how would you mitigate them?"
+    ],
+    "interview_answers": [
+      "Traditional RAG uses a fixed, single-shot retrieval step before generation, making it unable to handle multi-hop questions or refine context based on partial answers. Agentic RAG addresses this by making retrieval an iterative, agent-controlled action within a reasoning loop—the agent can issue new queries, validate retrieved content via reflection, and adapt its retrieval strategy mid-task.",
+      "Reflection allows the agent to critique its own outputs and retrieved context, triggering re-retrieval if quality is insufficient. Planning decomposes complex queries into sub-tasks with ordered retrieval steps. Tool use enables the agent to call external APIs, databases, or search engines beyond a single vector store. Multi-agent collaboration allows task routing to specialized agents (e.g., a finance agent vs. a medical agent), enabling domain-specific retrieval pipelines to run in parallel or sequence.",
+      "Agentic RAG incurs O(k) LLM calls per query where k is the number of reasoning steps, versus O(1) for single-pass RAG, leading to significantly higher latency and token costs. For simple factual queries with sufficient single-document context, traditional RAG is preferable. Agentic RAG is justified when the query requires multi-hop reasoning, when retrieved documents are noisy and need verification, or when the task requires tool calls beyond document retrieval.",
+      "A single agent with tools can sequentially invoke retrieval actions but is bottlenecked by its context window and cannot easily parallelize across domains. Multi-agent systems distribute retrieval across specialized agents that can run concurrently and maintain separate domain knowledge, reducing context pollution and enabling ensemble-style synthesis. However, multi-agent systems introduce orchestration overhead and inter-agent communication failures as new failure points.",
+      "Key failure modes include retrieval loops (agents repeatedly re-querying without convergence), hallucination amplification (errors in early retrieval steps compounding through the chain), and agent disagreement in multi-agent systems leading to contradictory outputs. Mitigations include hard iteration caps on retrieval loops, confidence thresholds for termination conditions, explicit chain-of-thought logging for auditability, and consensus mechanisms or a critic agent to resolve inter-agent conflicts."
+    ],
+    "generated_at": "2026-03-21T18:47:09Z"
+  }
+}

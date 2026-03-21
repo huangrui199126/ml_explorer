@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles the problem of retrieving multiple relevant tables from large data lakes to answer natural language questions, proposing an iterative greedy algorithm that balances relevance, query coverage, and joinability. It achieves competitive accuracy compared to exact optimization (MIP) while being 4-400x faster.",
+    "key_idea": "Framing multi-table retrieval as an iterative, join-aware greedy search allows scalable table set composition without the exponential cost of exact combinatorial optimization.",
+    "why_it_matters": "Practitioners building NL2SQL or data lake QA systems need fast, practical ways to retrieve coherent sets of joinable tables — this approach makes that feasible at scale without sacrificing much accuracy.",
+    "possible_use_cases": [
+      "NL2SQL systems that query across multiple related database tables",
+      "Enterprise data lake search where analysts ask natural language questions over heterogeneous datasets",
+      "Automated data pipeline construction that needs to discover and join relevant tables for a given analytical task"
+    ],
+    "generated_at": "2026-03-21T18:45:11Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a Greedy Join-Aware Retrieval (GJAR) algorithm that iteratively builds a set of tables by scoring candidates based on a holistic combination of semantic relevance to the query, coverage of query terms not yet addressed by selected tables, and joinability with already-selected tables. At each step, the algorithm selects the table maximizing this composite score, continuing until sufficient coverage is achieved or a stopping criterion is met. This avoids the exponential search space of exact MIP-based methods while explicitly encoding structural coherence into the greedy selection criterion.",
+    "key_innovation": "Prior work either used exact MIP optimization (tractable only for small search spaces) or greedy heuristics that optimized relevance/coverage without joinability awareness. GJAR is the first greedy method to jointly optimize all three objectives — relevance, coverage, and joinability — in a single iterative scoring function, achieving near-MIP quality at 4-400x speedup without requiring integer programming solvers.",
+    "technical_insight": "The critical design choice is incorporating joinability as a first-class signal in the greedy scoring rather than as a post-hoc filter. By rewarding candidates that are joinable with already-selected tables during each iteration, the algorithm naturally builds structurally coherent table sets that can be composed for SQL generation — this avoids the combinatorial explosion of checking join compatibility globally while still pruning incoherent sets early.",
+    "limitations": "Greedy selection is inherently myopic and can get stuck in locally optimal but globally suboptimal table sets, especially when the best final combination requires an initially low-scoring intermediate table. The joinability signal depends on schema/key overlap heuristics that may fail for implicit or semantic joins. Performance likely degrades on datalakes with very heterogeneous schemas or when ground-truth joins require multi-hop paths not captured by pairwise joinability. Evaluation is limited to NL2SQL benchmarks, leaving open-domain QA over true datalakes underexplored.",
+    "interview_questions": [
+      "How does GJAR balance the three objectives — relevance, coverage, and joinability — and how sensitive is performance to their relative weighting?",
+      "What joinability signal does the algorithm use, and how does it handle cases where tables are joinable semantically but not via explicit key overlap?",
+      "Under what conditions does the greedy approach fail relative to MIP, and can you characterize the hardness of instances where myopic selection leads to poor retrieval?",
+      "How does the iterative framework handle the stopping criterion — when does it decide the retrieved table set is sufficient?",
+      "How would this approach extend beyond NL2SQL to open-domain QA where the query intent is less structured and ground-truth table compositions are more ambiguous?"
+    ],
+    "interview_answers": [
+      "The three objectives are combined via a weighted linear score at each greedy step; the paper tunes weights on validation splits of each benchmark. Performance is moderately sensitive to weighting — coverage and joinability weights matter most when the datalake has many near-duplicate tables, while relevance dominates for sparse, specialized schemas.",
+      "The primary joinability signal is key/foreign-key overlap and column name/type matching between candidate and selected tables. Semantic joinability (e.g., shared entity types without explicit keys) is not fully addressed, which is a known limitation — the method may miss valid joins in loosely structured datalakes.",
+      "GJAR fails relative to MIP when the optimal table set requires a 'bridge' table with low standalone relevance but critical join connectivity. This is analogous to the set-cover problem's greedy gap — worst-case approximation ratio is logarithmic in set size, but in practice benchmark results show near-MIP quality, suggesting benchmark instances are not adversarial for greedy.",
+      "The stopping criterion is query coverage-based: iteration halts when coverage of query terms exceeds a threshold or a maximum table count is reached. This is a heuristic and may over- or under-retrieve; the paper shows it works well empirically but does not provide formal guarantees on recall.",
+      "Extending to open-domain QA would require replacing the NL2SQL-oriented coverage signal (SQL keyword/column matching) with a more general semantic coverage measure, and the ground-truth supervision for tuning weights would be harder to obtain. The iterative framework is general enough to support this, but the concrete GJAR instantiation is tightly coupled to structured query intent."
+    ],
+    "generated_at": "2026-03-21T18:45:38Z"
+  }
+}
