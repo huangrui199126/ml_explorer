@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FIT is a two-tower recommendation model that adds learnable interaction layers between user and item towers, bridging the gap between efficient dot-product models and more expressive but slower cross-attention approaches. It uses a Meta Query Module for early interaction and a Lightweight Similarity Scorer for late interaction.",
+    "key_idea": "By introducing a learnable item meta matrix and a lightweight late-interaction scorer, FIT enables rich user-item feature interactions without sacrificing the inference efficiency that makes two-tower models practical at scale.",
+    "why_it_matters": "Pre-ranking is a critical bottleneck in large-scale recommendation pipelines; FIT offers a drop-in architecture improvement that boosts ranking quality over standard two-tower models while remaining fast enough for real-time serving.",
+    "possible_use_cases": [
+      "E-commerce product recommendation pre-ranking to reduce candidate sets before a heavy ranker",
+      "Video or content feed retrieval systems needing better user-item matching at scale",
+      "Ad targeting pre-selection where latency constraints rule out cross-encoder models"
+    ],
+    "generated_at": "2026-03-21T18:31:12Z"
+  },
+  "deep": {
+    "method_breakdown": "FIT introduces two components on top of the standard two-tower architecture: a Meta Query Module (MQM) that maintains a learnable item meta matrix enabling early interaction between user and item representations before the towers fully separate, and a Lightweight Similarity Scorer (LSS) that computes late interaction between the final user and item tower outputs beyond a simple dot product. Together these inject interaction signals at both early and late stages while preserving the decoupled inference property required for real-time pre-ranking at scale.",
+    "key_innovation": "The core novelty is making cross-tower interaction learnable and structured at two points in the pipeline without sacrificing inference efficiency. Prior two-tower models restrict interaction to a single dot product at inference time; FIT uses a shared item meta matrix (not per-item vectors) for early interaction so user queries can attend to a compact learned item space, and a parameterized scorer for late interaction — both avoiding the O(user×item) cross-attention cost of full interaction models like BERT-based rankers.",
+    "technical_insight": "The item meta matrix in MQM is the critical design choice: by learning a fixed-size matrix that summarizes the item feature space, user representations can interact with item-side information during encoding without requiring the actual item embedding at query time. This amortizes item-side interaction cost across training while keeping online inference decoupled — the user tower runs once per request against the cached meta matrix, and item towers remain independently precomputable.",
+    "limitations": "The meta matrix is a lossy compression of the item space and may underperform on highly heterogeneous or long-tail item distributions where a fixed-rank approximation is inadequate. The two-stage interaction design adds hyperparameters (meta matrix rank, LSS architecture) that require careful tuning. Evaluation is on public datasets which may not reflect the latency and throughput constraints of production pre-ranking at the scale of billions of items, so real-world inference gains are unverified. The approach also assumes stable item feature distributions; dynamic catalogs may require frequent meta matrix re-training.",
+    "interview_questions": [
+      "How does the Meta Query Module achieve early interaction while keeping the two towers decoupled at inference time?",
+      "What is the computational complexity of FIT's inference compared to a standard dot-product two-tower model, and how does it scale with catalog size?",
+      "Why is a fixed-rank item meta matrix a reasonable approximation of the full item feature space, and when would it break down?",
+      "How does the Lightweight Similarity Scorer differ from a simple dot product, and what interaction patterns can it capture that dot product cannot?",
+      "How would you adapt FIT to handle a rapidly changing item catalog in a production streaming environment?"
+    ],
+    "interview_answers": [
+      "MQM introduces a learnable matrix that represents a compressed item feature space; the user tower attends to this shared matrix rather than to individual item embeddings. At inference, the meta matrix is fixed and shared, so the user tower can incorporate item-side distributional information without needing specific item vectors — preserving the ability to precompute item embeddings independently and retrieve via ANN search.",
+      "Standard two-tower inference is O(d) per (user, item) pair after ANN retrieval, where d is embedding dimension. FIT adds a constant overhead from the LSS scorer on the retrieved candidates (not the full catalog), so catalog scaling behavior is unchanged. The MQM adds a fixed cost to user encoding proportional to meta matrix size, independent of catalog size. Total inference cost remains sublinear in catalog size.",
+      "A fixed-rank meta matrix is reasonable when item features lie on a lower-dimensional manifold — which is typical for recommendation domains where items cluster by category, genre, or behavioral signals. It breaks down for long-tail items with sparse or highly unique features not well-represented in the aggregate item distribution, and when item feature spaces shift rapidly (e.g., breaking news, fresh products) before the matrix can be retrained.",
+      "The LSS goes beyond dot product by learning a parameterized function over the concatenated or element-wise interaction of user and item final representations, allowing it to model asymmetric and non-linear similarity. Dot product only captures aligned feature dimensions; LSS can capture cross-feature interactions, magnitude-independent similarity patterns, and task-specific relevance signals that a symmetric inner product misses.",
+      "For a dynamic catalog, the item meta matrix would need to be updated incrementally or refreshed on a schedule aligned with catalog change rate. One approach is to decouple MQM updates from full model retraining by treating the meta matrix as a separate module updated via online learning or periodic batch refresh. Alternatively, the meta matrix could be conditioned on item category or domain clusters rather than the full item space, making updates more localized and frequent without full retraining."
+    ],
+    "generated_at": "2026-03-21T18:31:41Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "WebANNS is an approximate nearest neighbor search engine built specifically for web browsers, using WebAssembly, lazy loading, and heuristic memory reduction to make in-browser vector search practical.",
+    "key_idea": "By combining WebAssembly for compute, lazy loading for external storage access, and heuristic memory optimization, WebANNS reduces browser-based ANNS query latency by up to 743x — from ~10 seconds to ~10 milliseconds.",
+    "why_it_matters": "Enables privacy-preserving, client-side RAG and semantic search in web apps without sending user data to a server, making LLM-powered browser applications viable on heterogeneous devices.",
+    "possible_use_cases": [
+      "Client-side semantic search in privacy-sensitive web applications (e.g., local document search)",
+      "In-browser RAG pipelines that keep user data on-device",
+      "Offline-capable AI assistants embedded in web apps without backend vector DB dependencies"
+    ],
+    "generated_at": "2026-03-21T18:35:28Z"
+  },
+  "deep": {
+    "method_breakdown": "WebANNS is a browser-native ANNS engine that compiles core index traversal logic to WebAssembly (WASM) to bypass JavaScript's JIT overhead and enable SIMD vectorization. It introduces a lazy loading strategy that fetches only the graph nodes required along the search path from IndexedDB or OPFS (Origin Private File System), avoiding upfront full-index materialization in RAM. A heuristic pruning step at index construction time reduces the in-memory footprint of the navigable small-world graph (e.g., HNSW) by trimming redundant neighbor edges based on angular diversity, preserving recall while shrinking the working set.",
+    "key_innovation": "Prior in-browser ANNS engines (e.g., Voy, usearch-wasm) load the entire index into memory before serving queries, which is impractical for large corpora on memory-constrained devices. WebANNS's lazy loading is the genuine novelty: it treats browser storage (IndexedDB/OPFS) as a tiered memory layer and fetches graph nodes on-demand during beam search, converting a prohibitive memory requirement into a latency-amortized I/O problem. Combined with WASM-level SIMD for distance computation, this is the first system to make the full pipeline browser-viable at scale.",
+    "technical_insight": "The most critical design choice is co-designing the graph layout on disk with the search access pattern. HNSW search follows a greedy beam path through hierarchical layers, so WebANNS clusters frequently co-accessed neighbor nodes into contiguous storage blocks. This transforms random I/O reads (individually slow in browser async storage APIs) into fewer, larger sequential reads, collapsing the tail latency that dominates the 99th percentile — which explains the 743.8X improvement specifically on P99 rather than median.",
+    "limitations": "Lazy loading introduces I/O latency that still dominates on first queries before any caching warms up, making cold-start P99 sensitive to device storage speed. The heuristic edge pruning trades a fixed recall-memory Pareto point that may not generalize across embedding dimensionalities or dataset distributions — the heuristic is tuned empirically and may degrade recall on out-of-distribution data. WASM SIMD support is not universal across all browser/OS combinations, and fallback scalar paths lose most of the compute gains. The system is evaluated on a limited set of ANN benchmarks; real-world RAG query distributions (bursty, correlated) may expose different bottlenecks.",
+    "interview_questions": [
+      "Why does optimizing P99 latency matter more than median latency for in-browser RAG, and how does WebANNS's design specifically target tail latency?",
+      "Explain the tradeoff introduced by lazy loading — what do you gain and what new problems does it create compared to eager full-index loading?",
+      "How does WebAssembly SIMD differ from native SIMD, and what specific distance computation operations benefit most from it in ANNS?",
+      "The paper claims 39% memory reduction from heuristic edge pruning. How would you evaluate whether this heuristic generalizes, and what metric would you watch for degradation?",
+      "In a RAG pipeline, the embedding model also runs in the browser. How would you architect the end-to-end system to minimize total query latency given that both inference and retrieval now share the same constrained environment?"
+    ],
+    "interview_answers": [
+      "P99 latency determines user-perceived responsiveness — a median of 10ms is meaningless if 1 in 100 queries takes 10 seconds, which kills UX in interactive chat applications. WebANNS targets P99 by co-locating frequently co-accessed graph nodes in disk blocks, eliminating the worst-case cascade of individual async storage reads that previously caused rare but catastrophic stalls.",
+      "Lazy loading eliminates the memory barrier that previously made large indices impossible in browsers (gain: scalability, lower peak RAM). The new problems are: (1) cold-start latency spikes on the first traversal before browser cache warms, (2) I/O amplification if graph topology causes many small random reads, and (3) consistency risks if the underlying storage is mutated concurrently by a service worker update.",
+      "Native SIMD runs at full CPU frequency with OS-managed thread scheduling; WASM SIMD is sandboxed and maps to the same hardware instructions but goes through the WASM runtime's type-checked IR, adding a thin compilation overhead. Distance kernels (dot product, L2) benefit most because they are pure arithmetic over contiguous float arrays — the SIMD width (128-bit in WASM) allows 4 float32 operations per cycle, and the memory access pattern is sequential, minimizing cache misses.",
+      "The right evaluation is recall@k across multiple benchmark datasets with varying dimensionality (e.g., SIFT-128, GloVe-100, DEEP-96) and intrinsic dimensionality profiles. The metric to watch is recall@10 degradation relative to the unpruned baseline. If recall drops more than ~2% on any dataset the heuristic did not see during tuning, it suggests the angular-diversity criterion is over-fit to the training distribution.",
+      "The key insight is temporal decoupling: run the embedding model asynchronously in a Web Worker using ONNX Runtime Web while the previous turn's retrieval result is being rendered. Pipeline the two stages so embedding inference and ANNS index I/O overlap. For the index, pre-warm the top HNSW layers (small, fits in memory) so that greedy entry-point search is always in-cache; only the bottom layers require lazy I/O. This reduces the critical path to embedding inference time plus one or two storage fetches."
+    ],
+    "generated_at": "2026-03-21T18:36:04Z"
+  }
+}

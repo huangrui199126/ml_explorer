@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes FriendSeedSelection, a query expansion technique for approximate nearest neighbor (ANN) search in embedding-based friend recommendation that augments each user query with their 1-hop neighbor embeddings. The method improves recall and achieves 11% gains in reciprocated communication at Snapchat scale (800M+ MAU) without retraining the underlying graph embedding model.",
+    "key_idea": "Instead of querying ANN with a single user embedding, expand the query using the user's immediate graph neighbors' embeddings to capture richer structural context and adapt to graph distribution shifts at inference time.",
+    "why_it_matters": "Practitioners get meaningful recall improvements and real-world engagement gains without the cost of frequent model retraining — a critical advantage in dynamic social graphs where user connections change constantly and retraining is prohibitively expensive.",
+    "possible_use_cases": [
+      "Friend and follower recommendation on large-scale social networks with power-law degree distributions",
+      "Candidate retrieval in any graph-based recommender system where embeddings become stale between training cycles",
+      "Low-latency ANN search pipelines that need to adapt to shifting data distributions without model-level changes"
+    ],
+    "generated_at": "2026-03-21T18:34:18Z"
+  },
+  "deep": {
+    "method_breakdown": "FriendSeedSelection expands each query node by retrieving its 1-hop neighbors' embeddings and using them as additional ANN queries alongside the original node embedding. The union of ANN results from all these queries forms the final candidate set, effectively broadening coverage without any model retraining. This is a purely inference-time, data-driven augmentation applied on top of an existing graph embedding model.",
+    "key_innovation": "Prior work on embedding-based retrieval treats each query as a single vector lookup; this work demonstrates that leveraging the local graph neighborhood (1-hop friends) as a multi-vector query expansion at ANN search time substantially improves recall — especially for high-degree nodes in power-law graphs — without touching the underlying embedding model or requiring costly retraining cycles.",
+    "technical_insight": "The critical design choice is keeping the expansion entirely test-time and model-agnostic: because friend graphs evolve continuously, any solution requiring model-level changes would be prohibitively expensive to keep current. By deriving expansion seeds directly from the live graph at inference time, the system automatically adapts to structural drift (new friendships, new users) and sidesteps the staleness problem that plagues static embeddings in dynamic social graphs.",
+    "limitations": "The approach inherits the quality of existing node embeddings — if embeddings for 1-hop neighbors are stale or poor, expansion seeds add noise rather than signal. For isolated nodes (low-degree users with few or no friends), the method degrades to a single-vector query and provides no benefit. Latency and QPS constraints tighten significantly as the number of expansion seeds grows, requiring careful engineering trade-offs. The method also assumes the graph structure itself is a reliable proxy for embedding similarity, which may not hold across all user segments.",
+    "interview_questions": [
+      "Why does a power-law degree distribution make standard ANN recall particularly hard in social graph retrieval?",
+      "How does FriendSeedSelection decide how many 1-hop neighbors to include as expansion seeds, and what are the trade-offs?",
+      "What changes, if any, were needed in the ANN index to support 10k+ QPS with multi-vector queries per request?",
+      "How do you evaluate 'recall' in a friend recommendation setting where ground truth is inherently noisy and subjective?",
+      "What would happen to this approach if the graph becomes adversarially manipulated — e.g., spam accounts forming dense clusters to game recommendations?"
+    ],
+    "interview_answers": [
+      "Power-law graphs have a small number of extremely high-degree nodes (celebrities, hubs) and a long tail of low-degree nodes. High-degree nodes dominate the ANN index density, causing nearest-neighbor searches for average users to return hub nodes rather than contextually relevant friends. This skews recall because the embedding space is crowded near hubs, making it hard for ANN algorithms like HNSW to surface the sparse but relevant neighbors.",
+      "The paper selects 1-hop neighbors as seeds, likely applying a cap on the number of seeds per query to bound latency. The trade-off is between recall improvement (more seeds = more coverage of the local neighborhood) and QPS cost (each seed triggers a separate ANN lookup). In practice, sampling or ranking seeds by edge weight or recency would be a natural extension to control this.",
+      "The system likely batches the multi-vector ANN lookups and deduplicates results before ranking. Supporting 10k+ QPS requires the ANN index to handle parallel sub-queries efficiently — likely using an optimized HNSW or FAISS implementation with GPU acceleration or sharding, plus result caching for common high-degree seed nodes whose neighborhoods are queried repeatedly.",
+      "Recall is typically measured offline against held-out mutual friend connections or reciprocated communication events. The paper specifically highlights 'reciprocated communication' — bidirectional messaging — as the key online metric, which is a strong behavioral signal of genuine interest and a more reliable ground truth than passive follows or one-sided interactions.",
+      "Adversarial clusters would cause expansion seeds to point toward spam embeddings, polluting candidate sets with low-quality recommendations. Mitigations include filtering seeds by trust signals (account age, verification status), down-weighting edges to suspicious nodes before seed selection, and monitoring for sudden spikes in expansion seed overlap across many queries — a signature of coordinated inauthentic behavior."
+    ],
+    "generated_at": "2026-03-21T18:34:45Z"
+  }
+}
