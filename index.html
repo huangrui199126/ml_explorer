@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ML Research Paper Explorer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>"/>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #252836;
+    --border: #2e3347; --accent: #6c63ff; --accent2: #00d4aa;
+    --text: #e2e8f0; --muted: #8892a4;
+    --tag-arxiv: #1e3a5f; --tag-conf: #1e4a2e;
+    --tag-arxiv-text: #60a5fa; --tag-conf-text: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Header */
+  header { background: var(--surface); border-bottom: 1px solid var(--border);
+           padding: 10px 32px; position: sticky; top: 0; z-index: 100; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 1.15rem; font-weight: 700; color: var(--accent);
+              display: inline-flex; align-items: center; gap: 8px; }
+  header .subtitle { color: var(--muted); font-size: 0.73rem; margin-top: 2px; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 32px;
+              background: var(--surface); border-bottom: 1px solid var(--border);
+              align-items: center; }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 32px 6px;
+                background: var(--surface); border-bottom: 1px solid var(--border);
+                align-items: center; }
+  .search-wrap {
+    flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px;
+    padding: 0 10px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; transition: border-color .2s; height: 30px;
+  }
+  .search-wrap:focus-within { border-color: var(--accent); }
+  .search-wrap svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--muted); }
+  input[type="search"] {
+    flex: 1; border: none; background: transparent; padding: 0;
+    color: var(--text); font-size: 0.8rem; outline: none; height: 100%;
+  }
+  input[type="search"]::placeholder { color: var(--muted); }
+  select {
+    padding: 4px 8px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 0.78rem; cursor: pointer;
+    outline: none; height: 30px;
+  }
+  select:focus { border-color: var(--accent); }
+  .count-badge { color: var(--muted); font-size: 0.73rem; margin-left: auto; white-space: nowrap; }
+  .btn-clear {
+    padding: 4px 10px; background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--muted); font-size: 0.73rem; cursor: pointer;
+    transition: all .15s; height: 30px;
+  }
+  .btn-clear:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Stats bar */
+  .stats-bar { display: flex; gap: 16px; flex-wrap: wrap; padding: 8px 32px;
+               background: var(--surface); border-bottom: 1px solid var(--border); }
+  .stat-item { font-size: 0.72rem; color: var(--muted); }
+  .stat-item strong { color: var(--accent); font-weight: 700; }
+
+  /* Container */
+  .container { max-width: 1100px; margin: 0 auto; padding: 18px 32px; }
+
+  /* Paper Card */
+  .paper-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; margin-bottom: 12px;
+    transition: border-color .2s, transform .1s;
+    animation: fadeIn .25s ease;
+  }
+  .paper-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform:none; } }
+
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .card-title { font-size: 0.97rem; font-weight: 600; line-height: 1.5; flex: 1; min-width: 0; }
+  .card-title a { color: var(--text); text-decoration: none; }
+  .card-title a:hover { color: var(--accent); }
+
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; align-items: center; max-width: 100%; }
+  .tag { font-size: 0.67rem; font-weight: 600; padding: 2px 7px;
+         border-radius: 20px; letter-spacing: .02em; white-space: nowrap; }
+  .tag-arxiv { background: var(--tag-arxiv); color: var(--tag-arxiv-text); }
+  .tag-conf  { background: var(--tag-conf);  color: var(--tag-conf-text);  }
+  .tag-venue { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .tag-year  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .tag-score { background: #2d1f4a; color: #a78bfa; border: 1px solid #4c3888; }
+  .tag-cited { background: #2a2010; color: #fbbf24; border: 1px solid #78501a; }
+  .tag-trending { background: #3b1010; color: #f87171; border: 1px solid #7f1d1d;
+                  animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
+  .tag-topic { background: #1a2a1a; color: #86efac; border: 1px solid #2d5a3d;
+               cursor: pointer; transition: background .15s; }
+  .tag-topic:hover { background: #2d5a3d; }
+  .tag-cat { background: #1e1e3a; color: #a78bfa; border: 1px solid #3a3a6a;
+             cursor: pointer; transition: background .15s; }
+  .tag-cat:hover { background: #3a3a6a; }
+  .tag-company { background: #1a2030; color: #60a5fa; border: 1px solid #2a4a7a;
+                 cursor: pointer; transition: background .15s; }
+  .tag-company:hover { background: #2a4a7a; }
+  .tag-knowledge { background: #1a1a2e; color: #c084fc; border: 1px solid #4a3a6a;
+                   cursor: pointer; transition: background .15s; }
+  .tag-knowledge:hover { background: #4a3a6a; }
+
+  /* AI Summary button */
+  .btn-summary {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 20px; border: 1px solid var(--accent2);
+    background: transparent; color: var(--accent2); font-size: 0.67rem; font-weight: 600;
+    cursor: pointer; letter-spacing: .02em; white-space: nowrap;
+    transition: background .15s, color .15s;
+  }
+  .btn-summary:hover { background: var(--accent2); color: #0f1117; }
+  .btn-summary.ai-enhanced { border-color: #f59e0b; color: #f59e0b; }
+  .btn-summary.ai-enhanced:hover { background: #f59e0b; color: #0f1117; }
+  .btn-summary svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+  /* Related button */
+  .btn-related {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 20px; border: 1px solid var(--accent);
+    background: transparent; color: var(--accent); font-size: 0.67rem; font-weight: 600;
+    cursor: pointer; letter-spacing: .02em; white-space: nowrap;
+    transition: background .15s, color .15s;
+  }
+  .btn-related:hover { background: var(--accent); color: #fff; }
+  .btn-related svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+  /* Summary panel */
+  .summary-panel {
+    display: none; margin-top: 10px;
+    background: var(--surface2); border: 1px solid var(--accent2);
+    border-radius: 8px; padding: 12px 14px;
+    font-size: 0.84rem; line-height: 1.7; color: #cbd5e1;
+  }
+  .summary-panel.open { display: block; animation: fadeIn .2s ease; }
+  .summary-label {
+    display: block; font-size: 0.67rem; font-weight: 700; color: var(--accent2);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+  }
+  .summary-bullets { list-style: none; padding: 0; margin: 0; }
+  .summary-bullets li {
+    margin-bottom: 8px; padding-left: 22px; position: relative;
+    font-size: 0.84rem; line-height: 1.65;
+  }
+  .summary-bullets li::before {
+    content: attr(data-num);
+    position: absolute; left: 0; top: 0;
+    font-weight: 700; color: var(--accent2); font-size: 0.8rem;
+  }
+  .summary-bullets li .bullet-label {
+    font-weight: 600; color: var(--accent2); text-transform: capitalize;
+    margin-right: 4px;
+  }
+  .summary-fallback { font-size: 0.84rem; line-height: 1.7; }
+
+  /* Related panel */
+  .related-panel {
+    display: none; margin-top: 8px;
+    background: var(--surface2); border: 1px solid var(--accent);
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .related-panel.open { display: block; animation: fadeIn .2s ease; }
+  .related-label {
+    display: block; font-size: 0.67rem; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+  }
+  .related-list { display: flex; flex-direction: column; gap: 4px; }
+  .related-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; border-radius: 6px; text-decoration: none;
+    color: var(--text); transition: background .15s; gap: 12px;
+    border: 1px solid transparent;
+  }
+  .related-item:hover { background: var(--border); border-color: var(--accent); }
+  .related-title { font-size: 0.82rem; font-weight: 500; flex: 1; min-width: 0; }
+  .related-meta {
+    font-size: 0.68rem; color: var(--muted); white-space: nowrap;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .related-meta .rm-score { color: var(--accent); }
+  .related-meta .rm-cited { color: #fbbf24; }
+
+  .card-authors { margin-top: 6px; color: var(--muted); font-size: 0.8rem; }
+  .card-abstract {
+    margin-top: 8px; color: #94a3b8; font-size: 0.84rem; line-height: 1.65;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    cursor: pointer;
+  }
+  .card-abstract.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .expand-btn { margin-top: 4px; font-size: 0.76rem; color: var(--accent);
+                cursor: pointer; background: none; border: none; padding: 0; }
+  .expand-btn:hover { text-decoration: underline; }
+
+  mark { background: #7c3aed44; color: #c4b5fd; border-radius: 3px;
+         padding: 0 2px; font-weight: 600; }
+
+  .empty { text-align: center; padding: 70px 20px; color: var(--muted); }
+  .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .loading .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .7s linear infinite; margin: 0 auto 16px;
+  }
+
+  .scroll-sentinel { height: 1px; }
+  .load-more-indicator {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    padding: 24px 0 40px; color: var(--muted); font-size: 0.85rem;
+  }
+  .load-more-indicator.hidden { display: none; }
+  .scroll-spinner {
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scroll-end { text-align: center; padding: 20px 0 40px; color: var(--muted); font-size: 0.82rem; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 600px) {
+    header, .controls, .filter-row, .stats-bar { padding-left: 12px; padding-right: 12px; }
+    .container { padding: 10px 12px; }
+    .paper-card { padding: 12px 14px; }
+    .card-header { flex-direction: column; gap: 6px; }
+    .tags { width: 100%; }
+    .controls { gap: 5px; }
+    .search-wrap { min-width: 100%; }
+    header h1 { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <h1>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="2">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        ML Research Paper Explorer
+      </h1>
+      <div class="subtitle" id="hdrSubtitle">Search &middot; Recommendation &middot; LLM &middot; Ranking &middot; Retrieval &middot; CTR/CVR &middot; Generative Rec &nbsp;|&nbsp; KDD / RecSys / SIGIR / WSDM / WWW / NeurIPS / ICML &nbsp;|&nbsp; 2020&ndash;present</div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input type="search" id="searchInput" placeholder="Search by title, author, company, knowledge tag...  (press / to focus)" />
+  </div>
+  <select id="yearFilter">
+    <option value="">All Years</option>
+  </select>
+  <select id="topicFilter">
+    <option value="">All Topics</option>
+  </select>
+  <select id="venueFilter">
+    <option value="">All Venues</option>
+  </select>
+</div>
+<div class="filter-row">
+  <select id="companyFilter">
+    <option value="">All Companies</option>
+  </select>
+  <select id="knowledgeFilter">
+    <option value="">All Knowledge</option>
+  </select>
+  <select id="sortBy">
+    <option value="score">Relevance Score</option>
+    <option value="citations">Most Cited</option>
+    <option value="date">Newest First</option>
+    <option value="title">Title A-Z</option>
+  </select>
+  <button class="btn-clear" id="clearBtn" onclick="clearFilters()">Clear</button>
+  <span class="count-badge" id="countBadge">loading...</span>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="container" id="paperList">
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+    <div>Loading papers...</div>
+  </div>
+</div>
+<div class="load-more-indicator hidden" id="loadMore">
+  <div class="scroll-spinner"></div>
+  <span>Loading more papers...</span>
+</div>
+<div class="scroll-sentinel" id="scrollSentinel"></div>
+
+<script>
+let ALL_PAPERS = [];
+let PAPER_BY_URL = {};
+let filtered = [];
+let rendered = 0;
+const BATCH = 30;
+let searchTimeout = null;
+
+async function loadPapers() {
+  try {
+    const resp = await fetch('papers.json');
+    if (!resp.ok) throw new Error('papers.json not found');
+    ALL_PAPERS = await resp.json();
+    // Build URL index for related papers lookup
+    ALL_PAPERS.forEach(p => { PAPER_BY_URL[p.url] = p; });
+    init();
+  } catch (e) {
+    document.getElementById('loadingState').innerHTML =
+      `<div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px;opacity:.4">
+          <path d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>
+        <h3 style="margin-bottom:8px">No papers loaded</h3>
+        <p>Run <code style="background:var(--surface2);padding:2px 8px;border-radius:4px">python fetch_papers.py</code> to fetch papers, then refresh.</p>
+        <p style="margin-top:8px;font-size:0.8rem;color:#f87171">${e.message}</p>
+      </div>`;
+  }
+}
+
+function init() {
+  populateFilters();
+  computeStats();
+  applyFilters();
+  setupListeners();
+  document.getElementById('loadingState').style.display = 'none';
+}
+
+function populateFilters() {
+  // Years
+  const years = [...new Set(ALL_PAPERS.map(p => p.year).filter(Boolean))].sort((a,b) => b-a);
+  const ySel = document.getElementById('yearFilter');
+  years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; ySel.appendChild(o); });
+
+  // Topics with counts
+  const topicCounts = {};
+  ALL_PAPERS.forEach(p => { if (p.topic) topicCounts[p.topic] = (topicCounts[p.topic]||0)+1; });
+  const sortedTopics = Object.entries(topicCounts).sort((a,b) => b[1]-a[1]);
+  const tSel = document.getElementById('topicFilter');
+  sortedTopics.forEach(([t, c]) => {
+    const o = document.createElement('option'); o.value = t;
+    const label = t.length > 35 ? t.slice(0, 32) + '...' : t;
+    o.textContent = `${label} (${c})`;
+    tSel.appendChild(o);
+  });
+
+  // Venues (top 30)
+  const venueCounts = {};
+  ALL_PAPERS.forEach(p => { if (p.venue) venueCounts[p.venue] = (venueCounts[p.venue]||0)+1; });
+  const topVenues = Object.entries(venueCounts).sort((a,b)=>b[1]-a[1]).slice(0, 30);
+  const vSel = document.getElementById('venueFilter');
+  topVenues.forEach(([v, c]) => {
+    const o = document.createElement('option'); o.value = v;
+    o.textContent = `${v} (${c})`;
+    vSel.appendChild(o);
+  });
+
+  // Companies
+  const companyCounts = {};
+  ALL_PAPERS.forEach(p => { (p.companies||[]).forEach(c => { companyCounts[c] = (companyCounts[c]||0)+1; }); });
+  const sortedCompanies = Object.entries(companyCounts).sort((a,b)=>b[1]-a[1]);
+  const cSel = document.getElementById('companyFilter');
+  sortedCompanies.forEach(([c, n]) => {
+    const o = document.createElement('option'); o.value = c;
+    o.textContent = `${c} (${n})`;
+    cSel.appendChild(o);
+  });
+
+  // Knowledge tags
+  const knowledgeCounts = {};
+  ALL_PAPERS.forEach(p => { (p.knowledge_tags||[]).forEach(t => { knowledgeCounts[t] = (knowledgeCounts[t]||0)+1; }); });
+  const sortedKnowledge = Object.entries(knowledgeCounts).sort((a,b)=>b[1]-a[1]);
+  const kSel = document.getElementById('knowledgeFilter');
+  sortedKnowledge.forEach(([t, n]) => {
+    const o = document.createElement('option'); o.value = t;
+    o.textContent = `${t} (${n})`;
+    kSel.appendChild(o);
+  });
+}
+
+function computeStats() {
+  const total = ALL_PAPERS.length;
+  const years = {};
+  const venues = {};
+  let totalCitations = 0;
+  let avgScore = 0;
+  ALL_PAPERS.forEach(p => {
+    years[p.year] = (years[p.year] || 0) + 1;
+    if (p.venue) venues[p.venue] = (venues[p.venue] || 0) + 1;
+    totalCitations += p.citations || 0;
+    avgScore += p.score || 0;
+  });
+  avgScore = total ? (avgScore / total).toFixed(1) : 0;
+  const topVenues = Object.entries(venues).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const yearRange = Object.keys(years).sort();
+
+  let html = `<span class="stat-item"><strong>${total.toLocaleString()}</strong> papers</span>`;
+  html += `<span class="stat-item"><strong>${totalCitations.toLocaleString()}</strong> total citations</span>`;
+  html += `<span class="stat-item">avg score <strong>${avgScore}</strong></span>`;
+  html += `<span class="stat-item"><strong>${yearRange[0]}&ndash;${yearRange[yearRange.length-1]}</strong></span>`;
+  if (topVenues.length) {
+    html += `<span class="stat-item">Top: ${topVenues.map(([v, c]) =>
+      `<strong>${v.length > 15 ? v.slice(0,13)+'...' : v}</strong>(${c})`).join(', ')}</span>`;
+  }
+  document.getElementById('statsBar').innerHTML = html;
+  document.getElementById('hdrSubtitle').innerHTML +=
+    ` &nbsp;|&nbsp; <strong style="color:var(--accent)">${total.toLocaleString()}</strong> papers`;
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const year = document.getElementById('yearFilter').value;
+  const topic = document.getElementById('topicFilter').value;
+  const venue = document.getElementById('venueFilter').value;
+  const company = document.getElementById('companyFilter').value;
+  const knowledge = document.getElementById('knowledgeFilter').value;
+  const sort = document.getElementById('sortBy').value;
+
+  filtered = ALL_PAPERS.filter(p => {
+    if (year && p.year !== parseInt(year)) return false;
+    if (topic && p.topic !== topic) return false;
+    if (venue && p.venue !== venue) return false;
+    if (company && !(p.companies||[]).includes(company)) return false;
+    if (knowledge && !(p.knowledge_tags||[]).includes(knowledge)) return false;
+    if (q) {
+      const text = `${p.title} ${p.abstract} ${(p.authors||[]).join(' ')} ${p.venue} ${(p.categories||[]).join(' ')} ${p.topic} ${(p.companies||[]).join(' ')} ${(p.knowledge_tags||[]).join(' ')}`.toLowerCase();
+      const terms = q.split(/\s+/);
+      if (!terms.every(t => text.includes(t))) return false;
+    }
+    return true;
+  });
+
+  // If search query, boost title matches
+  if (q) {
+    filtered.forEach(p => {
+      p._searchBoost = 0;
+      const terms = q.split(/\s+/);
+      const titleLower = p.title.toLowerCase();
+      terms.forEach(t => {
+        if (titleLower.includes(t)) p._searchBoost += 10;
+      });
+    });
+  }
+
+  const sorters = {
+    score: (a, b) => {
+      const boostA = a._searchBoost || 0;
+      const boostB = b._searchBoost || 0;
+      return (boostB + (b.score||0)) - (boostA + (a.score||0)) || (b.citations||0) - (a.citations||0);
+    },
+    citations: (a, b) => (b.citations||0) - (a.citations||0),
+    date: (a, b) => (b.date||'').localeCompare(a.date||''),
+    title: (a, b) => a.title.localeCompare(b.title),
+  };
+  filtered.sort(sorters[sort] || sorters.score);
+
+  document.getElementById('countBadge').textContent = `${filtered.length.toLocaleString()} papers`;
+  rendered = 0;
+  document.getElementById('paperList').innerHTML = '';
+  renderBatch();
+}
+
+function renderBatch() {
+  const list = document.getElementById('paperList');
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const end = Math.min(rendered + BATCH, filtered.length);
+
+  if (filtered.length === 0 && rendered === 0) {
+    list.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px;opacity:.4">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <h3>No papers match your filters</h3>
+      <p style="margin-top:8px;font-size:0.85rem">Try adjusting your search or filters</p>
+    </div>`;
+    return;
+  }
+
+  for (let i = rendered; i < end; i++) {
+    list.appendChild(createCard(filtered[i], q, i));
+  }
+  rendered = end;
+  document.getElementById('loadMore').classList.toggle('hidden', rendered >= filtered.length);
+}
+
+function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function highlight(text, query) {
+  if (!query) return esc(text);
+  let result = esc(text);
+  query.split(/\s+/).filter(Boolean).forEach(term => {
+    const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    result = result.replace(re, '<mark>$1</mark>');
+  });
+  return result;
+}
+
+function scoreColor(score) {
+  if (score >= 70) return '#22c55e';
+  if (score >= 50) return '#eab308';
+  if (score >= 30) return '#f97316';
+  return '#8892a4';
+}
+
+function createCard(paper, query, idx) {
+  const card = document.createElement('div');
+  card.className = 'paper-card';
+  const id = `p${idx}`;
+
+  const isTrending = (paper.citations || 0) > 500;
+  const score = paper.score || 0;
+
+  const sourceTag = paper.source === 'arxiv'
+    ? `<span class="tag tag-arxiv">arXiv</span>`
+    : paper.source === 'conference'
+    ? `<span class="tag tag-conf">Conf</span>` : '';
+
+  const venueTag = paper.venue
+    ? `<span class="tag tag-venue">${esc(paper.venue.length > 20 ? paper.venue.slice(0,18)+'...' : paper.venue)}</span>` : '';
+
+  const citedTag = paper.citations
+    ? `<span class="tag tag-cited">${paper.citations.toLocaleString()} cited</span>` : '';
+
+  const trendTag = isTrending ? `<span class="tag tag-trending">Trending</span>` : '';
+
+  const scoreTag = `<span class="tag tag-score" style="color:${scoreColor(score)}; border-color:${scoreColor(score)}44">Score ${score}</span>`;
+
+  const catTags = (paper.categories || []).slice(0, 3).map(c =>
+    `<span class="tag tag-cat" onclick="filterSearch('${esc(c)}')">${esc(c)}</span>`
+  ).join('');
+
+  const topicLabel = paper.topic
+    ? (paper.topic.length > 28 ? paper.topic.slice(0, 25) + '...' : paper.topic) : '';
+  const topicTag = topicLabel
+    ? `<span class="tag tag-topic" onclick="filterTopic('${esc(paper.topic)}')">${esc(topicLabel)}</span>` : '';
+
+  const companyTags = (paper.companies || []).map(c =>
+    `<span class="tag tag-company" onclick="filterCompany('${esc(c)}')">${esc(c)}</span>`
+  ).join('');
+
+  const knowledgeTags = (paper.knowledge_tags || []).slice(0, 5).map(t =>
+    `<span class="tag tag-knowledge" onclick="filterKnowledge('${esc(t)}')">${esc(t)}</span>`
+  ).join('');
+
+  const authors = (paper.authors || []).slice(0, 6).map(a => esc(a)).join(', ');
+  const moreAuthors = (paper.authors || []).length > 6
+    ? ` <span style="color:var(--accent)">+${paper.authors.length - 6} more</span>` : '';
+
+  // AI Summary button — prefer ai_summary_bullets (Claude) over summary_bullets (extractive)
+  const hasAI = paper.ai_summary_bullets && paper.ai_summary_bullets.length > 0;
+  const aiBullets = paper.ai_summary_bullets || paper.summary_bullets;
+  const hasBullets = aiBullets && aiBullets.length > 0;
+  const hasSummary = hasBullets || (paper.summary && paper.summary.length > 30);
+
+  const summaryLabel = hasAI ? 'AI Summary' : 'Summary';
+  const summaryBtn = hasSummary
+    ? `<button class="btn-summary${hasAI ? ' ai-enhanced' : ''}" onclick="toggleSummary('${id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.07l-.71.71M21 12h-1M4 12H3m16.66 7.66l-.71-.71M4.05 4.93l-.71-.71"/>
+          <circle cx="12" cy="12" r="4"/>
+        </svg>
+        ${summaryLabel}
+      </button>` : '';
+
+  // Build summary content
+  let summaryContent = '';
+  if (hasBullets) {
+    const bulletTypes = { problem: 'Problem', method: 'Method', result: 'Result', insight: 'Insight' };
+    const items = aiBullets.map((b, i) => {
+      const label = bulletTypes[b.type] || 'Insight';
+      return `<li data-num="${i+1}."><span class="bullet-label">${esc(label)}:</span> ${esc(b.text)}</li>`;
+    }).join('');
+    summaryContent = `<ul class="summary-bullets">${items}</ul>`;
+  } else if (paper.summary) {
+    summaryContent = `<div class="summary-fallback">${esc(paper.summary)}</div>`;
+  }
+
+  const panelLabel = hasAI ? 'AI Summary (Interview Focus)' : 'Summary';
+  const summaryPanel = hasSummary
+    ? `<div class="summary-panel" id="sum-${id}"${hasAI ? ' style="border-color:#f59e0b"' : ''}>
+        <span class="summary-label"${hasAI ? ' style="color:#f59e0b"' : ''}>${panelLabel}</span>
+        ${summaryContent}
+      </div>` : '';
+
+  // Related papers button
+  const hasRelated = paper.related_papers && paper.related_papers.length > 0;
+  const relatedBtn = hasRelated
+    ? `<button class="btn-related" onclick="toggleRelated('${id}', ${idx})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4m-8.66-2.34l2.83-2.83m11.66-11.66l2.83-2.83M1 12h4m14 0h4m-2.34 8.66l-2.83-2.83M4.93 4.93l2.83 2.83"/>
+        </svg>
+        Related
+      </button>` : '';
+
+  const relatedPanel = hasRelated
+    ? `<div class="related-panel" id="rel-${id}">
+        <span class="related-label">Related Papers</span>
+        <div class="related-list" id="rellist-${id}"></div>
+      </div>` : '';
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-title">
+        <a href="${esc(paper.url)}" target="_blank" rel="noopener">${highlight(paper.title, query)}</a>
+      </div>
+      <div class="tags">
+        ${trendTag}${scoreTag}${sourceTag}
+        <span class="tag tag-year">${paper.year}</span>
+        ${venueTag}${citedTag}
+        ${summaryBtn}${relatedBtn}
+      </div>
+    </div>
+    <div class="tags" style="margin-top:5px">${companyTags}${topicTag}${catTags}</div>
+    <div class="tags" style="margin-top:4px">${knowledgeTags}</div>
+    <div class="card-authors">${authors}${moreAuthors}</div>
+    <div class="card-abstract" id="abs-${id}" onclick="toggleAbstract('abs-${id}')">${highlight(paper.abstract, query)}</div>
+    <button class="expand-btn" onclick="toggleAbstract('abs-${id}')">Show more</button>
+    ${summaryPanel}
+    ${relatedPanel}
+  `;
+  return card;
+}
+
+function toggleAbstract(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('expanded');
+  const btn = el.nextElementSibling;
+  if (btn && btn.classList.contains('expand-btn'))
+    btn.textContent = el.classList.contains('expanded') ? 'Show less' : 'Show more';
+}
+
+function toggleSummary(id) {
+  const el = document.getElementById('sum-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+function toggleRelated(id, paperIdx) {
+  const panel = document.getElementById('rel-' + id);
+  if (!panel) return;
+  panel.classList.toggle('open');
+
+  // Populate on first open
+  const list = document.getElementById('rellist-' + id);
+  if (list.children.length > 0) return;
+
+  const paper = filtered[paperIdx];
+  if (!paper || !paper.related_papers) return;
+
+  paper.related_papers.forEach(url => {
+    const related = PAPER_BY_URL[url];
+    if (!related) return;
+    const a = document.createElement('a');
+    a.className = 'related-item';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    const citeStr = related.citations ? `${related.citations.toLocaleString()} cited` : '';
+    a.innerHTML = `
+      <span class="related-title">${esc(related.title)}</span>
+      <span class="related-meta">
+        <span>${related.year || ''}</span>
+        <span class="rm-score">Score ${related.score || 0}</span>
+        ${citeStr ? `<span class="rm-cited">${citeStr}</span>` : ''}
+      </span>
+    `;
+    list.appendChild(a);
+  });
+
+  if (list.children.length === 0) {
+    list.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">No related papers found in dataset</span>';
+  }
+}
+
+function filterTopic(topic) {
+  document.getElementById('topicFilter').value = topic;
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function filterCompany(company) {
+  document.getElementById('companyFilter').value = company;
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function filterKnowledge(tag) {
+  document.getElementById('knowledgeFilter').value = tag;
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function filterSearch(term) {
+  document.getElementById('searchInput').value = term;
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('yearFilter').value = '';
+  document.getElementById('topicFilter').value = '';
+  document.getElementById('venueFilter').value = '';
+  document.getElementById('companyFilter').value = '';
+  document.getElementById('knowledgeFilter').value = '';
+  document.getElementById('sortBy').value = 'score';
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setupListeners() {
+  document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 200);
+  });
+  ['yearFilter', 'topicFilter', 'venueFilter', 'companyFilter', 'knowledgeFilter', 'sortBy'].forEach(id =>
+    document.getElementById(id).addEventListener('change', applyFilters));
+
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && rendered < filtered.length) renderBatch();
+  }, { rootMargin: '300px' });
+  observer.observe(document.getElementById('scrollSentinel'));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      document.getElementById('searchInput').focus();
+    }
+    if (e.key === 'Escape') document.getElementById('searchInput').blur();
+  });
+}
+
+loadPapers();
+</script>
+</body>
+</html>

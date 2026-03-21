@@ -1,0 +1,172 @@
+[
+  {
+    "url": "https://arxiv.org/abs/2002.02126",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Prior GCN-based recommendation models like NGCF incorporate feature transformation and nonlinear activation at each graph convolution layer, inheriting designs from node classification tasks that are unnecessary and even harmful for collaborative filtering. These operations add complexity, cause training difficulty, and degrade recommendation accuracy because the core signal in user-item bipartite graphs is the graph structure (who interacted with what), not rich node features."
+      },
+      {
+        "type": "method",
+        "text": "LightGCN strips graph convolution down to its essence: neighborhood aggregation only, removing feature transformation matrices and nonlinear activation functions entirely. It learns user and item embeddings by linearly propagating them on the user-item interaction graph, then combines embeddings from all layers using a weighted sum (layer combination) as the final representation. This design yields only the embedding table as learnable parameters, making it far simpler than NGCF while being theoretically grounded via a connection to simplified graph convolutions (SGC)."
+      },
+      {
+        "type": "result",
+        "text": "LightGCN achieves consistent improvements of 12-17% over NGCF on Gowalla, Yelp2018, and Amazon-Book benchmarks in Recall@20 and NDCG@20, while being significantly faster to train. The paper became the de facto baseline for GCN-based recommendation, influencing production systems at companies like Pinterest and Alibaba. Key interview takeaway: in recommendation, simpler graph aggregation often beats complex GNN architectures because the interaction graph structure itself is the primary signal, not node features."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2305.18290",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Standard RLHF for aligning LLMs (as used in InstructGPT/ChatGPT) requires training a separate reward model from human preference data, then running PPO-based reinforcement learning against that reward model. This pipeline is complex, unstable, computationally expensive (requiring multiple models in memory simultaneously), and sensitive to hyperparameters -- the reward model can be exploited, and PPO training frequently diverges or mode-collapses."
+      },
+      {
+        "type": "method",
+        "text": "DPO derives a closed-form mapping between the optimal policy and the reward function under the KL-constrained RL objective, showing that the language model itself implicitly defines a reward function. This eliminates the need for a separate reward model and RL loop entirely: DPO directly optimizes a simple binary cross-entropy loss on pairs of preferred/dispreferred completions, with a reference model KL penalty baked into the loss function."
+      },
+      {
+        "type": "result",
+        "text": "DPO matches or exceeds PPO-based RLHF on summarization and dialogue tasks while being substantially simpler -- roughly 50% less GPU memory since no reward model is needed. Rapidly adopted across the industry: Meta used it for Llama 2 Chat, became the default in TRL and Axolotl, and spawned follow-ups like IPO, KTO, and ORPO. Essential interview topic for any LLM alignment discussion."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2203.02155",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Large language models like GPT-3 are trained on internet text to predict the next token, which makes them good at text completion but not at following user instructions safely and helpfully. Simply scaling up model size does not solve alignment issues -- larger models can actually become more fluent at generating toxic, untruthful, or unhelpful content."
+      },
+      {
+        "type": "method",
+        "text": "InstructGPT introduces a three-stage RLHF pipeline: (1) supervised fine-tuning on ~13K human-written demonstrations, (2) training a 6B reward model on ~33K human comparisons, and (3) optimizing via PPO with a KL penalty to prevent reward hacking. The paper carefully designs the labeler workforce (40 contractors) and uses the KL penalty against the SFT model as a critical regularizer."
+      },
+      {
+        "type": "result",
+        "text": "A 1.3B InstructGPT is preferred by human labelers over the 175B GPT-3 despite being 100x smaller, demonstrating alignment training is far more sample-efficient than scaling pretraining. This work directly led to ChatGPT and established RLHF as the industry standard at OpenAI, Anthropic, Google, and Meta -- understanding this pipeline is essential for any LLM system design interview."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2201.11903",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Standard few-shot prompting fails on tasks requiring multi-step reasoning such as arithmetic, commonsense reasoning, and symbolic manipulation. Models produce incorrect answers directly without showing intermediate steps, and simply scaling model size yields diminishing returns on reasoning benchmarks like GSM8K."
+      },
+      {
+        "type": "method",
+        "text": "Chain-of-Thought prompting augments few-shot examples with intermediate reasoning steps. This requires no model fine-tuning, no architecture changes -- purely a prompting technique that elicits latent reasoning capabilities in sufficiently large models. The key insight is that autoregressive generation naturally decomposes problems when primed with step-by-step examples."
+      },
+      {
+        "type": "result",
+        "text": "CoT with PaLM 540B achieves 58.1% on GSM8K (vs 17.9% standard prompting), a 3x improvement. Critically, CoT is an emergent ability -- little benefit under ~100B parameters but dramatic gains at 540B. CoT became the foundation for Self-Consistency, Tree-of-Thought, ReAct, and is now standard practice in production LLM systems at Google, OpenAI, and Anthropic."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2005.11401",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Knowledge-intensive NLP tasks require access to vast world knowledge that cannot be reliably stored in model parameters alone. Purely parametric models hallucinate facts, cannot easily update knowledge without retraining, and struggle with long-tail information. Prior retrieve-then-read approaches used retrieval as a disconnected preprocessing step, preventing end-to-end optimization."
+      },
+      {
+        "type": "method",
+        "text": "RAG combines a pretrained BART generator with a DPR retrieval component over a Wikipedia FAISS index into a single end-to-end differentiable model. Two variants: RAG-Sequence (marginalizes over documents per output sequence) and RAG-Token (marginalizes per output token, allowing different documents to influence different parts of the response)."
+      },
+      {
+        "type": "result",
+        "text": "RAG sets state-of-the-art on Natural Questions (44.5 EM), TrivialQA, and WebQuestions. Knowledge can be updated at inference time by swapping the document index -- no retraining needed. This architecture became the blueprint for production RAG systems at Google, Meta, Microsoft Bing, and Perplexity. Understanding RAG architecture, chunking strategies, and retrieval-generation trade-offs is a top-tier interview topic."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2004.04906",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Traditional open-domain QA retrieval relies on BM25/TF-IDF which match on lexical overlap and fail with vocabulary mismatch. Prior dense retrieval attempts (ORQA) used weak supervision and could not consistently outperform BM25, leaving it unclear whether purely dense retrieval was viable at scale."
+      },
+      {
+        "type": "method",
+        "text": "DPR uses a dual-encoder (bi-encoder) with two independent BERT-base models for questions and passages. Training uses in-batch negatives plus BM25 hard negatives with contrastive loss. At inference, passage embeddings are pre-computed and indexed with FAISS for sub-linear retrieval. Key decisions: hard negatives from BM25 significantly outperform random negatives, and simple dot-product enables real-time retrieval from 21M passages."
+      },
+      {
+        "type": "result",
+        "text": "DPR achieves 78.4% top-20 retrieval accuracy on Natural Questions (vs 59.1% BM25), a 19-point improvement. Became the standard retrieval backbone for RAG systems and influenced production search at Meta, Google, and all vector-search applications. The bi-encoder + FAISS pattern is the foundation of modern semantic search -- understanding trade-offs vs cross-encoders and BM25 hybrid approaches is critical for search interviews."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2212.08073",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "RLHF depends on collecting large volumes of human preference labels, which is expensive, slow, and introduces annotator biases. Scaling human oversight to cover all possible harmful behaviors is impractical. Additionally, RLHF reward models can be gamed -- models learn to score well rather than being genuinely helpful and harmless."
+      },
+      {
+        "type": "method",
+        "text": "Constitutional AI introduces RL from AI Feedback (RLAIF): a helpful-only assistant critiques and revises its own outputs according to written principles (the 'constitution'), generating a self-supervised preference dataset. A harmlessness reward model is then trained on AI-generated labels rather than human labels. The constitution is ~16 natural language principles covering harm categories."
+      },
+      {
+        "type": "result",
+        "text": "CAI produces models significantly less harmful than plain RLHF while being equally or more helpful, reducing the helpfulness-harmlessness trade-off. Anthropic deployed CAI as the core alignment methodology for Claude. Key insight: AI feedback can replace human feedback for certain alignment dimensions, and explicit principles are more auditable and steerable than implicit reward model preferences."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2306.00978",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Deploying LLMs on edge devices is blocked by enormous memory footprint (7B model = ~14GB in FP16). Existing quantization methods like GPTQ apply uniform quantization treating all weights equally, but different weight channels have vastly different importance. Naive 3-4 bit quantization causes significant accuracy degradation."
+      },
+      {
+        "type": "method",
+        "text": "AWQ observes that only ~1% of weights are critical for LLM performance, identifiable by activation magnitudes rather than weight magnitudes. Instead of mixed-precision (which breaks hardware efficiency), AWQ applies per-channel scaling that redistributes quantization error: it scales up salient weight channels before quantization so they occupy more of the quantization range, reducing their relative error while maintaining uniform INT4 format."
+      },
+      {
+        "type": "result",
+        "text": "AWQ achieves less than 0.5 perplexity degradation at 4-bit on LLaMA models, outperforming GPTQ by 0.2-0.5 perplexity. Enables LLaMA-70B on a single 48GB GPU. Integrated into vLLM, TensorRT-LLM, and HuggingFace for production deployment. Key insight: activation-aware quantization exploits context-dependent weight importance while maintaining hardware-friendly uniform INT4 format."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2304.08485",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Extending LLMs to understand visual inputs typically requires training large vision-language models from scratch on massive datasets (like Flamingo with billions of image-text pairs), which is extremely expensive. Existing multimodal models struggle with complex visual reasoning because they train on simple captioning rather than diverse conversational instructions about images."
+      },
+      {
+        "type": "method",
+        "text": "LLaVA connects a frozen CLIP ViT-L/14 vision encoder to a frozen LLaMA/Vicuna LLM through a simple trainable linear projection layer. Two-stage training: (1) feature alignment on 595K image-caption pairs (only projection trained), (2) end-to-end fine-tuning on 158K GPT-4-generated visual instruction data. The key innovation is using GPT-4 to generate high-quality multimodal instruction data from existing captions and bounding boxes."
+      },
+      {
+        "type": "result",
+        "text": "LLaVA achieves 85.1% relative performance vs GPT-4V. LLaVA-1.5 (with MLP projector and higher resolution) matches many concurrent models on 11 benchmarks requiring only ~1 day on 8 A100s. Became the dominant architecture for open-source multimodal LLMs. Key insight: expensive vision-language pretraining can be replaced by a cheap alignment layer plus high-quality instruction data -- data quality matters more than architectural complexity."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2203.11171",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Chain-of-thought prompting generates a single reasoning chain per question, but complex tasks admit multiple valid reasoning paths. A single greedy decode can produce plausible-looking but incorrect chains, and there is no mechanism to recover from early reasoning errors, making CoT brittle."
+      },
+      {
+        "type": "method",
+        "text": "Self-Consistency samples multiple diverse reasoning paths (5-40) using temperature sampling, extracts the final answer from each chain, and takes majority vote. The key insight: correct reasoning paths converge on the same answer despite diverse intermediate steps, while incorrect paths produce varied wrong answers. Requires no additional training or verifier model -- just multiple forward passes with majority voting."
+      },
+      {
+        "type": "result",
+        "text": "Improves CoT on GSM8K from 56.5% to 74.4% with PaLM 540B (+18 points) using 40 paths, with consistent 5-18% gains across reasoning benchmarks. Now standard in production LLM systems where reasoning quality matters more than latency -- trades compute for accuracy predictably. Key insight: self-consistency is a test-time compute scaling strategy that composes naturally with other prompting techniques."
+      }
+    ]
+  }
+]

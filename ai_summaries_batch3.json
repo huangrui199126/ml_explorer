@@ -1,0 +1,70 @@
+[
+  {
+    "url": "https://arxiv.org/abs/2106.10199",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Full fine-tuning of BERT-scale models for each downstream task requires storing a separate copy of all parameters per task, which is expensive for multi-task deployments. Existing parameter-efficient methods like adapters add extra layers and inference latency. The question is: what is the minimal set of parameters that need to change for effective task adaptation?"
+      },
+      {
+        "type": "method",
+        "text": "BitFit freezes all model parameters and only fine-tunes the bias terms (~0.1% of parameters). The key insight is that bias terms act as task-specific offset adjusters for each layer's activation distribution, providing enough capacity for task adaptation without modifying the learned feature extractors (weight matrices). No architectural changes, no extra parameters, no added latency."
+      },
+      {
+        "type": "result",
+        "text": "BitFit achieves within 1-2% of full fine-tuning on GLUE benchmarks while updating only 0.08-0.1% of parameters. On some tasks (CoLA, MRPC) it matches full fine-tuning. Key interview insight: the effectiveness of bias-only tuning suggests that pretrained transformers learn general-purpose features, and task adaptation primarily requires shifting activation distributions rather than learning new features."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2205.05638",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "In-context learning (ICL) with large models like GPT-3 appears to be a free lunch for few-shot tasks -- no training required, just provide examples in the prompt. But ICL requires very large models (175B+), uses limited context windows for examples, and has unstable performance depending on example ordering and formatting."
+      },
+      {
+        "type": "method",
+        "text": "T-Few introduces (IA)3 -- a parameter-efficient fine-tuning method that learns three rescaling vectors that element-wise multiply the keys, values, and FFN hidden activations in each transformer layer. Combined with a T0-style multi-task pretrained model and an unlikelihood loss that pushes down incorrect label probabilities, T-Few fine-tunes only ~0.01% of parameters per task."
+      },
+      {
+        "type": "result",
+        "text": "T-Few with T0-3B (3B params) outperforms ICL with GPT-3 (175B params) on RAFT benchmark while being 58x smaller and requiring only 5 minutes of fine-tuning per task on a single GPU. This demonstrates that parameter-efficient fine-tuning is strictly better than in-context learning in the few-shot regime: cheaper, more accurate, and more stable. Essential comparison point for LLM deployment interviews."
+      }
+    ]
+  },
+  {
+    "url": "https://www.semanticscholar.org/paper/76b19363b10d7ea783e4a6494eae40d73c8e9628",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Fine-tuning all parameters of large pretrained language models (hundreds of billions) is infeasible for most organizations due to GPU memory, storage, and serving costs. When deploying models for multiple tasks/customers, storing separate full model copies per task is prohibitively expensive. The field needs methods that achieve full fine-tuning quality with minimal parameter overhead."
+      },
+      {
+        "type": "method",
+        "text": "This comprehensive survey covers the PEFT landscape: adapter layers (Houlsby et al., adding bottleneck layers), prefix-tuning (prepending learnable tokens), LoRA (low-rank weight updates), BitFit (bias-only), prompt tuning (soft prompts), and (IA)3 (rescaling activations). It provides a taxonomy based on where parameters are added (sequential vs parallel), what is modified (activations vs weights), and training strategies (reparameterization vs direct optimization)."
+      },
+      {
+        "type": "result",
+        "text": "LoRA and adapters achieve the best quality-efficiency trade-off in most settings, with LoRA having the advantage of no added inference latency (weights can be merged). The survey finds that PEFT methods work better on larger models, and combining multiple PEFT approaches can be complementary. Essential reference for ML interviews -- understanding when to use LoRA vs adapters vs prompt tuning is a common system design question for LLM deployment."
+      }
+    ]
+  },
+  {
+    "url": "https://arxiv.org/abs/2408.16672",
+    "ai_summary_bullets": [
+      {
+        "type": "problem",
+        "text": "Late interaction models like ColBERT store per-token embeddings for each document, enabling fine-grained matching but requiring massive storage (hundreds of GB for web-scale corpora). Original ColBERT only supports English. Scaling late interaction to multilingual settings while keeping storage manageable is an open challenge."
+      },
+      {
+        "type": "method",
+        "text": "Jina-ColBERT-v2 combines a multilingual backbone (XLM-RoBERTa) with aggressive embedding compression: linear projection to 128d, residual quantization to 2 bytes per vector, and centroid-based indexing. Training uses knowledge distillation from a cross-encoder teacher and hard negative mining across 100+ languages."
+      },
+      {
+        "type": "result",
+        "text": "Competitive with ColBERT-v2 on English BEIR while supporting 100+ languages, with 4-8x storage reduction. Key interview insight: late interaction (per-token matching) provides better relevance than bi-encoder but requires careful compression for production -- the trade-off between matching granularity and storage/latency is a core search system design consideration."
+      }
+    ]
+  }
+]
