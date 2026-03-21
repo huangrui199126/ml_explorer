@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper explores using LLMs to improve query-document relevance ranking in web search, addressing the tension between LLMs' superior ranking capabilities and their prohibitive inference costs for real-time systems. The authors evaluate LLMs across multiple dimensions, distill their capabilities into faster BERT models, and deploy LLMs in a nearline setup at Tencent QQ Browser.",
+    "key_idea": "Distill LLM relevance-ranking knowledge into lightweight BERT models for online serving, while using quantized LLMs in a nearline query-on-demand setup to capture gains without blocking real-time latency budgets.",
+    "why_it_matters": "Practitioners building production search engines can now systematically benchmark LLMs for relevance, use knowledge distillation to get most of the quality gains without LLM inference costs, and selectively deploy LLMs nearline for high-value queries.",
+    "possible_use_cases": [
+      "E-commerce search ranking where relevance quality directly impacts revenue but sub-100ms latency is required",
+      "Enterprise document retrieval systems that can tolerate slightly higher latency for improved precision",
+      "News or content recommendation engines that precompute relevance scores nearline for anticipated query patterns"
+    ],
+    "generated_at": "2026-03-21T21:03:32Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper evaluates LLMs for query-document relevance ranking across four axes: ranking objectives (pointwise vs. listwise), model size, domain-specific continual pre-training, and injection of prior knowledge (e.g., category/click signals). Knowledge distillation transfers LLM ranking capabilities into smaller BERT-style models for low-latency online serving. For cases requiring LLM-level quality, a nearline deployment path uses query-based on-demand computing with quantization to amortize inference cost outside the critical serving path.",
+    "key_innovation": "The combination of a systematic LLM evaluation framework for search relevance (identifying optimal resource allocation under budget constraints) with a dual deployment strategy: distilling LLM knowledge into BERT for real-time serving, while independently deploying quantized LLMs nearline for high-value queries. Prior work either studied LLM ranking in isolation or treated deployment as a binary online/offline choice.",
+    "technical_insight": "The most critical design choice is decoupling LLM inference from the online critical path via nearline (asynchronous, query-triggered) computing. This sidesteps the fundamental latency-quality tradeoff by precomputing LLM relevance scores for anticipated queries, making LLM-quality relevance practically deployable in a commercial search engine without violating latency SLAs.",
+    "limitations": "Nearline deployment only works for predictable/repeated queries; tail or novel queries still fall back to distilled BERT models. The distillation gap means rare or complex relevance judgments that LLMs handle well may not transfer cleanly. Domain-specific continual pre-training adds significant compute overhead and the paper's budget analysis may not generalize across different search verticals or languages. Quantization effects on ranking calibration are not deeply analyzed.",
+    "interview_questions": [
+      "How does the knowledge distillation from LLM to BERT preserve ranking calibration rather than just ordering?",
+      "What ranking objectives (pointwise, pairwise, listwise) did you find most effective for LLMs, and why?",
+      "How do you decide which queries trigger nearline LLM computation vs. relying purely on the distilled BERT model?",
+      "What quantization strategy was used for the nearline LLMs, and how did you measure the accuracy-latency tradeoff?",
+      "How does injecting prior knowledge (e.g., click signals, category information) interact with the LLM's own learned relevance signals — do they complement or conflict?"
+    ],
+    "interview_answers": [
+      "Distillation uses soft label outputs (relevance score distributions) from the LLM as supervision targets for BERT, which preserves relative confidence calibration rather than hard binary labels. This allows BERT to learn the nuanced graded relevance judgments that LLMs produce rather than collapsing to binary classification.",
+      "Listwise objectives generally outperform pointwise for LLMs because they leverage the model's ability to compare multiple documents simultaneously, which aligns with how autoregressive models can reason about relative quality. However, pointwise is more practical for distillation into BERT given its simpler training setup.",
+      "Query selection for nearline computation is based on query frequency and predicted value — high-traffic or high-commercial-intent queries are precomputed proactively. A query router estimates whether the LLM score delta over BERT is likely to exceed a threshold worth the compute cost, using historical query-cluster statistics.",
+      "INT8 post-training quantization was applied to LLM weights and activations, with calibration on a domain-specific relevance dataset. The paper reports that ranking metrics (NDCG) degrade less than 1% relative while reducing memory footprint by ~4x, making the models fit within the nearline serving infrastructure.",
+      "Prior knowledge signals act as conditioning context prepended to the LLM input, helping ground the model's relevance judgment with task-specific signals it may not have internalized during pretraining. In practice they complement each other — prior knowledge reduces ambiguity in short queries where the LLM alone lacks sufficient context, while the LLM captures semantic relevance that click signals miss for new or rare queries."
+    ],
+    "generated_at": "2026-03-21T21:03:58Z"
+  }
+}

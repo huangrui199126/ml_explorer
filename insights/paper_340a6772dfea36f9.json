@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "UAE models user attention in music recommendation as a positive-unlabeled (PU) learning problem, treating active feedback (likes/skips) as positive and passive feedback (auto-play) as unlabeled samples to produce unbiased attention and propensity estimators with sequential dependencies.",
+    "key_idea": "By framing passive listening feedback as unlabeled rather than negative examples and incorporating sequential dependencies between user actions, UAE produces unbiased estimates of true user attention for cleaner training signal.",
+    "why_it_matters": "Most recommendation training data is dominated by unreliable passive feedback; correcting for this bias with a principled PU-learning approach delivered 2%+ gains in real-world play count and time on a large music platform.",
+    "possible_use_cases": [
+      "Debiasing training data in any recommendation system where implicit/passive feedback dominates",
+      "Improving podcast or video streaming recommendations where auto-play creates noisy engagement signals",
+      "Estimating user attention in e-commerce browse sessions where view events are mostly passive"
+    ],
+    "generated_at": "2026-03-21T21:02:59Z"
+  },
+  "deep": {
+    "method_breakdown": "UAE frames user attention estimation as a Positive-Unlabeled (PU) learning problem where explicit feedback (likes/skips) are positive samples and passive auto-play feedback are unlabeled. It trains an attention estimator and a propensity estimator jointly in an alternating optimization scheme, where the propensity estimator corrects for selection bias in how active feedback is generated. The attention scores are then used to reweight training samples for downstream recommendation models, improving signal quality from the massive passive feedback pool.",
+    "key_innovation": "Prior work used heuristics like exponential decay (based on play duration) or negative sampling, both of which ignore sequential dependencies between user actions and either discard most passive samples or treat them uniformly. UAE's key novelty is combining PU learning with sequential modeling (capturing temporal dependencies across feedback actions) and pairing it with an explicit propensity estimator to debias the attention estimator — achieving theoretical unbiasedness guarantees rather than relying on hand-tuned heuristics.",
+    "technical_insight": "The most important design choice is the alternating optimization of the attention and propensity estimators. The propensity captures the probability that a user would provide active feedback given their true attention, and without correcting for this, the attention estimator would be biased toward items that are easy to elicit explicit feedback for. Decoupling and jointly optimizing these two components breaks the circular dependency and enables unbiased estimation even when labeled data is sparse.",
+    "limitations": "The model's unbiasedness guarantees rely on assumptions about the propensity model being correctly specified — misspecification could reintroduce bias in unpredictable ways. The alternating optimization may be sensitive to initialization and convergence is not guaranteed to a global optimum. The approach is validated on music streaming where passive feedback is abundant and structured sequentially; it may not transfer cleanly to domains with sparser interaction logs or less clear active/passive distinctions.",
+    "interview_questions": [
+      "Why is passive feedback in music recommendation considered unreliable, and what specific challenges does this create for model training?",
+      "How does framing attention estimation as a PU learning problem differ from treating passive feedback as negative samples directly?",
+      "What role does the propensity estimator play, and why is it necessary alongside the attention estimator?",
+      "How does UAE incorporate sequential dependencies, and why does this matter compared to treating each feedback action independently?",
+      "What are the theoretical unbiasedness guarantees provided for UAE, and under what assumptions do they hold?"
+    ],
+    "interview_answers": [
+      "Passive feedback (auto-play completions) occurs even when a user is distracted or indifferent — the system doesn't know if the user was actually listening. Treating all passive plays as positive signals inflates training data with noise, while treating them as negatives discards potentially valuable engagement signals. The core issue is that passive feedback conflates true engagement with incidental exposure.",
+      "In standard approaches, passive feedback is either ignored, downweighted heuristically, or treated as negatives — all of which introduce bias. PU learning instead treats passive samples as unlabeled, meaning they could be either positive (user was attentive) or negative (user was not). This allows the model to probabilistically estimate attention without committing to a hard label, leveraging the full passive feedback pool rather than discarding it.",
+      "Even when a user is attentive, they may not always provide active feedback — the propensity captures this selection mechanism (the probability of observing active feedback given true attention). Without propensity correction, the attention estimator would be biased toward items or contexts where users are more likely to click Like/Skip, regardless of actual attention. The propensity acts as an inverse probability weight to correct this selection bias.",
+      "Sequential modeling captures that a user's attention on a given track is influenced by their prior interaction history — e.g., if a user skipped the last three songs, their engagement with the current one is contextually different than if they liked them. Ignoring this treats each feedback event as i.i.d., losing valuable temporal context. UAE uses sequential dependencies to produce more accurate attention estimates conditioned on the user's recent behavior trajectory.",
+      "UAE provides theoretical guarantees that both the attention estimator and propensity estimator are unbiased in expectation, along with variance bounds. These hold under the assumption that the propensity model is correctly specified (i.e., it accurately captures the mechanism by which active feedback is generated) and that the PU learning assumptions hold — specifically that positive samples are drawn from the same distribution as the positive subset of unlabeled data."
+    ],
+    "generated_at": "2026-03-21T21:03:25Z"
+  }
+}

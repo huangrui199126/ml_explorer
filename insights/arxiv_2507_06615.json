@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CTPG is a multi-task RL framework that lets tasks share control policies directly—a task that has learned a useful skill can guide other tasks still acquiring that skill, generating better training trajectories. It adds two gating mechanisms to filter out unhelpful guidance and skip tasks that don't need it.",
+    "key_idea": "Train a meta-policy per task that selects which other task's control policy to execute, turning cross-task behavioral similarity into explicit learning signal.",
+    "why_it_matters": "It's a plug-in module on top of existing parameter-sharing MTRL methods, offering a straightforward way to accelerate skill acquisition in robotics and locomotion without redesigning network architectures.",
+    "possible_use_cases": [
+      "Accelerating robot manipulation training by reusing motion primitives learned for related arm tasks",
+      "Multi-locomotion agents (walk, run, jump) where mastered gaits bootstrap learning of harder ones",
+      "Game AI with diverse skill sets where proficient strategies for one task can seed policy search for related tasks"
+    ],
+    "generated_at": "2026-03-21T21:01:48Z"
+  },
+  "deep": {
+    "method_breakdown": "CTPG trains a guide policy per task that selects, at each step, which task's control policy to use as the behavior policy for environment interaction. This cross-task policy selection generates higher-quality training trajectories by borrowing already-learned skills from proficient tasks. Two gating mechanisms are applied: one filters out unhelpful source policies, and the other suppresses guidance for tasks that are already performing well enough.",
+    "key_innovation": "Rather than sharing parameters or modifying optimization (the dominant paradigm), CTPG exploits cross-task similarities at the trajectory/behavior level — using policies of proficient tasks to guide exploration and data collection for less-proficient tasks. This is orthogonal to and composable with existing parameter-sharing methods.",
+    "technical_insight": "The dual gating design is the critical choice: without the source-policy gate, noisy or harmful policies would degrade training; without the task-level gate, already-competent tasks would wastefully receive guidance or be disrupted. Together they ensure guidance is both selective (only helpful sources) and conditional (only needy recipients), preventing the interference that typically plagues naive policy mixture approaches.",
+    "limitations": "The guide policy itself adds a non-trivial training overhead — a meta-level learner on top of all task policies. The approach assumes that at least some tasks develop useful skills early enough to benefit others, which may fail when all tasks are similarly difficult or when task policies are incompatible in action space or dynamics. Scalability to very large numbers of tasks is unclear since the guide policy must evaluate all K task policies. The method is evaluated only on manipulation and locomotion benchmarks, leaving generalization to sparse-reward or language-conditioned settings unverified.",
+    "interview_questions": [
+      "How does the guide policy decide which task's control policy to execute, and is this decision made per timestep or per episode?",
+      "What training signal is used to learn the guide policy — is it a separate RL objective, and how do you prevent it from always selecting the best-performing task's policy regardless of the current task's needs?",
+      "How does the source-policy gating mechanism work — is it a learned threshold, a heuristic based on policy performance, or something else?",
+      "Since CTPG generates off-policy data (trajectories from other tasks' policies), how do you handle the distributional shift when updating each task's control policy?",
+      "How sensitive is CTPG to the order in which tasks develop competence, and what happens in the early training phase when no task has yet acquired useful skills?"
+    ],
+    "interview_answers": [
+      "The guide policy is a learned selector that, given the current task and state, outputs a distribution over all K task control policies; the selected policy is then used for that timestep's action. Per-timestep selection allows fine-grained skill borrowing but also increases variance in the guide policy's learning signal.",
+      "The guide policy is trained with an RL objective to maximize the current task's reward, so it is incentivized to pick whichever source policy yields the best immediate or cumulative return for the task at hand. However, without explicit diversity constraints this could collapse to always imitating the single best task, so the gating mechanisms serve partly to regularize this.",
+      "The source-policy gate likely uses a performance- or value-based criterion — e.g., filtering policies whose estimated value for the current state falls below a threshold — to exclude policies that would lead the current task into low-reward regions. The exact mechanism (learned vs. heuristic) is not fully specified in the abstract.",
+      "This is a key challenge: the control policy is updated using trajectories that may have been generated under a different task's policy, creating an off-policy learning problem. Standard importance sampling corrections or off-policy RL algorithms (e.g., SAC, TD3) would be needed, and the paper likely relies on replay buffers and off-policy algorithms to absorb this shift.",
+      "Early training is the weakest phase — the task-level gate (which blocks guidance for tasks that don't need it) may implicitly handle the symmetric case by suppressing guidance when no source is ready, defaulting to on-policy learning. But if all tasks struggle simultaneously, CTPG degenerates to standard multi-task RL without the guidance benefit, making it no worse but also providing no gain."
+    ],
+    "generated_at": "2026-03-21T21:02:14Z"
+  }
+}
