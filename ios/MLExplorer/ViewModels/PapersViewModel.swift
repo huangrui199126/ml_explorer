@@ -13,10 +13,17 @@ class PapersViewModel: ObservableObject {
     @Published var sortBy: SortOption = .score
 
     enum SortOption: String, CaseIterable, Identifiable {
-        case score = "Score"
+        case score = "ML Score"
         case citations = "Citations"
-        case recent = "Recent"
+        case recent = "Most Recent"
         var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .score:     return "bolt.fill"
+            case .citations: return "text.quote"
+            case .recent:    return "calendar"
+            }
+        }
     }
 
     private let papersURL = "https://huangrui199126.github.io/ml_explorer/papers.json"
