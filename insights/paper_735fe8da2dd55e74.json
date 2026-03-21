@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GDNSM uses conditional diffusion models to generate hard negative samples for multi-modal recommendation systems, producing negatives at varying difficulty levels tailored to each user's preferences. A dynamic difficulty scheduling mechanism progressively moves from easy to hard negatives during training to ensure stable optimization.",
+    "key_idea": "Instead of randomly sampling negatives, use a conditional diffusion model to synthesize hard negatives in the multi-modal feature space that are semantically close to positives but still incorrect, forcing the recommender to learn finer-grained user preference distinctions.",
+    "why_it_matters": "Negative sampling quality is a known bottleneck in recommendation model training; generated hard negatives that respect multi-modal context can significantly improve ranking quality without requiring additional user interaction data.",
+    "possible_use_cases": [
+      "Training e-commerce product recommenders where visual and textual item features are available",
+      "Improving retrieval quality in content-based recommendation systems (news, music, video) with rich metadata",
+      "Bootstrapping recommendation models in cold-start or sparse-interaction settings by augmenting training signal with synthetic hard negatives"
+    ],
+    "generated_at": "2026-03-21T18:52:20Z"
+  },
+  "deep": {
+    "method_breakdown": "GDNSM uses a conditional diffusion model to generate hard negative samples for multi-modal recommendation, conditioning the generation process on user preference embeddings and multi-modal item features (visual, textual) to produce synthetic negatives that are semantically close to positives but not actually preferred. The generated negatives span varying difficulty levels by controlling the diffusion noise schedule, allowing the training signal to be tuned from easy to hard negatives. A dynamic difficulty scheduling mechanism gradually increases negative hardness over training epochs to stabilize optimization.",
+    "key_innovation": "Unlike prior hard negative mining methods that select hard negatives from the existing item corpus (limited by what exists), GDNSM generates synthetic hard negatives via conditional diffusion, enabling continuous difficulty control and the creation of negatives that are specifically tailored to individual user preference vectors rather than being globally hard. This generative approach decouples negative difficulty from corpus coverage.",
+    "technical_insight": "The most critical design choice is the dynamic difficulty scheduling (easy-to-hard curriculum), which prevents the model from collapsing early in training when it cannot yet distinguish hard negatives from positives. By starting with easy negatives and progressively increasing difficulty as the model matures, it mirrors curriculum learning principles — the model first learns coarse preference boundaries before being forced to refine fine-grained distinctions, yielding both stability and ultimate discriminative power.",
+    "limitations": "Generating negatives via diffusion adds substantial computational overhead at training time compared to simple random or in-batch negative sampling. The quality of generated negatives is bounded by how well the diffusion model captures the multi-modal feature manifold, so on sparse or noisy modality data it may generate unrealistic negatives. The difficulty scheduling introduces additional hyperparameters (curriculum schedule, difficulty levels) that may require dataset-specific tuning. Evaluation is limited to three datasets, leaving generalization to cold-start or cross-domain settings unclear.",
+    "interview_questions": [
+      "How does the conditional diffusion model parameterize 'difficulty' — what signal controls how hard a generated negative is?",
+      "How do you ensure generated hard negatives are not false negatives (i.e., items the user would actually like but hasn't interacted with)?",
+      "What is the specific conditioning input to the diffusion model — is it the user embedding, the positive item embedding, or both?",
+      "How does the dynamic difficulty scheduling mechanism decide when to increase hardness — is it epoch-based, loss-based, or something else?",
+      "How does GDNSM compare computationally to simpler hard negative mining strategies like ANCE or in-batch hard negatives, and is the performance gain worth the cost?"
+    ],
+    "interview_answers": [
+      "Difficulty is controlled by how much the generated negative's embedding is shifted toward the positive item in the user-conditioned feature space — harder negatives are generated closer to the decision boundary by conditioning on the user preference vector and applying smaller perturbations from the positive item's modal features during the reverse diffusion process.",
+      "The paper addresses this via the interaction history as a filter, but it is an inherent weakness: since false negatives in recommendation are unobservable, the model implicitly assumes all non-interacted items are true negatives, which is a standard but imperfect assumption. Some generated hard negatives may in fact be relevant items the user would enjoy.",
+      "The conditioning typically uses both the user embedding (to personalize the negative toward that user's preference region) and the target positive item's multi-modal features (visual and textual encodings), guiding the diffusion to generate items that are modality-similar to what the user likes but should be ranked lower.",
+      "The scheduling is most commonly epoch-based with a predefined curriculum function (e.g., linear or step-wise increase in difficulty level), though some variants tie it to training loss plateau detection to adaptively advance the curriculum when the model has sufficiently mastered the current difficulty tier.",
+      "GDNSM is significantly more expensive than in-batch or static hard negative mining because it requires forward and reverse diffusion passes per training step. The authors report improved Recall and NDCG metrics justifying the cost in offline experiments, but real-time or large-scale industrial deployment would likely require pre-generating and caching negatives offline rather than generating them dynamically during training."
+    ],
+    "generated_at": "2026-03-21T18:52:44Z"
+  }
+}

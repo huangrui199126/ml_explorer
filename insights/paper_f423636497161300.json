@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates running Approximate Nearest Neighbor (ANN) search efficiently on low-resource hardware like a Raspberry Pi, aiming to democratize IR research for researchers in low-income countries. It presents preliminary experiments identifying current bottlenecks and future challenges for large-scale ANN on constrained devices.",
+    "key_idea": "ANN search algorithms can be adapted and optimized to run on commodity low-power hardware, removing the dependency on expensive GPU/cloud infrastructure.",
+    "why_it_matters": "Most ANN research assumes access to high-end servers or GPUs; enabling ANN on cheap devices broadens who can contribute to the field and opens doors for edge deployment in resource-constrained environments.",
+    "possible_use_cases": [
+      "On-device semantic search for offline or low-connectivity applications",
+      "Edge-deployed retrieval systems in IoT or embedded devices",
+      "Accessible research tooling for institutions with limited compute budgets"
+    ],
+    "generated_at": "2026-03-21T18:53:36Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper investigates running approximate nearest neighbor (ANN) search algorithms on low-resource hardware (Raspberry Pi) to democratize access to IR research. It evaluates existing ANN indexing methods (e.g., HNSW, IVF-based indices) under severe memory and compute constraints. Preliminary experiments quantify the performance gap between commodity embedded hardware and standard server-grade infrastructure.",
+    "key_innovation": "The novelty is not a new algorithm but a new research agenda: systematically characterizing which ANN techniques remain viable on sub-$100 single-board computers. Prior ANN work universally assumes abundant RAM and multi-core CPUs; this paper reframes the problem around hardware democratization for researchers in low-income countries.",
+    "technical_insight": "The most critical design consideration is memory footprint — HNSW graphs and full flat indices quickly exceed the Raspberry Pi's 4–8 GB RAM, so quantization (e.g., PQ, SQ) and disk-based or streaming index structures become necessary. This works because product quantization compresses vectors by 8–32× at modest recall cost, making otherwise infeasible indices tractable on constrained DRAM.",
+    "limitations": "As a proposal/preliminary work, it lacks comprehensive empirical results across diverse datasets and query loads. It does not introduce a new algorithm or demonstrate a clear path to matching server-level recall@k on the target hardware. The single-device framing also ignores potential distributed or federated ANN approaches that could pool low-resource nodes.",
+    "interview_questions": [
+      "Why is ANN search particularly hard on a Raspberry Pi compared to a standard server, beyond just raw speed?",
+      "Which existing ANN index families are most promising for low-resource deployment, and why?",
+      "How does quantization help, and what recall trade-offs does it introduce?",
+      "What does 'democratizing ANN research' concretely mean — is the bottleneck compute, memory, or something else?",
+      "What would a practical evaluation benchmark for low-resource ANN look like, and which datasets would be appropriate?"
+    ],
+    "interview_answers": [
+      "The Raspberry Pi's bottleneck is RAM (4–8 GB), limited memory bandwidth, and a slow ARM CPU with no AVX-512 SIMD support, meaning both index construction and query-time distance computations are orders of magnitude slower, and large indices simply do not fit in memory at all.",
+      "Compressed indices using Product Quantization (PQ) or Scalar Quantization (SQ) — as in FAISS IVF-PQ — are most promising because they drastically reduce memory usage. Disk-based indices like DiskANN are also relevant since Raspberry Pi 4/5 supports fast NVMe SSDs via USB 3.0.",
+      "Quantization maps high-dimensional float32 vectors into compact codes (e.g., 8–16 bytes instead of 768×4 bytes), reducing memory 10–100×. The trade-off is approximate distance computation introduces quantization error, lowering recall@k, typically by 2–10 percentage points depending on compression ratio.",
+      "The primary bottleneck is memory: a 1M-vector HNSW index at 768 dimensions requires ~6 GB RAM just for the graph, which saturates or exceeds the Pi's capacity. Compute is secondary — slow queries are tolerable for batch retrieval, but an out-of-memory index is simply unusable.",
+      "A good benchmark would use ANN-Benchmarks-style recall@10 vs. QPS curves, tested on datasets scaled to fit within 4 GB RAM (e.g., 100K–500K vectors at 128–768 dims), with metrics including peak RAM usage, index build time, and query latency at fixed recall thresholds like 0.9 and 0.95."
+    ],
+    "generated_at": "2026-03-21T18:54:00Z"
+  }
+}
