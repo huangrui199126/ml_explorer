@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FairWork is a fairness evaluation framework for LLM-based job recommender systems that analyzes bias from both job seekers' and recruiters' perspectives using sensitive user attributes. It allows stakeholders to upload profiles and job descriptions to assess how demographic and personal attributes influence recommendation outcomes.",
+    "key_idea": "Evaluate fairness in LLM-driven job recommendations by measuring how sensitive attributes (e.g., gender, race) shift recommendation results across both candidate and recruiter viewpoints using standardized fairness metrics.",
+    "why_it_matters": "As LLMs are increasingly deployed in high-stakes hiring pipelines, unchecked biases can systematically disadvantage certain groups — FairWork gives practitioners a concrete tool to audit and benchmark fairness before deployment.",
+    "possible_use_cases": [
+      "Auditing a production job-matching platform for discriminatory patterns before regulatory review",
+      "Benchmarking different LLMs or prompt strategies on fairness to select the least biased model for a recruiting product",
+      "Generating fairness reports for HR platforms to demonstrate compliance with equal-opportunity hiring standards"
+    ],
+    "generated_at": "2026-03-21T19:26:01Z"
+  },
+  "deep": {
+    "method_breakdown": "FairWork is an evaluation framework that assesses fairness in LLM-based job recommender systems by manipulating sensitive user attributes (e.g., gender, age, ethnicity) in candidate profiles and measuring how these perturbations affect job recommendation outputs. It evaluates fairness from both the user side (whether equally qualified candidates receive equitable recommendations) and the recruiter side (whether job descriptions trigger biased filtering). Fairness metrics are computed over recommendation rankings to quantify disparate impact across demographic groups.",
+    "key_innovation": "Unlike prior work that examined fairness along a single axis (e.g., only gender or only user-side bias), FairWork introduces a dual-perspective evaluation covering both job seekers and recruiters simultaneously, while also supporting real-world personalized profile and job description uploads — moving beyond synthetic benchmarks to stakeholder-driven, context-specific fairness auditing.",
+    "technical_insight": "The most important design choice is decoupling fairness evaluation from any specific LLM or recommender architecture, making FairWork model-agnostic. This works because fairness is measured at the output layer (rankings/recommendations) rather than by inspecting model internals, enabling plug-and-play auditing across different LLM backends without retraining or access to weights.",
+    "limitations": "The framework is an evaluation tool, not a mitigation system — it identifies bias but does not correct it. Fairness metrics depend heavily on which sensitive attributes are selected and how profiles are perturbed, risking incomplete coverage of real-world bias sources. The approach may underestimate intersectional bias (e.g., the compounded effect of race + gender simultaneously). Evaluation quality is also bounded by the realism of uploaded profiles, and the framework has no mechanism to handle implicit bias encoded in job description language itself.",
+    "interview_questions": [
+      "How does FairWork handle intersectional fairness, where multiple sensitive attributes interact to produce compounded bias?",
+      "What specific fairness metrics does the framework use, and how are they adapted for ranked recommendation outputs rather than binary classification?",
+      "How does the recruiter-side evaluation work — does it analyze the job description text for biased language, or only measure differential recommendation rates across candidate groups?",
+      "What are the assumptions behind the counterfactual profile perturbation approach, and when might those assumptions break down in practice?",
+      "How does FairWork ensure that differences in recommendation outcomes reflect bias rather than legitimate qualification differences between demographic groups?"
+    ],
+    "interview_answers": [
+      "FairWork appears to evaluate sensitive attributes independently rather than jointly, which means intersectional bias cases — where, for example, a Black woman faces compounded disadvantage beyond what either attribute alone predicts — are likely underdetected. A robust framework would require combinatorial perturbation across attribute pairs, which grows exponentially and is not clearly addressed.",
+      "The framework likely employs ranking-aware fairness metrics such as normalized discounted cumulative gain (NDCG) parity, demographic parity in top-k recommendations, or exposure-based metrics from the IR fairness literature. These are appropriate because recommendation harm manifests through position bias in ranked lists, not just binary accept/reject decisions.",
+      "Recruiter-side evaluation most plausibly measures whether identical or similarly qualified candidates from different demographic groups receive differential recommendation rates when matched against the same job description — it is likely an outcome-based measure rather than a linguistic analysis of the job description itself, though the latter would be a valuable extension.",
+      "Counterfactual perturbation assumes that swapping a sensitive attribute (e.g., changing a name from 'Emily' to 'Jamal') produces a profile that is otherwise semantically equivalent — an assumption that fails when attributes are correlated with other features in the profile (e.g., school names that signal race or geography). It also assumes the LLM processes the perturbation in isolation, but context windows may allow other signals to compensate.",
+      "This is the core identification challenge: FairWork must control for qualification signals to isolate attribute-driven bias. This is typically done by constructing matched candidate profiles that are identical except for the sensitive attribute, but in real uploaded profiles this equivalence cannot be guaranteed, making causal attribution of bias difficult and potentially confounded by legitimate qualification differences."
+    ],
+    "generated_at": "2026-03-21T19:26:26Z"
+  }
+}

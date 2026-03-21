@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SparseCTR is a sparse self-attention model designed for CTR prediction that efficiently handles long user behavior sequences through personalized chunking and a three-branch attention mechanism. It demonstrates scaling law behavior and achieved +1.72% CTR and +1.41% CPM gains in online A/B testing.",
+    "key_idea": "Segment user behavior sequences into personalized chunks, then apply three-branch sparse attention to jointly capture global interests, interest transitions, and short-term interests with composite relative temporal encoding.",
+    "why_it_matters": "Standard full self-attention is too expensive for industrial recommendation systems with long behavior histories; SparseCTR makes scaling laws accessible in production by reducing computational complexity while preserving or improving recommendation quality.",
+    "possible_use_cases": [
+      "E-commerce product recommendation with long purchase/browse histories",
+      "Ad targeting using extended user engagement sequences",
+      "Video/content streaming platforms modeling long-term viewing patterns"
+    ],
+    "generated_at": "2026-03-21T19:27:44Z"
+  },
+  "deep": {
+    "method_breakdown": "SparseCTR segments user behavior sequences into personalized chunks to preserve temporal continuity, then applies a three-branch sparse self-attention mechanism that simultaneously captures global interests (long-range dependencies across all chunks), interest transitions (cross-chunk local patterns), and short-term interests (within-chunk recent behaviors). A composite relative temporal encoding uses learnable, head-specific bias coefficients to inject both sequential order and periodic temporal signals into attention computations, replacing standard positional encodings.",
+    "key_innovation": "The combination of personalized chunking (adapting chunk boundaries per user based on behavior density/patterns rather than fixed windows) with the three-branch sparse attention design is novel — prior sparse attention methods (Longformer, BigBird, etc.) use fixed structural sparsity patterns agnostic to user-specific behavior distributions. The head-specific learnable temporal bias is also a departure from shared positional encodings, allowing different attention heads to specialize in different temporal scales.",
+    "technical_insight": "The three-branch decomposition is the critical design choice: it enforces an inductive bias that CTR prediction requires simultaneously reasoning about stable long-term preferences, how interests evolve between time periods, and immediate recency effects — rather than letting a single dense attention pattern conflate all three. This structured sparsity reduces quadratic complexity while preserving the semantic signals most predictive for conversion, which explains both the efficiency gains and the observed scaling law behavior.",
+    "limitations": "Personalized chunking introduces user-specific preprocessing that may be brittle for cold-start users with sparse histories or rapidly shifting interests. The three-branch decomposition assumes a fixed decomposition of interest types, which may not generalize across all domains or user archetypes. The scaling law claim spans only three orders of magnitude in FLOPs on a single platform, and industrial A/B gains (1.72% CTR) may not transfer across different recommendation surfaces or item catalogs. The method also likely requires significant engineering effort for real-time chunk boundary computation at serving time.",
+    "interview_questions": [
+      "How does SparseCTR determine personalized chunk boundaries per user, and what signals drive that segmentation decision?",
+      "The three-branch attention captures global, transition, and short-term interests — how are these branches combined, and is there a learned weighting or fixed aggregation?",
+      "Standard sparse attention methods like Longformer use fixed structural patterns — why are these insufficient for recommendation and how does SparseCTR's sparsity pattern differ fundamentally?",
+      "How does the composite relative temporal encoding differ from RoPE or ALiBi, and why are head-specific bias coefficients important for capturing periodic behavior patterns?",
+      "The paper claims a scaling law across three orders of magnitude of FLOPs — what architectural property enables this, and how does it compare to the scaling behavior seen in LLMs?"
+    ],
+    "interview_answers": [
+      "Personalized chunking uses user-specific behavior statistics (likely activity density, session boundaries, or learned segmentation thresholds) to determine where to split sequences, ensuring semantically coherent behavior episodes are not split across chunk boundaries — unlike fixed-window approaches that blindly cut sequences at uniform intervals regardless of behavioral context.",
+      "The three branches are likely computed in parallel with separate attention masks enforcing their respective sparsity patterns (global tokens attending everywhere, transition tokens attending cross-chunk boundaries, local tokens attending within-chunk), then aggregated — likely via concatenation or learned gating — before projection, similar to how multi-head attention pools multiple representation subspaces.",
+      "Fixed structural patterns (sliding window, global tokens, random) are designed for language where token relationships follow linguistic grammar independent of the specific document. User behaviors have personalized temporal dynamics — a power user's 'recent' window differs from a casual user's — so static sparsity misaligns with the actual information structure, causing either over-pruning of relevant signals or under-pruning of noise.",
+      "Unlike ALiBi (which adds fixed linear position biases) or RoPE (which rotates query/key vectors by position), SparseCTR's temporal encoding uses learnable coefficients that are head-specific, allowing each attention head to learn a different temporal decay or periodicity scale. This is critical for behaviors with multiple periodicities (daily, weekly, seasonal purchase cycles) that a single shared bias cannot capture simultaneously.",
+      "The scaling law likely emerges because the three-branch sparse structure maintains O(n) or O(n log n) complexity while preserving the full expressivity of the interest decomposition — so adding more FLOPs via more heads or layers continues to improve modeling capacity without hitting the saturation wall that dense attention hits when sequences grow long and the quadratic cost forces truncation of history."
+    ],
+    "generated_at": "2026-03-21T19:28:12Z"
+  }
+}

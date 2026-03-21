@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "μDS introduces a multi-objective optimization approach to extract high-quality data snippets from datasets for dataset search, simultaneously optimizing for compactness, relevance, representativeness, and cohesiveness. The authors formulate this as a combinatorial optimization problem and provide an efficient algorithm with provable approximation guarantees.",
+    "key_idea": "Instead of optimizing snippet quality along a single dimension, jointly optimize four complementary objectives—compactness, relevance, representativeness, and cohesiveness—via a combinatorial formulation with a worst-case approximation bound.",
+    "why_it_matters": "Better data snippets improve dataset discoverability in open data portals and search engines, helping data scientists and analysts find the right datasets faster without manually inspecting full files.",
+    "possible_use_cases": [
+      "Improving dataset search rankings in open data portals like data.gov or Kaggle",
+      "Generating informative previews for tabular datasets in data catalogs",
+      "Enhancing retrieval-augmented systems that need to select representative rows from large tables as context"
+    ],
+    "generated_at": "2026-03-21T19:24:57Z"
+  },
+  "deep": {
+    "method_breakdown": "μDS formulates data snippet extraction as a combinatorial optimization problem that jointly maximizes four objectives: compactness (concise representation), relevance (query alignment), representativeness (coverage of the full dataset), and cohesiveness (internal consistency of selected rows/columns). The algorithm selects a subset of data cells/rows from tabular datasets using a provably approximate solver, avoiding the exponential search space of brute-force enumeration. The result is a small data snippet surfaced alongside metadata in dataset search rankings.",
+    "key_innovation": "Prior work treated snippet quality objectives (relevance, representativeness, etc.) independently or sequentially; μDS is the first to jointly optimize all four in a unified combinatorial framework with a worst-case approximation guarantee, replacing ad-hoc heuristics with a principled multi-objective formulation.",
+    "technical_insight": "The critical design choice is casting snippet extraction as a constrained submodular or weighted set-cover-style problem, which admits polynomial-time approximation algorithms. This matters because each objective alone is tractable, but naive combination can be NP-hard — deriving a joint approximation ratio ensures quality guarantees without sacrificing scalability across large open-data corpora.",
+    "limitations": "The method is designed for structured/tabular data and may not generalize to semi-structured or unstructured datasets. The approximation ratio provides worst-case guarantees but average-case quality depends heavily on weight calibration across the four objectives, which may require tuning per domain. Extrinsic evaluation via dataset search is proxy-based and may not reflect true user utility in downstream tasks.",
+    "interview_questions": [
+      "How do you balance the four objectives when they conflict — e.g., a highly cohesive snippet may sacrifice representativeness?",
+      "What is the proved approximation ratio and under what assumptions does it hold?",
+      "How does μDS handle datasets with heterogeneous schemas or mixed data types when computing relevance and cohesiveness?",
+      "How were the intrinsic quality metrics defined and validated — are they correlated with human judgments of snippet usefulness?",
+      "How does snippet quality affect downstream dataset search ranking, and does improving snippet quality always improve retrieval metrics?"
+    ],
+    "interview_answers": [
+      "The objectives are combined via a weighted linear scalarization or Pareto-style formulation; weights encode relative importance and are likely tuned on held-out data, but the paper does not claim to solve the weight selection problem — it is treated as a hyperparameter, which is a known limitation of scalarization approaches.",
+      "The approximation ratio is derived from the structure of the combinatorial problem — likely (1 - 1/e) or similar for submodular maximization under cardinality constraints — and holds assuming the objective function satisfies monotone submodularity; violations of this assumption in practice could degrade guarantees.",
+      "Relevance is typically computed via token or embedding overlap with the query, while cohesiveness may rely on statistical homogeneity or schema consistency within selected cells; handling mixed types usually requires type-aware similarity functions, and the paper likely applies column-type detection as a preprocessing step.",
+      "Intrinsic metrics are likely defined analytically (e.g., compression ratio for compactness, coverage ratio for representativeness) and may be validated by correlation with human ratings in a user study; however, intrinsic metrics can diverge from perceived utility if the quality dimensions do not match user mental models.",
+      "Snippet quality improves dataset search extrinsically when the snippet provides discriminative signal that metadata alone cannot — particularly for queries requiring content-level evidence; however, if ranking is dominated by metadata signals, snippet improvements may yield marginal retrieval gains."
+    ],
+    "generated_at": "2026-03-21T19:25:20Z"
+  }
+}
