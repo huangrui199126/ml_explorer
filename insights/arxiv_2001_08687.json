@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a two-stage citation recommendation system that combines BM25-style candidate retrieval with BERT-based reranking, adapted to the scientific domain through in-domain pretraining and vocabulary. It also introduces a navigation-based document expansion technique that enriches candidate documents by leveraging citation graph structure.",
+    "key_idea": "Augmenting candidate documents with text from their citing/cited neighbors in the citation graph ('navigation-based expansion') provides richer context for neural reranking models to identify relevant citations.",
+    "why_it_matters": "Automating citation recommendation reduces the manual burden of literature review, helps surface non-obvious relevant works, and can accelerate scientific discovery by connecting researchers to papers they might otherwise miss.",
+    "possible_use_cases": [
+      "Suggesting missing citations during manuscript writing in academic writing tools",
+      "Building literature review assistants that surface related work for a given research topic",
+      "Enhancing academic search engines with personalized citation recommendations based on a draft paper"
+    ],
+    "generated_at": "2026-03-22T06:08:20Z"
+  },
+  "deep": {
+    "method_breakdown": "The system uses a two-stage pipeline: first, candidate papers are retrieved using BM25-style bag-of-words retrieval, then a BERT-based model reranks these candidates. The key addition is a navigation-based document expansion step where the citation graph is traversed to augment candidate documents with content from their neighbors (e.g., papers that cite or are cited by a candidate), enriching the representation before neural reranking. Domain adaptation is applied both via pretraining BERT on scientific corpora (e.g., SciBERT) and using in-domain vocabulary.",
+    "key_innovation": "The navigation-based candidate expansion is the primary novel contribution: rather than representing a candidate paper solely by its own text, the system incorporates text from graph-adjacent papers (via citation links), effectively expanding the semantic representation. This differs from prior work that treats each document in isolation during retrieval and reranking.",
+    "technical_insight": "The critical design choice is enriching candidate documents through citation graph traversal before neural scoring. This works because papers that co-cite or are co-cited tend to share topic and terminology — borrowing their language fills gaps when a candidate paper's abstract is short or uses different vocabulary than the query context, directly addressing the vocabulary mismatch problem in scientific retrieval.",
+    "limitations": "The navigation-based expansion depends on the density and quality of the existing citation graph, meaning it degrades for new or obscure papers with few citation links. The two-stage approach may also have recall ceiling issues if the initial BM25 retrieval misses relevant candidates that the reranker can never recover. Evaluation on only three benchmarks limits generalizability claims, and the approach may not scale efficiently to very large corpora due to graph traversal overhead.",
+    "interview_questions": [
+      "How does the navigation-based document expansion specifically work — what neighbors are included and how is their text incorporated?",
+      "Why does domain-adapted pretraining (e.g., SciBERT) help over general BERT, and how much does in-domain vocabulary contribute independently?",
+      "What happens to recall at the candidate generation stage, and how does the navigation expansion affect it compared to pure BM25?",
+      "How sensitive is the system to the depth or breadth of graph traversal — does using 1-hop vs 2-hop neighbors significantly change performance?",
+      "How does this approach compare to dense retrieval methods like DPR or SPECTER that embed papers in a shared vector space?"
+    ],
+    "interview_answers": [
+      "Neighboring papers in the citation graph (papers that the candidate cites, or papers that cite the candidate) have their titles and abstracts concatenated or pooled with the candidate's own text, creating an expanded document representation. The traversal is typically shallow (1-hop) to control noise and computational cost.",
+      "Scientific text has a distinct vocabulary (mathematical notation, domain jargon, abbreviations) that general BERT's WordPiece tokenizer splits poorly. In-domain pretraining aligns the language model's representations with scientific concepts, while in-domain vocabulary reduces tokenization fragmentation — the paper shows both contribute, though pretraining tends to have a larger effect.",
+      "BM25 recall sets a hard ceiling for the pipeline. Navigation expansion helps recall indirectly by broadening the vocabulary of candidate representations at index time, making them more likely to match diverse query formulations — effectively acting as a form of pseudo-relevance feedback at the document side.",
+      "Performance generally improves with 1-hop expansion but gains diminish or reverse at greater depths due to topic drift — distant neighbors in the citation graph may be only tangentially related, introducing noise that hurts the reranker's precision.",
+      "Dense retrieval methods like SPECTER encode papers into fixed vectors and retrieve via ANN search, which can generalize better to paraphrase and semantic variation. This paper's BM25+BERT approach has strong precision but can miss semantically similar papers with different surface forms; the navigation expansion partially compensates, but dense retrieval is a natural complementary or competing direction."
+    ],
+    "generated_at": "2026-03-22T06:08:42Z"
+  }
+}

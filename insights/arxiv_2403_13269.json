@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "AFLoRA improves LoRA-based fine-tuning by incrementally freezing low-rank projection matrices during training based on a novel freezing score, reducing trainable parameters and computation overhead. It achieves state-of-the-art results on GLUE while using up to 9.5x fewer trainable parameters and 1.86x faster runtime than comparable PEFT methods.",
+    "key_idea": "Progressively freeze low-rank adapter matrices that have converged during fine-tuning, so compute is concentrated only on matrices that still need updating.",
+    "why_it_matters": "Practitioners can fine-tune large language models faster and with significantly less memory/compute, making LLM adaptation more accessible on constrained hardware without sacrificing—and even improving—task performance.",
+    "possible_use_cases": [
+      "Fine-tuning large LLMs on edge devices or consumer GPUs with limited VRAM",
+      "Rapid iteration on multiple downstream NLP tasks with reduced training costs",
+      "Reducing overfitting when fine-tuning on small domain-specific datasets"
+    ],
+    "generated_at": "2026-03-22T06:04:14Z"
+  },
+  "deep": {
+    "method_breakdown": "AFLoRA adds parallel low-rank adapter paths (down-projection + up-projection matrices) to frozen pretrained weights, similar to LoRA, but augments each projection with a feature transformation vector. During fine-tuning, a novel 'freezing score' is computed per projection matrix, and matrices are incrementally frozen (made non-trainable) as training progresses, reducing active parameters over time. This progressive freezing reduces both computational cost and overfitting risk.",
+    "key_innovation": "The core novelty is the adaptive, incremental freezing mechanism driven by a per-matrix freezing score — unlike LoRA which keeps all adapter parameters trainable throughout, AFLoRA dynamically identifies which low-rank projections have converged and freezes them, yielding up to 9.5× fewer average trainable parameters at inference without sacrificing (and often improving) accuracy.",
+    "technical_insight": "The most important design choice is freezing projection matrices independently and incrementally rather than all at once or layer-by-layer. This works because different LoRA paths converge at different rates depending on their role in the network; early freezing of converged paths acts as implicit regularization (preventing overfitting), while still-active paths continue to adapt, concentrating capacity where it is most needed.",
+    "limitations": "The freezing score heuristic may not generalize well across architectures or tasks beyond GLUE-style classification benchmarks. The method introduces an additional hyperparameter (freezing schedule/threshold) that may require tuning. Results are demonstrated primarily on NLU tasks; generalization to generative tasks, vision-language models, or very large models (>10B params) is unverified. The feature transformation vectors add a small overhead not present in vanilla LoRA.",
+    "interview_questions": [
+      "How is the freezing score computed, and what properties of a projection matrix cause it to be frozen early versus late?",
+      "Why does incrementally freezing low-rank matrices reduce overfitting, and is there a theoretical justification or only empirical evidence?",
+      "How does AFLoRA's feature transformation vector differ from the scaling factor alpha in standard LoRA, and what role does it play?",
+      "The paper reports up to 9.5× fewer trainable parameters — is this measured at the end of training, on average across training, or at inference time, and why does the distinction matter?",
+      "How sensitive is AFLoRA to the choice of freezing schedule hyperparameters, and what guidance exists for setting them on a new task or architecture?"
+    ],
+    "interview_answers": [
+      "The freezing score is designed to measure how much a given projection matrix is still changing or contributing to loss reduction — likely based on gradient magnitude or parameter update norms. Matrices whose scores fall below a threshold are frozen. Matrices with small, stable updates are frozen early because they have effectively converged, while those still undergoing significant updates remain trainable.",
+      "Freezing acts as a form of early stopping applied per-module: once a projection converges, continuing to update it risks fitting noise in the training data. By halting updates selectively, AFLoRA prevents these converged components from drifting toward overfitting while allowing other components to keep improving generalization. The evidence is primarily empirical (GLUE benchmark gains), though the intuition aligns with classical regularization theory.",
+      "Standard LoRA uses a fixed scalar alpha to rescale the adapter output globally. AFLoRA's feature transformation vector is a learnable per-feature (channel-wise) scaling applied after each projection, providing more expressive, fine-grained modulation of the adapter's contribution. This allows the adapter to selectively amplify or suppress individual feature dimensions rather than applying a uniform rescale.",
+      "The 9.5× figure refers to average trainable parameters across training (since freezing is incremental), not a fixed count at initialization or final inference. This distinction matters because it directly impacts GPU memory for optimizer states and gradient computation during training — the practical speedup (1.86×) stems from fewer backward-pass operations over frozen parameters, not just a smaller final model.",
+      "The paper provides some analysis of freezing schedules across modules (showing that different layers have different trainability requirements), but sensitivity analysis is limited. In practice, the freezing threshold and schedule likely need task-specific tuning, which is a usability drawback. A robust deployment would benefit from an automated or adaptive schedule (e.g., tied to validation loss plateau) rather than a fixed hyperparameter."
+    ],
+    "generated_at": "2026-03-22T06:04:38Z"
+  }
+}
