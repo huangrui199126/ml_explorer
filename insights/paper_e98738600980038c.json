@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a RAG-integrated Document Management System (DMS) that enables semantic, natural-language search over organizational document repositories, replacing traditional keyword-based search with LLM-powered contextual retrieval using ChatGPT.",
+    "key_idea": "By layering RAG on top of a commercial DMS, queries in natural language are matched to relevant documents whose contents are then interpreted and synthesized by an LLM, shifting document interpretation from human to machine.",
+    "why_it_matters": "Organizations storing large volumes of documents can dramatically reduce time-to-insight by letting employees query in plain language and receive synthesized answers, rather than sifting through keyword-matched result lists.",
+    "possible_use_cases": [
+      "Legal and compliance teams searching contracts or regulatory filings for specific clauses or obligations",
+      "HR departments querying policy and procedure documents to answer employee questions automatically",
+      "Engineering teams retrieving relevant technical specifications or past project reports based on conceptual queries"
+    ],
+    "generated_at": "2026-03-22T01:58:03Z"
+  },
+  "deep": {
+    "method_breakdown": "The system integrates a RAG pipeline with a commercial DMS (dMACQ) by indexing stored documents into a vector store, then converting natural language queries into embeddings to retrieve semantically relevant document chunks. These retrieved chunks are passed as context to ChatGPT, which synthesizes a natural language answer rather than returning a raw list of documents. The architecture bridges the DMS's native syntactic search API with an LLM layer that handles query understanding and response generation.",
+    "key_innovation": "The primary contribution is a practical integration architecture showing how an off-the-shelf commercial DMS can be augmented with RAG without replacing the underlying system — acting as a semantic layer on top of existing document repositories. There is little fundamental novelty over standard RAG; the value is in the systems-integration demonstration and enterprise applicability.",
+    "technical_insight": "The most important design choice is keeping the DMS as the authoritative document store while using RAG purely as a query-translation and answer-synthesis layer. This preserves existing access controls, versioning, and workflows while adding semantic capability — a pragmatic choice that lowers adoption friction in enterprise settings where replacing core infrastructure is not viable.",
+    "limitations": "The system inherits all RAG failure modes: chunking quality directly impacts retrieval accuracy, and long or highly technical documents may be poorly represented. Dependence on ChatGPT introduces latency, cost, and data-privacy concerns for organizations with sensitive documents. The evaluation appears qualitative and limited to one proprietary DMS, making generalizability unclear. There is no benchmarking against hybrid search baselines or ablation of retrieval parameters.",
+    "interview_questions": [
+      "How does your chunking strategy handle structured documents like contracts or forms where context spans multiple sections?",
+      "What access-control mechanism ensures RAG responses respect per-user document permissions in the DMS?",
+      "How do you handle queries that require aggregation or comparison across many documents rather than retrieval of a single relevant passage?",
+      "What happens when the retrieved chunks are contradictory — how does the system signal uncertainty rather than hallucinating a confident answer?",
+      "Have you evaluated the system on domain-specific corpora where ChatGPT's general-purpose knowledge may conflict with or override document content?"
+    ],
+    "interview_answers": [
+      "Structured documents benefit from semantic chunking strategies that respect section boundaries (e.g., heading-aware splitting) rather than fixed-size windows; overlap between chunks helps but does not fully solve cross-section reasoning.",
+      "Access control must be enforced at retrieval time by filtering the vector search to only chunks the querying user is authorized to see — typically by storing document ACL metadata alongside embeddings and applying pre-filters before similarity search.",
+      "Aggregation queries are a known weakness of naive RAG; solutions include query decomposition, map-reduce prompting over multiple retrieved chunks, or hybrid approaches that route analytical queries to structured metadata rather than free-text retrieval.",
+      "Uncertainty signaling requires explicit prompting (e.g., instructing the model to say 'the documents do not agree' or 'insufficient evidence') combined with returning source chunk citations so users can verify — confidence scores from the retriever can also be surfaced.",
+      "Domain-specific corpora require fine-tuned or domain-adapted embeddings and careful system prompting to instruct the LLM to treat retrieved context as authoritative over its parametric knowledge, reducing the risk of the model 'correcting' domain facts it was not trained on."
+    ],
+    "generated_at": "2026-03-22T01:58:28Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LIME is a news recommendation framework that incorporates news 'lifetime' — how long an article remains relevant — to better match users with content. It models both user-topic-specific interest persistence and the varying shelf-life of news across topics to generate more temporally-aligned recommendations.",
+    "key_idea": "By representing news age relative to a user-topic pair's learned lifetime (rather than using raw timestamps), the model can distinguish between stale and still-relevant clicked history to build better user interest profiles.",
+    "why_it_matters": "Most recommender systems treat temporal decay uniformly, but news relevance decays at very different rates (breaking news vs. analysis pieces); LIME's model-agnostic strategies can plug into existing architectures to reduce surfacing outdated or irrelevant content.",
+    "possible_use_cases": [
+      "Personalized news feeds that deprioritize stale articles based on topic-specific freshness thresholds",
+      "Improving user engagement metrics on news platforms by filtering historically clicked but now-expired interests",
+      "Augmenting existing recommendation pipelines with lifetime-aware re-ranking as a post-processing step"
+    ],
+    "generated_at": "2026-03-22T02:00:55Z"
+  },
+  "deep": {
+    "method_breakdown": "LIME models news recommendation by introducing lifetime-aware representations that capture how long a user's interest in a topic persists relative to the age of clicked news. It computes a user-topic lifetime embedding so that the 'age' of a clicked article is measured not in absolute time but relative to the typical decay rate for that user-topic pair. At inference time, a freshness-guided refinement step re-weights candidate news based on whether they fall within the user's active interest window for the relevant topic.",
+    "key_innovation": "Prior work treats temporal signals (recency, timestamps) as global or news-level features, ignoring that interest decay rates vary per user AND per topic. LIME's core novelty is the joint user-topic lifetime modeling: a single user may have long-lived interest in 'deep learning' but very short-lived interest in 'breaking news', and LIME learns these separate decay functions rather than applying one decay curve globally.",
+    "technical_insight": "The candidate-aware lifetime attention is the most critical design choice — it conditions the user representation on the specific candidate being scored, so the model selectively surfaces historical clicks that are temporally relevant to that candidate's topic and freshness. This avoids the common failure mode where a stale but highly-engaged click dominates the user vector for all candidates regardless of topic or timing.",
+    "limitations": "The model requires sufficient click history per user-topic pair to learn meaningful lifetime parameters, making it likely to underperform for cold-start users or niche topics with sparse interactions. The user-topic lifetime parameters are presumably learned from training data distributions, so they may not generalize to rapidly shifting news cycles or novel topics not seen during training. Computational overhead of candidate-aware attention scales with the number of candidates, which could be a bottleneck in large-scale industrial serving.",
+    "interview_questions": [
+      "How does LIME parameterize the lifetime of interest for a user-topic pair — is it a learned scalar, a distribution, or a function of click patterns?",
+      "How does candidate-aware lifetime attention avoid the quadratic complexity problem when the candidate pool is large, as in real production news systems?",
+      "The paper claims model-agnostic strategies — how exactly are the three components integrated into an arbitrary base recommender without requiring architectural changes?",
+      "How does LIME handle the cold-start scenario for a new user or a new topic where no lifetime signal can be estimated?",
+      "What datasets were used, and how was ground truth for 'interest persistence' or 'lifetime' established — is there a risk of circular evaluation since lifetime is inferred from the same click logs used for training?"
+    ],
+    "interview_answers": [
+      "Most likely LIME learns a topic-level and user-level embedding that is combined (e.g., via a small MLP or bilinear product) to produce a scalar or soft decay parameter per user-topic pair. This is then used to transform the raw age of a clicked article into a normalized relative-age feature, making age comparable across different topic lifetimes.",
+      "Candidate-aware attention likely uses a dot-product or additive attention mechanism between a candidate embedding and each historical click embedding, which is O(L) per candidate where L is history length — manageable if history is capped. For large candidate pools, approximate nearest-neighbor retrieval or two-stage ranking (retrieve then re-rank) would be needed, though this may not be fully addressed in the paper.",
+      "The model-agnostic claim likely means the three strategies produce augmented input features (richer age embeddings, refined user vectors) that can be fed into any base encoder without changing its architecture. The freshness-guided refinement at prediction time can be applied as a post-processing re-ranking step on top of any base model's output scores.",
+      "For cold-start users, the model likely falls back to topic-level population averages for lifetime parameters rather than user-specific estimates. For new topics, it may rely on category-level groupings. This is a genuine weakness, and the paper likely acknowledges it implicitly through evaluation only on warm users.",
+      "The datasets are likely MIND (Microsoft News Dataset) and one other public benchmark — both use implicit click feedback. The risk of circular evaluation is real: lifetime parameters are inferred from click density and recency patterns in training data, and the test set is sampled from the same log. If users naturally stop clicking stale news, the model learns this tautologically. The evaluation validity depends on whether the test split is truly held-out temporally."
+    ],
+    "generated_at": "2026-03-22T02:01:22Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "A PDF chatbot that combines knowledge graphs (Neo4j) with vector semantic search to answer document-specific questions more accurately than standard RAG systems. The hybrid retrieval approach captures both relational structure between entities and semantic similarity simultaneously.",
+    "key_idea": "Combining graph traversal over entity relationships with vector-based semantic search creates a retrieval system that understands both what things mean and how they relate to each other within a document.",
+    "why_it_matters": "Standard RAG loses structured relationships between entities when chunking documents; this hybrid approach preserves those relationships, yielding more precise answers for documents with complex interdependencies like legal contracts, technical specs, or research papers.",
+    "possible_use_cases": [
+      "Legal document analysis where clause dependencies and entity references matter",
+      "Technical documentation Q&A where component relationships are critical",
+      "Medical record querying that requires tracing relationships between diagnoses, treatments, and outcomes"
+    ],
+    "generated_at": "2026-03-22T01:57:31Z"
+  },
+  "deep": {
+    "method_breakdown": "The system extracts text from uploaded PDFs, builds a Neo4j knowledge graph encoding entity relationships and structural dependencies, and simultaneously chunks and embeds text into a vector store for semantic search. At query time, a hybrid retrieval pipeline runs both graph traversal (for relational/structural context) and vector similarity search (for semantic relevance) in parallel. The retrieved results from both pipelines are merged and passed to an LLM to generate grounded, document-specific answers.",
+    "key_innovation": "The primary innovation is the hybrid retrieval architecture that combines graph-based relational traversal with dense vector search for PDF QA. While RAG with vector stores is well-established, explicitly encoding document structure and entity relationships in a knowledge graph (Neo4j) and using graph traversal as a complementary retrieval signal is less common in PDF chatbot systems. This allows the system to answer questions requiring multi-hop relational reasoning, not just semantic similarity.",
+    "technical_insight": "The most important design choice is using the knowledge graph to capture structural and relational dependencies that flat vector embeddings inherently lose. Embeddings excel at semantic similarity but treat each chunk independently; the graph preserves explicit connections (e.g., 'Section 3 references Figure 2', 'Entity A is defined in terms of Entity B'), enabling retrieval that follows document logic rather than just surface similarity. This is why the hybrid outperforms pure vector RAG on relational queries.",
+    "limitations": "Knowledge graph construction quality is highly dependent on entity and relationship extraction accuracy, which degrades on noisy, poorly structured, or domain-specific PDFs. The system likely requires significant engineering overhead per document type and does not generalize automatically. Combining two retrieval pipelines raises latency and infrastructure complexity (Neo4j + vector store). There is no rigorous evaluation benchmark reported in the abstract, making it unclear how much the graph component actually improves over strong vector-only baselines. The approach may also struggle with very long documents where graph construction becomes expensive and noisy.",
+    "interview_questions": [
+      "How does the system extract entities and relationships from PDFs to populate the Neo4j knowledge graph, and what happens when extraction is noisy or incorrect?",
+      "How are the results from the graph traversal and vector search pipelines combined before being passed to the LLM — is there a ranking or fusion step?",
+      "What types of queries benefit most from graph traversal versus vector search, and how does the system decide which signal to weight more heavily?",
+      "How does this approach scale with document length and corpus size, given that both a vector store and a graph database must be maintained?",
+      "How was the system evaluated — what datasets or metrics were used to demonstrate improvement over pure vector RAG baselines?"
+    ],
+    "interview_answers": [
+      "The abstract does not specify the extraction method, but typically NLP pipelines (NER, relation extraction, coreference resolution) or LLM-based extraction are used. Noisy extraction would introduce incorrect edges into the graph, potentially degrading retrieval quality for relational queries — this is a key fragility of the approach.",
+      "The abstract says results are 'combined and sent to the LLM' but does not detail the fusion mechanism. In practice this is often simple concatenation, re-ranking by a cross-encoder, or weighted merging — the choice significantly affects answer quality and the abstract leaves this underspecified.",
+      "Graph traversal benefits multi-hop relational queries (e.g., 'What does the method described in Section 2 assume about the data?'), while vector search handles semantic paraphrase queries. The system likely uses both unconditionally rather than routing, which is a limitation — an adaptive routing mechanism could improve efficiency.",
+      "Scalability is a genuine concern. Graph construction and traversal are more expensive than vector lookup at scale, and maintaining consistency between the graph and vector store adds operational complexity. The paper appears to target single-document or small-corpus scenarios where this is manageable.",
+      "The abstract does not describe any evaluation. This is a significant gap — without benchmarks on datasets like QuALITY, NarrativeQA, or custom PDF QA sets, the claimed improvements over traditional RAG remain unverified. The paper reads more as a system description than an empirical contribution."
+    ],
+    "generated_at": "2026-03-22T01:57:56Z"
+  }
+}

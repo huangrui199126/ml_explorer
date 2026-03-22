@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a search engine architecture that combines LLMs with a dynamic document retrieval system (RAG) to deliver accurate, up-to-date answers alongside their source documents. The system is domain-fine-tuned for finance, healthcare, and news, and integrates both private institutional and public data sources.",
+    "key_idea": "By continuously refreshing the retrieval index via web crawlers, databases, and APIs, the LLM always generates responses grounded in current documents rather than stale parametric knowledge.",
+    "why_it_matters": "Practitioners building enterprise or domain-specific search tools gain a blueprint for reducing hallucinations and knowledge staleness while maintaining user trust through transparent source attribution.",
+    "possible_use_cases": [
+      "Real-time financial research assistants that surface current market data and regulatory filings with cited sources",
+      "Clinical decision-support tools that query up-to-date medical literature and institutional patient data",
+      "News aggregation platforms that generate concise, sourced summaries of rapidly evolving stories"
+    ],
+    "generated_at": "2026-03-22T01:58:34Z"
+  },
+  "deep": {
+    "method_breakdown": "The system combines an LLM with a dynamic document retrieval pipeline that pulls from continuously updated sources including databases, web crawlers, and APIs. User queries trigger retrieval of fresh, relevant documents which are then injected into the LLM's context window to ground its response generation. The system outputs both a synthesized answer and the source documents used, enabling verifiable responses.",
+    "key_innovation": "The primary claim is continuous, multi-source document updating (crawlers + APIs + databases) to keep the retrieval corpus fresh, combined with domain-specific fine-tuning for verticals like finance, healthcare, and news. However, this is largely an engineering integration of known RAG components rather than a fundamentally new algorithmic contribution — similar systems exist (e.g., WebGPT, Bing Chat, Perplexity). The dual-output transparency mechanism is a UX choice, not a technical novelty.",
+    "technical_insight": "Grounding LLM generation in retrieved documents is the core design choice that reduces hallucination — by constraining the model to synthesize from retrieved context rather than rely solely on parametric memory, the system trades recall breadth for factual precision. Domain-specific fine-tuning further calibrates the retrieval ranking and generation style to vertical-specific query distributions, which matters because out-of-domain retrievers often surface tangentially relevant but unhelpful documents.",
+    "limitations": "The paper lacks rigorous quantitative benchmarks against strong baselines (e.g., BM25+GPT-4, Perplexity, or Bing). Retrieval quality is the bottleneck — garbage-in-garbage-out means a bad retriever produces confidently wrong answers. The system does not address retrieval latency at scale, chunking strategy sensitivity, context window limits for long documents, or adversarial/spam content in the crawl corpus. Fine-tuning claims are vague with no ablation studies. The dual-output transparency is only useful if users can actually evaluate source quality, which most cannot.",
+    "interview_questions": [
+      "How does your system decide which retrieved documents to include in the LLM context when the retrieved set exceeds the context window limit?",
+      "How do you measure and mitigate retrieval latency in a production setting where the corpus is being continuously updated?",
+      "What chunking strategy do you use for document segmentation, and how sensitive is performance to chunk size and overlap?",
+      "How does domain-specific fine-tuning interact with retrieval — are you fine-tuning the retriever, the LLM, or both, and how do you avoid catastrophic forgetting of general knowledge?",
+      "If a retrieved source document is factually incorrect or adversarially crafted, how does the system detect and handle this before passing it to the LLM?"
+    ],
+    "interview_answers": [
+      "A robust approach uses a reranker (e.g., cross-encoder) to score retrieved chunks by relevance to the query, then greedily selects top-k chunks that fit within the context budget. Alternatively, a map-reduce or hierarchical summarization strategy compresses multiple documents before final synthesis.",
+      "Latency can be managed by maintaining a pre-built, incrementally updated vector index (e.g., FAISS or a managed vector DB like Pinecone/Weaviate) so retrieval is a fast ANN search rather than a live crawl. Updates are batched asynchronously and merged into the index without full rebuilds.",
+      "Chunk size is typically 256–512 tokens with 10–20% overlap to preserve cross-boundary context. Sensitivity is high — too small loses semantic coherence, too large dilutes relevance signals. Optimal chunk size is domain-dependent and should be tuned against a held-out retrieval benchmark.",
+      "Ideally both are fine-tuned: the retriever (bi-encoder) is trained with in-domain query-document pairs using contrastive loss, and the LLM is instruction-tuned on domain-specific QA pairs. Catastrophic forgetting is mitigated via LoRA/PEFT adapters that preserve the base model weights.",
+      "Mitigation includes source credibility scoring (domain allowlisting, PageRank-like authority signals), consistency checking across multiple retrieved documents, and confidence calibration where the LLM is prompted to flag contradictions. Full adversarial robustness remains an open problem in RAG systems."
+    ],
+    "generated_at": "2026-03-22T01:59:01Z"
+  }
+}
