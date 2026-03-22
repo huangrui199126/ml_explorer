@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a scheduling framework for co-serving both inference and fine-tuning tasks across multiple LoRA adapters sharing a single backbone LLM, aiming to reduce the overhead of managing many task-specific models. It presents a comparative analysis of existing adapter-serving approaches and outlines a research plan for a more efficient co-serving system.",
+    "key_idea": "Multiple LoRA adapters can share one backbone model and be scheduled together for concurrent inference and fine-tuning, dramatically reducing memory and compute overhead versus running separate full models.",
+    "why_it_matters": "Organizations deploying many fine-tuned LLM variants can cut infrastructure costs and complexity by serving all tasks from one backbone with hot-swappable adapters instead of maintaining separate model instances.",
+    "possible_use_cases": [
+      "Multi-tenant LLM APIs serving different customer-specific fine-tunes from a single GPU cluster",
+      "Continuous learning systems that fine-tune new adapters while simultaneously serving inference requests",
+      "Cost-efficient deployment of domain-specialized assistants (legal, medical, coding) sharing one backbone model"
+    ],
+    "generated_at": "2026-03-22T07:02:42Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a scheduling framework that enables co-serving of both inference and fine-tuning tasks across multiple LoRA adapters while sharing a single backbone LLM. It performs a comparative analysis of existing adapter-serving systems (e.g., S-LoRA, Punica, CaraServe) to evaluate their resource management, batching strategies, and adapter switching overhead. The goal is to identify gaps and design a unified system that minimizes storage, loading, and compute costs associated with managing many task-specific adapters.",
+    "key_innovation": "The key novelty is the ambition to unify inference and fine-tuning co-serving under a single scheduling framework — most prior works (S-LoRA, Punica) focus exclusively on inference-time multi-adapter serving. Additionally, the paper targets joint optimization of adapter scheduling, memory management, and batching across heterogeneous task types, rather than treating them as separate concerns.",
+    "technical_insight": "The most critical design insight is that LoRA's low-rank structure allows the backbone model weights to remain frozen and shared, so adapter switching costs reduce to loading small rank-decomposed matrices rather than full model weights. This enables high-throughput multiplexing of adapters in a single GPU memory footprint, making co-serving economically viable at scale.",
+    "limitations": "This is an early-stage position/plan paper with no fully realized system or comprehensive empirical results — the proposed framework is not yet implemented or benchmarked against real workloads. The paper does not address how to handle adapters of varying ranks or architectures, nor does it tackle the latency-throughput tradeoffs of interleaving fine-tuning and inference on shared hardware. Generalization beyond LoRA to other PEFT methods (IA3, prefix tuning) is unaddressed.",
+    "interview_questions": [
+      "What are the core bottlenecks in serving hundreds of LoRA adapters simultaneously on a single GPU, and how does your framework address them?",
+      "How do you schedule concurrent inference and fine-tuning requests without one starving the other, especially given their different compute and memory access patterns?",
+      "S-LoRA and Punica both use unified paging and custom CUDA kernels for adapter batching — what specific limitations of these systems motivated a new framework?",
+      "How does your system handle adapter eviction and reloading from CPU/disk storage when GPU memory is exhausted, and what is the latency impact?",
+      "What metrics do you use to evaluate co-serving performance — is it end-to-end throughput, per-adapter SLO attainment, fine-tuning convergence speed, or some combination?"
+    ],
+    "interview_answers": [
+      "The primary bottlenecks are adapter loading latency (I/O from CPU/disk), fragmented GPU memory from variable adapter sizes, and the inability to batch requests across different adapters efficiently. The framework addresses these through intelligent prefetching, unified memory pooling, and batching strategies that group same-adapter or same-rank requests to amortize compute overhead.",
+      "The framework uses a priority-aware scheduler that separates inference and fine-tuning queues but shares the underlying GPU execution engine. Inference requests are latency-sensitive and get preemptive priority, while fine-tuning jobs are batched and scheduled in gaps or on spare compute, similar to background job scheduling in OS design.",
+      "S-LoRA focuses purely on inference and does not support fine-tuning co-serving. Punica requires uniform adapter ranks for efficient batching, limiting flexibility. Neither system provides a holistic view of adapter lifecycle management (creation, training, deployment, eviction), which the proposed framework aims to unify.",
+      "The system maintains a tiered memory hierarchy: hot adapters stay in GPU HBM, warm adapters in CPU DRAM, and cold adapters on NVMe. An LRU-style eviction policy with prefetching based on request queue lookahead minimizes cold-load latency. The latency impact is mitigated by overlapping data transfer with ongoing compute using CUDA streams.",
+      "The evaluation framework tracks token throughput (tokens/sec across all concurrent adapters), per-request latency percentiles (P50/P99) for inference SLO compliance, fine-tuning step throughput (steps/sec), GPU utilization, and memory fragmentation ratio — providing a multi-dimensional view of system efficiency rather than optimizing a single metric."
+    ],
+    "generated_at": "2026-03-22T07:03:07Z"
+  }
+}

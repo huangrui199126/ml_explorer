@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HACK is a system for disaggregated LLM inference that computes attention directly on quantized KV cache data without dequantization, reducing transmission and memory bottlenecks. It achieves up to 70.9% reduction in Job Completion Time compared to baseline disaggregated inference.",
+    "key_idea": "By treating quantized KV data homomorphically — performing matrix multiplications directly in the quantized domain — HACK avoids the expensive dequantization step that prior KV compression methods require.",
+    "why_it_matters": "Practitioners running large-scale LLM serving with disaggregated prefill/decode architectures can significantly cut latency and costs, especially for long-context workloads where KV transfer is a major bottleneck.",
+    "possible_use_cases": [
+      "Long-context LLM serving with disaggregated prefill/decode infrastructure",
+      "Cost-efficient inference on heterogeneous GPU clusters mixing compute-focused and memory-rich hardware",
+      "High-throughput API serving where reducing Job Completion Time directly improves SLA compliance"
+    ],
+    "generated_at": "2026-03-22T07:01:52Z"
+  },
+  "deep": {
+    "method_breakdown": "HACK quantizes the KV cache for transmission between prefill and decode nodes in a disaggregated inference system, but instead of dequantizing before attention computation, it reformulates the attention matrix multiplication to operate directly on quantized integer representations. The key mathematical insight is that Q*K^T with quantized K can be decomposed into integer matrix multiplications plus low-cost correction terms, approximating the full-precision result without ever materializing dequantized tensors. This eliminates dequantization as a serial bottleneck and turns KV data compression into a net computational gain rather than just a bandwidth optimization.",
+    "key_innovation": "Prior KV quantization methods treat quantization purely as a compression scheme — quantize for transmission/storage, dequantize before compute — so they pay bandwidth savings but add dequantization latency. HACK's novelty is making quantization homomorphic with respect to the attention dot product: the computation is restructured so the decode GPU never needs to dequantize, performing attention entirely in the quantized domain. This converts a compression-compute trade-off into a compression-plus-compute win.",
+    "technical_insight": "The most important design choice is exploiting the decomposability of integer matrix multiplication: a quantized value k_q = scale * k_int + zero_point allows Q*K^T to be rewritten as scale*(Q*K_int^T) + zero_point*(Q*1^T), where both terms are cheaper integer or low-rank operations. This works because softmax's relative normalization absorbs systematic scaling errors, and the residual approximation error is small enough that generation quality is preserved — the same property that makes post-training quantization viable in the first place.",
+    "limitations": "Approximation error in the attention scores may degrade quality for tasks requiring high numerical precision (e.g., long-context retrieval with many near-identical keys). The gains depend heavily on hardware support for efficient integer GEMM on the decode GPU; on architectures without INT8/INT4 tensor cores, the benefit may not materialize. The method is evaluated in a trace-driven simulator rather than end-to-end production benchmarks, so real-world JCT improvements may differ. Finally, it applies to attention computation only — FFN layers and other bottlenecks in long-sequence decoding are unaddressed.",
+    "interview_questions": [
+      "How does HACK mathematically reformulate attention so that it operates on quantized K and V without dequantization, and what approximation error does this introduce?",
+      "What determines the optimal quantization bit-width in HACK — is there a theoretical bound on the accuracy-efficiency trade-off?",
+      "How does HACK interact with grouped-query attention (GQA) or multi-query attention (MQA), where K/V heads are already compressed?",
+      "The paper claims up to 70.9% JCT reduction — what are the primary contributors to this gain: bandwidth savings, elimination of dequantization, or the faster integer GEMM itself?",
+      "In a real disaggregated deployment with heterogeneous GPU types, how do you handle the mismatch between the quantization scheme chosen at prefill time and the integer arithmetic capabilities of the decode GPU?"
+    ],
+    "interview_answers": [
+      "HACK decomposes Q*K^T for quantized K (represented as scale*K_int + zero_point) into scale*(Q*K_int^T) + zero_point*row_sum(Q), where Q*K_int^T is an integer GEMM and the second term is a cheap scalar-vector product. The approximation error comes from rounding K to integers and is bounded by the quantization step size; in practice it is small relative to the dynamic range of attention logits, and softmax normalization further suppresses its effect on the output distribution.",
+      "The optimal bit-width balances two curves: narrower bits reduce memory and GEMM cost but increase quantization error. HACK likely sweeps bit-widths empirically per layer/head and finds INT4 or INT8 is sufficient for most Transformer attention layers. Theoretically, the error is O(2^{-b} * ||K||) for b-bit quantization, and the downstream perplexity impact can be bounded using sensitivity analysis on the attention Jacobian.",
+      "GQA/MQA already reduce the KV cache size, so HACK's quantization provides an orthogonal additional compression. The homomorphic reformulation still applies since each shared K/V head can be quantized independently. The interaction is additive in savings but the correction term (zero_point * row_sum) must be computed once per shared head rather than per query head, making it even cheaper in the GQA case.",
+      "All three contribute, but the dominant factor for long prompts is elimination of dequantization as a memory-bandwidth-bound serial step on the decode GPU. For shorter sequences, the integer GEMM speedup matters more. The bandwidth savings at transfer time reduce the prefill-to-decode latency, which directly cuts time-to-first-token and thus the JCT tail, explaining the large headline number.",
+      "This is a practical deployment challenge HACK must address via a negotiated quantization protocol: the prefill node selects a quantization scheme supported by the decode GPU's hardware (e.g., INT8 if the decode node has INT8 tensor cores), embeds scale/zero_point metadata in the KV transfer packet, and the decode node uses those parameters directly in the reformulated attention kernel. If the decode GPU lacks integer GEMM support, HACK falls back to dequantized FP16 compute, degrading gracefully to standard KV quantization behavior."
+    ],
+    "generated_at": "2026-03-22T07:02:34Z"
+  }
+}
