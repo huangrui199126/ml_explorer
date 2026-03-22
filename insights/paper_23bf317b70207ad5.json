@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CMI-Net is a deep learning architecture for recognizing horse activities from wearable sensor data, combining a dual CNN with a cross-modality interaction module that fuses accelerometer/gyroscope signals and addresses class imbalance via focal loss. It achieves 93.37% accuracy on a 6-horse dataset using leave-one-out cross-validation.",
+    "key_idea": "Adaptively recalibrating temporal and axis-wise features across sensor modalities enables richer inter-modality feature fusion than simple concatenation or late fusion approaches.",
+    "why_it_matters": "Practitioners building multi-sensor HAR systems — especially with imbalanced class distributions — can adopt the CMIM pattern and class-balanced focal loss to squeeze more signal out of heterogeneous wearable data without collecting more samples.",
+    "possible_use_cases": [
+      "Automated livestock health and welfare monitoring using IMU-equipped wearables",
+      "Multi-modal human activity recognition from wrist/waist/ankle sensor combinations",
+      "Imbalanced wildlife behavior classification from biologging devices"
+    ],
+    "generated_at": "2026-03-22T06:09:25Z"
+  },
+  "deep": {
+    "method_breakdown": "CMI-Net uses a dual CNN architecture to independently extract features from two IMU modalities (accelerometer and gyroscope), then applies a Cross-Modality Interaction Module (CMIM) that performs channel-wise and temporal attention recalibration by leveraging information across both modalities simultaneously. The CMIM learns to reweight features in each modality conditioned on the other, enabling deep inter-modality interaction rather than simple concatenation or addition. Class-balanced focal loss is applied during training to down-weight easy examples and up-weight rare activity classes, addressing the inherent imbalance in equine activity data.",
+    "key_innovation": "The CMIM is the primary innovation: instead of fusing modalities at the end via concatenation, it uses cross-modal signals to adaptively recalibrate temporal and axis-wise attention weights within each modality before fusion. This bidirectional modality conditioning is more expressive than late fusion or naive early fusion, and distinguishes CMI-Net from prior sensor fusion methods that treat modalities independently until a merge layer.",
+    "technical_insight": "The most important design choice is the axis-wise (channel-wise) recalibration within CMIM — IMU axes (x, y, z) have distinct semantic meanings for motion, and allowing cross-modal signals to selectively amplify or suppress specific axes lets the network exploit complementary information between accelerometer and gyroscope in a physically meaningful way, rather than treating all feature channels uniformly.",
+    "limitations": "The study uses only six horses with leave-one-out cross-validation, making generalization to other breeds, ages, or sensor placements uncertain. The neck-only sensor placement limits activity discrimination for leg-dominant behaviors. The method's effectiveness is demonstrated on equine data only, so transfer to other animal species or human activity recognition is unvalidated. Class imbalance is partially mitigated but not fully solved, and rare activities likely still suffer from limited training examples.",
+    "interview_questions": [
+      "How does the CMIM specifically compute the cross-modality attention weights — is it a gating mechanism, squeeze-and-excitation style, or something else?",
+      "Why was a dual CNN chosen over shared-weight or Siamese architectures for the two modalities, and what inductive bias does this introduce?",
+      "How sensitive is the model to the focal loss hyperparameters (gamma, alpha) and how were these chosen given the specific class distribution in the equine dataset?",
+      "What happens to performance when one modality is missing or corrupted at inference time — is the model robust to missing modalities?",
+      "How does axis-wise recalibration interact with the temporal recalibration in CMIM — are they applied sequentially, in parallel, or jointly?"
+    ],
+    "interview_answers": [
+      "The CMIM likely uses a squeeze-and-excitation-style mechanism where global temporal pooling compresses each modality into a descriptor, which is then fed into a shared or cross-connected MLP to produce attention weights applied back to the other modality's feature maps — though the exact gating formulation would need to be confirmed from the architecture diagram.",
+      "Separate (non-shared) CNNs allow each modality to learn modality-specific low-level filters appropriate to the distinct statistical properties of accelerometer vs. gyroscope signals; shared weights would impose a constraint that both modalities should use identical feature detectors, which is unlikely optimal given their different units, scales, and noise characteristics.",
+      "Focal loss parameters are typically set via grid search on validation folds; with only six horses and LOOCV, the hyperparameter landscape is estimated from very few subjects, risking overfitting of these parameters to the specific class distribution of this small cohort rather than the true population distribution.",
+      "The paper does not appear to evaluate missing-modality robustness, which is a practical concern for wearable deployments where sensors can fail; the cross-modal dependency in CMIM would likely cause significant degradation if one modality stream is absent, unlike ensemble or late-fusion approaches that degrade more gracefully.",
+      "Sequential application (first temporal, then axis-wise, or vice versa) is the most common pattern in attention mechanisms to keep computation tractable, but joint application would be more expressive; the ordering choice affects which context is used to condition each recalibration step and should be ablated to confirm the chosen order is optimal."
+    ],
+    "generated_at": "2026-03-22T06:09:49Z"
+  }
+}
