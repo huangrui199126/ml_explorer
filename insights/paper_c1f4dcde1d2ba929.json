@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a content-based movie recommendation system that extracts features from genre, cast, director, and keywords to predict pre-production movie popularity and target audience across four age groups using a CNN classifier. The system achieves 96.8% accuracy on IMDb/TMDb data for multiclass popularity prediction.",
+    "key_idea": "By combining content-based collaborative filtering outputs with movie metadata features as input to a CNN, popularity signals from similar movies can be transferred to predict success of unreleased films before production.",
+    "why_it_matters": "Pre-production popularity prediction can help studios allocate budgets, adjust creative decisions, and target marketing to specific demographics before costly production commitments are made.",
+    "possible_use_cases": [
+      "Studio greenlight decision support by estimating box office potential from script-level metadata",
+      "Demographic-targeted marketing by predicting which age groups a film will resonate with",
+      "Streaming platform content acquisition by scoring unlicensed films for audience fit before negotiating rights"
+    ],
+    "generated_at": "2026-03-22T02:21:44Z"
+  },
+  "deep": {
+    "method_breakdown": "The system first builds a content-based recommender using movie metadata (genre, cast, director, keywords, description) via TF-IDF/cosine similarity to retrieve similar movies. For each target movie, it aggregates rating and voting statistics from those similar movies to construct a new derived feature set. A CNN-based multiclass classifier then predicts popularity tier and maps predictions to one of four audience age groups (junior, teenage, mid-age, senior).",
+    "key_innovation": "The novel contribution is the two-stage pipeline that converts a retrieval problem into a structured classification problem: using RS-derived similarity features as engineered inputs to a CNN rather than predicting popularity from raw metadata alone. The audience age-group targeting layer on top of popularity prediction is also largely absent from prior work, which focused solely on binary hit/flop prediction.",
+    "technical_insight": "The most important design choice is synthesizing new features from similar-movie ratings/votes rather than using raw movie attributes directly. This sidesteps the cold-start data sparsity problem for pre-release films — instead of predicting from unknown future data, it leverages the distributional statistics of analogous past movies, giving the CNN dense, informative signal where raw features would be sparse or missing.",
+    "limitations": "The 96.8% accuracy figure is likely inflated by class imbalance or data leakage between the RS retrieval step and the CNN training set, since similar movies used to engineer features may overlap with training data. The system relies heavily on IMDb/TMDb metadata completeness, failing for niche or international films with sparse entries. Genre/cast similarity is a shallow proxy for true content; sequels, remakes, or genre-blending films would be poorly served. Age-group audience segmentation is derived heuristically from rating demographics rather than validated behavioral data.",
+    "interview_questions": [
+      "How did you ensure there was no data leakage between the content-based retrieval step and the CNN classifier training set?",
+      "The 96.8% accuracy is remarkably high — what is the class distribution of your popularity labels, and did you evaluate on a held-out temporal split?",
+      "How does the system handle genuinely novel films with no close neighbors in the similarity space, such as an entirely new genre or franchise?",
+      "What specifically does the CNN architecture add over a gradient-boosted tree on the same engineered features, given the input is tabular rather than spatial or sequential?",
+      "How were the four audience age-group labels derived from IMDb data — are they based on demographic voting breakdowns, and how was label quality validated?"
+    ],
+    "interview_answers": [
+      "This is a critical gap in the paper. If similar movies retrieved by the RS overlap with the CNN training set, the model sees indirect signal about its own labels, inflating accuracy. A proper evaluation would require the RS index to be built on movies older than the test split and the CNN trained and evaluated on temporally disjoint sets.",
+      "Multiclass accuracy without class distribution is uninformative. If 80% of movies fall into one popularity tier, a trivial classifier achieves 80%. The paper should report macro-F1 or per-class precision/recall, and ideally compare on a temporal holdout rather than random split to simulate real pre-release conditions.",
+      "The system would produce unreliable neighbors and thus noisy aggregated features. A robust design would include a confidence signal (e.g., minimum similarity threshold or neighbor count) and fall back to global priors when the neighborhood is sparse. This is a known failure mode of content-based filtering that the paper does not appear to address.",
+      "CNNs operating on tabular feature vectors offer no structural advantage over tree ensembles and typically underperform them without careful tuning. The paper likely chose CNN for novelty rather than empirical necessity. A rigorous ablation comparing XGBoost or LightGBM on identical features would clarify whether the deep model adds value.",
+      "IMDb provides demographic breakdowns of ratings by age group, which can serve as weak supervision, but this is noisy — only a self-selected subset of viewers rate films, and older demographics are systematically underrepresented online. The paper should report inter-rater agreement or compare predicted audience segments against studio-reported target demographics for validation."
+    ],
+    "generated_at": "2026-03-22T02:22:08Z"
+  }
+}

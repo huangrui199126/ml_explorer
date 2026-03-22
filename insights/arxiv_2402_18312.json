@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper reverse-engineers how Chain-of-Thought prompting works inside LLMs like Llama-2 7B, revealing that models run multiple parallel answer-generation pathways and exhibit a functional phase shift at the middle layers—early layers are biased toward pretraining priors while later layers shift to in-context reasoning.",
+    "key_idea": "CoT reasoning emerges from parallel answer pathways where early transformer layers handle relational information movement and late layers handle answer token writing, with a sharp functional boundary in the middle of the network.",
+    "why_it_matters": "Understanding the internal mechanics of CoT unlocks principled ways to improve, debug, or control multi-step reasoning—practitioners can use these insights to design better prompts, prune or steer specific attention heads, and diagnose failure modes in reasoning chains.",
+    "possible_use_cases": [
+      "Targeted model editing or fine-tuning by intervening on the specific attention heads responsible for relational reasoning vs. answer generation",
+      "Prompt engineering guided by mechanistic insight—e.g., structuring CoT prompts to better activate late-layer in-context circuits",
+      "Interpretability tooling for auditing LLM reasoning pipelines in high-stakes applications like medical or legal question answering"
+    ],
+    "generated_at": "2026-03-22T02:20:05Z"
+  },
+  "deep": {
+    "method_breakdown": "The authors perform mechanistic interpretability analysis on Llama-2 7B using fictional ontologies (to control for memorization) and multistep reasoning tasks. They use activation patching, attention head analysis, and logit lens techniques to identify which internal components drive CoT generation. By tracing token representations layer-by-layer, they map how information flows through parallel pathways that separately process the original question context and the generated CoT steps.",
+    "key_innovation": "First mechanistic investigation of CoT reasoning internals, revealing that LLMs run multiple parallel answer-generation pathways simultaneously — one from the input question and one from the generated intermediate steps — rather than a single sequential process. The discovery of a functional phase shift at the middle layers (pretraining prior dominant early, in-context prior dominant late) is a novel structural finding not previously characterized.",
+    "technical_insight": "The most critical design choice is using fictional ontologies as the reasoning substrate, which eliminates confounds from pretraining memorization and forces the model to rely purely on in-context reasoning. This methodological control is what makes the mechanistic findings trustworthy — without it, observed attention patterns could reflect memorized facts rather than genuine CoT computation. The phase-shift finding directly follows from this clean experimental setup.",
+    "limitations": "Analysis is confined to a single model (Llama-2 7B), limiting generalizability to larger or differently-architected models. Fictional ontologies, while methodologically clean, may not capture the full complexity of real-world CoT tasks. The mechanistic findings are correlational — causal claims about which components are necessary vs. sufficient for CoT remain underexplored. The study does not address how these mechanisms scale or change with instruction tuning and RLHF.",
+    "interview_questions": [
+      "What is the functional phase shift observed in the middle layers of Llama-2, and what evidence supports it?",
+      "Why do the authors use fictional ontologies instead of real-world reasoning benchmarks, and what does this control for?",
+      "How do the parallel pathways for answer generation differ in what information they process?",
+      "What distinguishes attention heads in the early half vs. late half of the network in terms of their roles during CoT?",
+      "How does this mechanistic understanding of CoT inform potential improvements to prompting strategies or model training?"
+    ],
+    "interview_answers": [
+      "The functional phase shift refers to a transition in how token representations are biased: in the first half of the network, representations are dominated by the pretraining prior (what the model learned during pretraining), while in the second half, the in-context prior (information from the current prompt and generated CoT) takes over. Evidence comes from logit lens analysis showing which distribution token representations project onto at each layer.",
+      "Fictional ontologies ensure the model cannot rely on memorized factual associations from pretraining, since the entities and relationships are invented. This isolates genuine in-context reasoning mechanics from retrieval of pretraining knowledge, making any observed attention patterns attributable to CoT computation rather than fact recall.",
+      "One parallel pathway generates answers directly from the original input question context, essentially performing a direct lookup from the prompt. The other pathway generates answers by reading from the already-generated CoT steps, chaining intermediate results. Both operate simultaneously, and their outputs are combined, explaining why CoT improves accuracy — it provides a second, more structured information source.",
+      "Attention heads in the early half of the network specialize in moving information along ontological relationships (e.g., propagating entity attributes through the graph structure of the reasoning problem). Attention heads in the later half are responsible for writing the actual answer token to the residual stream. This functional specialization aligns with the phase shift: early layers structure the reasoning context, late layers commit to outputs.",
+      "The findings suggest that CoT works partly because it creates an explicit intermediate representation that the late-layer answer-writing heads can attend to, bypassing the need to extract the answer purely from the original context. This implies that prompting strategies which make intermediate steps more explicit and structured should further improve performance. For training, it suggests that supervising intermediate reasoning steps (process reward models) directly targets the early-layer relational heads, which may be more sample-efficient than outcome-only supervision."
+    ],
+    "generated_at": "2026-03-22T02:20:30Z"
+  }
+}
