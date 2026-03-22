@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a privacy-aware approach for using cloud-hosted LLMs to query knowledge graphs that contain sensitive data. It works by detecting and stripping sensitive values from the graph structure before sending queries to the LLM, preventing data leakage while maintaining query quality.",
+    "key_idea": "Sensitive values in a knowledge graph can be identified structurally and omitted from LLM prompts, allowing natural language to Cypher query translation without exposing private data to third-party services.",
+    "why_it_matters": "Organizations with sensitive data (healthcare, finance, legal) can now leverage powerful cloud LLMs for KG querying without violating privacy regulations or requiring expensive local LLM deployments.",
+    "possible_use_cases": [
+      "Querying patient medical records stored in a knowledge graph using a cloud LLM without exposing PII",
+      "Enterprise knowledge graph search over confidential business data with third-party LLM APIs",
+      "Regulatory-compliant natural language interfaces to graph databases in finance or legal domains"
+    ],
+    "generated_at": "2026-03-22T01:55:59Z"
+  },
+  "deep": {
+    "method_breakdown": "The approach analyzes the structure of a knowledge graph to identify nodes and properties containing sensitive data, then sanitizes or omits those values before constructing the prompt sent to an external LLM. The LLM receives only the schema/structure and anonymized context sufficient to generate a valid Cypher query, which is then executed locally against the full KG. This decouples query generation (done by the LLM on sanitized input) from query execution (done locally with full data access).",
+    "key_innovation": "Prior LLM-to-KG query generation methods send raw graph context including sensitive node values to external APIs. This work introduces a structure-based sensitivity detection layer that identifies sensitive fields from graph topology and metadata, enabling schema-aware redaction before any data leaves the local environment — preserving query correctness without exposing sensitive values to third-party LLM services.",
+    "technical_insight": "The critical design choice is using graph structure itself (rather than content inspection or user-defined rules alone) to infer what is sensitive, then operating on the schema level rather than the instance level when prompting the LLM. This works because Cypher query generation requires understanding the graph schema and relationship patterns, not the actual sensitive values — the LLM can produce correct parameterized queries from structural information alone.",
+    "limitations": "Sensitivity detection based purely on graph structure may produce false negatives (missing sensitive fields with non-obvious structural signals) or false positives (redacting benign data). The method assumes sensitive data is confined to node/edge property values rather than embedded in relationship topology itself. It also may degrade on queries requiring value-specific reasoning (e.g., filtering on ranges or categories of sensitive attributes). Evaluation scope is likely limited to controlled benchmarks, and real-world KG sensitivity patterns are highly domain-dependent.",
+    "interview_questions": [
+      "How does the system determine which node properties are sensitive purely from graph structure, without access to a predefined sensitivity schema?",
+      "What happens when a natural language query semantically requires a sensitive value to construct the correct Cypher filter — does the system fail gracefully or produce an incorrect query?",
+      "How does this approach handle KGs where sensitive information is encoded in relationship types or graph topology rather than property values?",
+      "What threat model is assumed — is the concern data leakage through LLM API logs, training data ingestion, or both?",
+      "How does query quality (e.g., execution accuracy) compare to a fully local LLM baseline, and what is the overhead of the sanitization step?"
+    ],
+    "interview_answers": [
+      "The system likely uses heuristics such as property name patterns, data type signatures, cardinality (high-cardinality string fields suggesting PII), and possibly ontology-based labels to flag sensitive properties — the paper's structural approach probably combines these signals without requiring manual annotation.",
+      "This is a key failure case: if the query requires filtering on a sensitive value (e.g., 'find patients with diagnosis X'), the system must either refuse, generate a parameterized query with a placeholder, or produce a structurally valid but semantically incomplete query — the paper's handling of this tradeoff is critical to evaluate.",
+      "The approach likely struggles here, as topology-encoded sensitivity (e.g., a relationship type that implies a sensitive association) is harder to redact without breaking the schema structure the LLM needs to generate queries — this is a genuine limitation.",
+      "The primary concern is API-level data exposure: LLM providers may log inputs, use them for fine-tuning, or expose them through breaches. The method targets preventing raw sensitive values from appearing in API payloads, not adversarial reconstruction attacks.",
+      "Query quality likely remains close to the non-private baseline for structure-dependent queries but degrades for value-dependent queries; the sanitization overhead is probably modest (a graph traversal and string substitution pass) compared to LLM inference latency, making it practical for interactive use."
+    ],
+    "generated_at": "2026-03-22T01:56:25Z"
+  }
+}

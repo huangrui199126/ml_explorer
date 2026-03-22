@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PEARL is a generative retrieval framework that personalizes sticker recommendations by combining autoregressive identifier generation with user-specific preference modeling. It learns discriminative user representations from click history and personal information, then generates sticker results aligned with ranked user intents.",
+    "key_idea": "Augment autoregressive generative retrieval with user embeddings trained on personal click history, and bias generation toward stickers matching higher-ranked user intents.",
+    "why_it_matters": "Bridges the gap between generic generative retrieval (which ignores user preferences) and personalized ranking, enabling richer multi-modal recommendation systems where user taste must be captured without exhaustive candidate re-ranking.",
+    "possible_use_cases": [
+      "Personalized emoji/sticker suggestions in messaging apps like WeChat or WhatsApp",
+      "User-adaptive image search in creative tools and asset libraries",
+      "Intent-aware product image retrieval in e-commerce personalization pipelines"
+    ],
+    "generated_at": "2026-03-22T01:53:27Z"
+  },
+  "deep": {
+    "method_breakdown": "PEARL reformulates sticker retrieval as a generative task where an autoregressive model decodes sticker identifiers token-by-token given a query. It augments this with a user representation module trained on three auxiliary tasks (likely click prediction, preference modeling, and context-based tasks) to produce personalized embeddings that condition the generation process. An intent-aware learning objective re-weights training signals so that stickers matching higher-ranked user intents receive stronger supervision during autoregressive training.",
+    "key_innovation": "Prior generative retrieval methods (DSI, NCI, etc.) optimize for relevance to a query but ignore user-specific preferences entirely. PEARL's novelty is injecting learned personalized user representations directly into the generative decoding process, and introducing an intent-aware objective that ranks and weights multiple plausible user intents during training rather than treating all clicked items equally.",
+    "technical_insight": "The intent-aware learning objective is the critical design choice: sticker retrieval is inherently ambiguous since a single query (e.g., 'happy') maps to diverse user intents. By assigning higher loss weight to stickers associated with top-ranked inferred intents, the model learns a priority ordering over intents rather than averaging over them — this prevents the model from regressing toward a bland, one-size-fits-all retrieval distribution and instead captures the user's dominant preference mode.",
+    "limitations": "Generative retrieval requires encoding all sticker identifiers into the model's vocabulary/parameters, making it costly to update as new stickers are added (index update problem). The personalization quality is bounded by click history sparsity — cold-start users with few interactions will have weak representations. The method likely struggles with stickers that are semantically similar but stylistically distinct, since autoregressive identifier generation may not capture fine-grained visual nuance. Online evaluation metrics and the scale of the deployment are not described in the abstract, making reproducibility unclear.",
+    "interview_questions": [
+      "How does PEARL handle the index update problem when new stickers are added to the corpus after the model is trained?",
+      "What are the three prediction tasks used to train the user representation module, and how do they complement each other?",
+      "How is the intent ranking computed in the intent-aware objective, and what happens when a user's intents are highly heterogeneous or contradictory?",
+      "How does PEARL's autoregressive identifier generation handle visually similar stickers that share the same semantic query but should be ranked differently per user?",
+      "What is the inference latency tradeoff compared to dense retrieval baselines, and how does beam search width affect personalization quality?"
+    ],
+    "interview_answers": [
+      "This is the canonical weakness of generative retrieval: new stickers require either full retraining or an incremental fine-tuning step to add new identifiers to the codebook. PEARL likely needs a periodic retraining pipeline; the abstract does not address this, which is a practical deployment concern.",
+      "The abstract does not specify the three tasks, but likely candidates are: (1) next-click prediction from query+history, (2) user preference classification over sticker categories, and (3) context-aware prediction using session or conversational context. Together they encourage representations that capture both long-term taste and short-term intent.",
+      "Intent ranking is likely derived from click frequency or recency signals in the user's history, possibly via a learned scoring function. When intents are heterogeneous, the objective may underfit minority intents — this is a known failure mode of intent-weighted objectives and could reduce recall for less-frequent but valid preferences.",
+      "The autoregressive decoder generates identifier tokens, not visual embeddings, so visual similarity is only captured insofar as the identifier assignment (likely via product quantization or hierarchical codes) groups similar stickers nearby. If similar stickers share identifier prefixes, the user representation must steer beam search toward user-preferred branches — this is plausible but can fail when visual similarity and user preference are decoupled.",
+      "Autoregressive generation with beam search is inherently slower than single-pass dense retrieval (ANN search). Larger beam widths improve recall and allow more personalization signal to influence ranking but increase latency quadratically. The paper likely tunes beam width as a latency-quality knob, but the abstract provides no concrete numbers."
+    ],
+    "generated_at": "2026-03-22T01:54:01Z"
+  }
+}
