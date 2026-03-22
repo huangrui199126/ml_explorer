@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CTRLS frames chain-of-thought reasoning as a Markov decision process with latent state transitions, using distributional reinforcement learning to explore reasoning trajectories more systematically than heuristic sampling. It introduces epsilon-greedy exploration and entropy regularization to refine reasoning paths without fine-tuning the base LLM.",
+    "key_idea": "Model each CoT reasoning step as a latent-space state transition governed by an MDP, so the system can principally explore diverse reasoning paths using RL rather than relying on ad-hoc sampling.",
+    "why_it_matters": "Practitioners get more reliable and diverse reasoning from existing LLMs without retraining — useful wherever CoT is applied to complex multi-step tasks like math, code, or planning.",
+    "possible_use_cases": [
+      "Improving multi-step mathematical and logical reasoning in deployed LLMs without fine-tuning",
+      "Agentic planning systems that need robust exploration of action sequences under uncertainty",
+      "RAG pipelines requiring diverse reasoning trajectories to reduce answer collapse on ambiguous queries"
+    ],
+    "generated_at": "2026-03-22T01:09:30Z"
+  },
+  "deep": {
+    "method_breakdown": "CTRLS frames chain-of-thought reasoning as a Markov decision process where each reasoning step is a latent state transition, modeled as explicit probability distributions rather than deterministic token sequences. A distributional reinforcement learning agent learns to navigate this latent reasoning space using epsilon-greedy exploration and entropy regularization, refining transition policies without fine-tuning the base LLM. The framework is grounded theoretically via an Evidence Lower BOund (ELBO) on the latent transition dynamics, ensuring principled uncertainty quantification.",
+    "key_innovation": "Prior CoT methods (e.g., chain-of-thought prompting, self-consistency, tree-of-thought) rely on heuristic or greedy sampling without explicit modeling of how reasoning states transition. CTRLS introduces a structured MDP formulation over a latent reasoning space with distributional RL, enabling epistemic uncertainty to drive exploration — moving beyond ad-hoc diversity tricks toward principled trajectory search.",
+    "technical_insight": "Modeling reasoning actions as distributions in latent space (rather than discrete token choices) is the critical design choice: it allows the agent to represent and exploit uncertainty about which reasoning path is correct, enabling directed exploration of high-value trajectories. This sidesteps the combinatorial explosion of token-level search while keeping the base LLM frozen, making the approach computationally tractable.",
+    "limitations": "The latent state space must be learned or proxied from the LLM's hidden representations, introducing a representation bottleneck that may not faithfully capture all relevant reasoning structure. The MDP formulation assumes the Markov property holds over reasoning steps, which is questionable for problems requiring long-range dependencies. Evaluation appears limited to standard benchmarks, leaving open questions about performance on open-ended or multi-hop real-world tasks. The epsilon-greedy strategy is relatively primitive compared to more modern exploration methods like posterior sampling.",
+    "interview_questions": [
+      "How does CTRLS define the latent state space — is it derived from LLM hidden states, and how is the transition model parameterized?",
+      "What reward signal is used to train the distributional RL agent, and how is it computed without fine-tuning the base LLM?",
+      "How does the ELBO derivation ground the latent transition model — what variational distribution is being optimized?",
+      "How does CTRLS compare empirically to self-consistency and tree-of-thought sampling in terms of reasoning accuracy and compute cost?",
+      "Does the approach generalize across different base LLMs, and does the quality of latent representations matter significantly for performance?"
+    ],
+    "interview_answers": [
+      "The latent state likely corresponds to a learned embedding of the partial reasoning context, with the transition model parameterized as a learned neural network that maps (state, action distribution) to next-state distribution; the exact architecture depends on how tightly the LLM's internal representations are leveraged.",
+      "The reward is likely a task-outcome signal (e.g., answer correctness) propagated back through the MDP trajectory; since the LLM is frozen, only the RL transition policy is updated, using the LLM purely as a generator conditioned on latent state prompts.",
+      "The ELBO bounds the log-likelihood of observed reasoning trajectories by introducing a variational posterior over latent states, decomposing into a reconstruction term (how well latent states explain observed tokens) and a KL term penalizing deviation from the prior transition model.",
+      "Self-consistency improves diversity via repeated sampling but is compute-intensive; tree-of-thought uses heuristic search. CTRLS aims to be more sample-efficient by directing exploration toward high-uncertainty, high-reward regions, though empirical gains likely depend heavily on task structure.",
+      "Generalization across LLMs is plausible if the latent state is defined in a model-agnostic way (e.g., via output embeddings), but performance is likely sensitive to representation quality — weaker LLMs with less structured internal representations may yield noisier latent spaces and degrade RL training."
+    ],
+    "generated_at": "2026-03-22T01:09:49Z"
+  }
+}
