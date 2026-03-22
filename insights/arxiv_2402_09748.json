@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey reviews compression and efficient inference techniques for large language models, covering quantization, pruning, distillation, compact architecture design, and dynamic networks, with special attention to the unique challenges posed by LLMs' scale and generalization requirements.",
+    "key_idea": "LLMs require tuning-free compression approaches that preserve versatility and generalization, distinguishing them from classical model compression for smaller task-specific models.",
+    "why_it_matters": "Practitioners deploying LLMs on resource-constrained devices need a structured understanding of which compression techniques avoid expensive retraining while maintaining model quality across diverse tasks.",
+    "possible_use_cases": [
+      "Deploying LLMs on edge devices or mobile hardware with limited memory and compute",
+      "Reducing inference latency and cost in production API services",
+      "Selecting the right compression strategy (quantization vs. pruning vs. distillation) for a given deployment constraint"
+    ],
+    "generated_at": "2026-03-22T02:14:25Z"
+  },
+  "deep": {
+    "method_breakdown": "This survey systematically categorizes LLM compression into quantization, pruning, knowledge distillation, compact architecture design, and dynamic networks. It critically distinguishes between 'medium' large models and 'real' large models, noting that the latter require tuning-free compression approaches due to prohibitive finetuning costs. The paper also surveys production-ready inference frameworks (e.g., vLLM, TensorRT-LLM) that implement these algorithms for practical deployment.",
+    "key_innovation": "The primary novelty is the taxonomic distinction between medium-scale and truly large-scale models, recognizing that classic compression pipelines (compress-then-finetune) break down at extreme scale. This motivates a new axis of classification — tuning-free vs. tuning-required — and highlights generalization preservation as a first-class objective, which prior compression surveys targeting smaller task-specific models did not emphasize.",
+    "technical_insight": "The most important design insight is that LLM compression must treat versatility as a constraint, not just accuracy on a benchmark. Because large models derive value from zero-shot and few-shot generalization, compression methods like quantization (e.g., GPTQ, AWQ) and pruning (e.g., SparseGPT) are designed to operate in a single forward-pass calibration regime without gradient updates, preserving the full distribution of learned representations rather than overfitting to a narrow task signal.",
+    "limitations": "As a survey, it does not propose new algorithms, so empirical comparisons are drawn from heterogeneous experimental setups making direct benchmarking unreliable. Coverage may lag rapidly evolving methods (e.g., speculative decoding advances, MoE-specific compression). The tuning-free framing also glosses over cases where lightweight LoRA-based adaptation after compression recovers significant quality at modest cost, blurring the medium/large boundary.",
+    "interview_questions": [
+      "Why do classical compress-then-finetune pipelines fail for very large language models, and what alternative paradigm does this survey advocate?",
+      "How does the goal of preserving generalization change the design of knowledge distillation for LLMs compared to task-specific smaller models?",
+      "What is the key algorithmic idea behind tuning-free quantization methods like GPTQ or AWQ, and what calibration data do they rely on?",
+      "How does the survey distinguish 'medium' large models from 'real' large models, and why does this distinction matter for choosing a compression strategy?",
+      "What role do efficient inference frameworks (e.g., vLLM, TensorRT-LLM) play beyond simply running compressed models, and what algorithmic techniques do they implement?"
+    ],
+    "interview_answers": [
+      "Finetuning costs scale with model size and become economically and computationally prohibitive beyond tens of billions of parameters. The survey advocates tuning-free compression: methods that use a small calibration dataset and a single forward pass (or second-order gradient approximation) to determine quantization scales or pruning masks without backpropagation, trading some accuracy for tractability.",
+      "For task-specific models, distillation optimizes a student to match the teacher on a fixed label distribution. For LLMs, the student must match the teacher's output distribution across diverse domains and prompts — often using token-level KL divergence on large general corpora — so that zero-shot and chain-of-thought capabilities are retained rather than collapsed onto a narrow task manifold.",
+      "GPTQ and AWQ solve a layer-wise reconstruction problem: given the original weight matrix W and calibration activations X, find a quantized weight Q minimizing ||WX - QX||. GPTQ uses the inverse Hessian (second-order information) to compensate quantization error column-by-column; AWQ scales weights by activation magnitude before rounding, protecting salient channels. Both use a few hundred calibration samples from a generic corpus.",
+      "The survey implicitly treats models where finetuning is still feasible (roughly up to ~10-30B parameters on accessible hardware) as 'medium,' where standard compress-and-finetune pipelines apply. 'Real' large models (70B+, or proprietary scale) require tuning-free methods because a single finetuning run may cost millions of dollars. This boundary determines which algorithm families are even applicable.",
+      "Frameworks like vLLM implement PagedAttention for dynamic KV-cache memory management (eliminating fragmentation and enabling continuous batching), and TensorRT-LLM adds kernel fusion, in-flight batching, and speculative decoding. These are algorithmic contributions independent of weight compression — they improve throughput and latency by restructuring the compute graph and memory access patterns, and can be composed with quantized or pruned weights for multiplicative gains."
+    ],
+    "generated_at": "2026-03-22T02:14:54Z"
+  }
+}

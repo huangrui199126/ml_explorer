@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DSI-QG addresses the data distribution mismatch in Differentiable Search Index models by indexing documents using generated queries rather than raw document text, closing the gap between long document representations at index time and short queries at retrieval time. This approach also extends to cross-lingual retrieval where document and query languages differ.",
+    "key_idea": "Represent documents during indexing with generated pseudo-queries (re-ranked and filtered by a cross-encoder) so the model learns to map query-like inputs to document identifiers, eliminating the length and language mismatch between indexing and retrieval.",
+    "why_it_matters": "Practitioners building end-to-end neural retrieval systems can significantly boost retrieval quality—especially in low-resource or cross-lingual settings—without changing the DSI inference architecture, simply by improving what the model sees during indexing.",
+    "possible_use_cases": [
+      "Multilingual enterprise search where documents are in one language but user queries arrive in another",
+      "Dense retrieval over long technical documents (e.g., patents, legal filings) queried with short natural language phrases",
+      "Domain-specific question answering systems that need a single lightweight model for both indexing and retrieval without separate ANN indexes"
+    ],
+    "generated_at": "2026-03-22T02:15:36Z"
+  },
+  "deep": {
+    "method_breakdown": "DSI-QG addresses the distribution mismatch in Differentiable Search Index models by replacing raw document text at indexing time with synthetically generated queries. A query generation model (e.g., docT5query) produces multiple candidate queries per document, which are then re-ranked and filtered using a cross-encoder to retain only the most relevant ones. The DSI model is then trained to map these query-like inputs to document identifiers, aligning the indexing distribution with the retrieval distribution.",
+    "key_innovation": "Prior DSI models index documents using their full text, creating a mismatch with short query inputs at retrieval time. DSI-QG is the first to explicitly close this gap by representing documents as generated queries during indexing rather than their raw content, and extends this idea to cross-lingual retrieval by generating queries in the target language, enabling multilingual DSI without parallel corpora.",
+    "technical_insight": "The most critical design choice is the cross-encoder re-ranking and filtering step after query generation. Raw generated queries can be noisy or irrelevant; filtering ensures only high-quality, document-representative queries are used for indexing. This quality control step prevents the DSI model from learning spurious associations, which would otherwise degrade retrieval precision despite correcting the distribution shift.",
+    "limitations": "The approach introduces significant dependency on the quality of the upstream query generation model — if the generator is weak or domain-mismatched, the benefit diminishes. Computational cost increases substantially since query generation and cross-encoder re-ranking must run over the entire document corpus offline. The method also inherits DSI's scalability bottleneck: the identifier space must fit within the decoder's output vocabulary, limiting applicability to very large corpora. Cross-lingual generation quality is bounded by the multilingual generator's capabilities.",
+    "interview_questions": [
+      "What specific distribution mismatch does DSI-QG address, and why does it matter for retrieval performance?",
+      "How does the cross-encoder filtering step work, and what would happen if it were removed?",
+      "How does DSI-QG extend to cross-lingual retrieval, and what assumptions does this extension rely on?",
+      "What are the computational trade-offs of DSI-QG compared to vanilla DSI and traditional dense retrieval?",
+      "What are the fundamental scalability limits of the DSI paradigm that DSI-QG does not address?"
+    ],
+    "interview_answers": [
+      "DSI indexes documents using their full text but retrieves using short queries; the model must bridge a length and vocabulary distribution gap at inference time. DSI-QG eliminates this by training the indexing phase on query-length, query-style inputs, so the model sees similar distributions during both indexing and retrieval, leading to better generalization.",
+      "The cross-encoder scores each generated query against its source document for relevance, and only top-scoring queries are retained. Without this step, low-quality or off-topic generated queries would introduce noise into the training signal, potentially teaching the DSI model incorrect document-to-identifier mappings and hurting precision.",
+      "For cross-lingual retrieval, DSI-QG generates queries in the retrieval language (e.g., English queries for French documents) using a multilingual query generation model. This assumes a capable multilingual generator exists and that cross-lingual query generation quality is sufficient — both are non-trivial assumptions for low-resource language pairs.",
+      "DSI-QG adds an offline preprocessing cost: query generation and cross-encoder scoring over all documents. At training, it may require more compute due to multiple queries per document. However, inference cost is identical to vanilla DSI. Compared to dense retrieval, DSI still lacks the ability to update the index without retraining the entire model.",
+      "DSI requires document identifiers to live in a fixed, pre-defined output space (e.g., atomic IDs or structured strings), which constrains the corpus size the model can handle. As corpus size grows, the decoder must distinguish among exponentially more identifiers, and the model cannot efficiently add new documents without retraining — a limitation DSI-QG leaves entirely unsolved."
+    ],
+    "generated_at": "2026-03-22T02:16:04Z"
+  }
+}

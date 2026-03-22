@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SplitLoRA combines split learning and federated learning to enable efficient fine-tuning of large language models on distributed private data, offloading heavy computation to a server while keeping raw data local. It reduces training time and resource burden on individual clients compared to existing FL-based LLM fine-tuning approaches.",
+    "key_idea": "By partitioning the model between clients and a server (split learning) and training in parallel across multiple clients (federated learning), SplitLoRA minimizes both compute load on edge devices and communication overhead during LLM fine-tuning.",
+    "why_it_matters": "As high-quality public data becomes scarce, organizations need to fine-tune LLMs on private distributed data without sharing it — SplitLoRA makes this feasible even for resource-constrained clients by shifting most computation to the server.",
+    "possible_use_cases": [
+      "Healthcare institutions collaboratively fine-tuning clinical LLMs on patient records without sharing sensitive data",
+      "Financial organizations fine-tuning fraud-detection models across distributed private transaction datasets",
+      "Mobile or edge device deployments where clients have limited GPU memory but need personalized LLM fine-tuning"
+    ],
+    "generated_at": "2026-03-22T02:17:16Z"
+  },
+  "deep": {
+    "method_breakdown": "SplitLoRA combines split federated learning (SFL) with parameter-efficient fine-tuning (LoRA) to enable collaborative LLM fine-tuning across distributed clients with limited compute. The model is partitioned at a cut layer, with clients handling the initial layers and a server handling the deeper layers, exchanging only activations and their gradients rather than full model weights. LoRA adapters are inserted into the architecture so that only low-rank matrices are trained, further reducing both computation and communication overhead on resource-constrained clients.",
+    "key_innovation": "SplitLoRA is the first framework to combine split learning with LoRA-based fine-tuning in a federated setting, enabling LLM fine-tuning on private distributed data without requiring clients to hold or compute gradients for the full model. Prior FL+LoRA works (e.g., FedLoRA) still require clients to run full forward/backward passes through the entire model, whereas SplitLoRA offloads the bulk of computation to the server via model splitting, dramatically lowering the per-client burden.",
+    "technical_insight": "The critical design choice is the placement of the model cut layer combined with LoRA adapter positioning — splitting early enough that clients only process a small prefix of transformer layers keeps client compute minimal, while placing LoRA adapters on both client-side and server-side layers preserves fine-tuning expressivity. This works because activations at intermediate layers are far smaller in size than full model gradients, and LoRA's low-rank constraint ensures the trainable parameter count remains small regardless of model size.",
+    "limitations": "Smashed data (activations passed from client to server) can leak private information, and the paper does not deeply address privacy guarantees beyond raw data non-sharing. The cut-layer placement is a sensitive hyperparameter that trades off client compute vs. communication volume and may require tuning per deployment. Synchronization across heterogeneous clients in SFL introduces straggler problems. Simulation-based evaluation may not reflect real-world network conditions or hardware heterogeneity.",
+    "interview_questions": [
+      "How does SplitLoRA determine the optimal cut layer, and what are the trade-offs of cutting earlier vs. later in the transformer stack?",
+      "What privacy risks remain when exchanging activations (smashed data) between clients and the server, and how might they be mitigated?",
+      "How does SplitLoRA handle the straggler problem when clients have heterogeneous compute and network capabilities?",
+      "Why does combining FL's parallel training with SL's model splitting yield better training efficiency than either approach alone?",
+      "How are LoRA adapters aggregated across clients in the federated setting, and does the aggregation strategy differ for client-side vs. server-side adapters?"
+    ],
+    "interview_answers": [
+      "The cut layer is chosen to balance client-side computation (fewer layers = less client FLOPs) against communication cost (activations at shallower layers can be larger if sequence length is long and hidden dim is wide). Earlier cuts reduce client burden but may increase smashed data size; later cuts reduce communication but increase client compute. In practice this is tuned empirically or via profiling.",
+      "Activations can encode sensitive input information and are vulnerable to model inversion attacks. Differential privacy noise can be injected into activations before transmission, or techniques like NoPeek (minimizing mutual information between activations and raw inputs) can be applied, though these add overhead and may degrade convergence.",
+      "SplitLoRA inherits SFL's parallel aggregation structure so the server can process multiple clients' activations concurrently, but slow clients still delay the round. Common mitigations include asynchronous aggregation, client selection strategies that exclude stragglers, and partial participation — though the paper's simulation may not fully stress-test these scenarios.",
+      "FL enables parallel client training so multiple clients contribute gradient updates simultaneously rather than sequentially, improving data throughput. SL reduces the per-client compute and communication by offloading deep layers to the server. Together, SFL lets clients train in parallel while each individually benefits from reduced workload, compounding the efficiency gains.",
+      "Client-side LoRA adapters are aggregated via FedAvg (weighted averaging by dataset size) after each communication round, similar to standard FL. Server-side LoRA adapters are updated centrally since the server sees all clients' activations and can compute a unified gradient — this asymmetry means server adapters converge faster and do not require explicit aggregation across clients."
+    ],
+    "generated_at": "2026-03-22T02:17:41Z"
+  }
+}
