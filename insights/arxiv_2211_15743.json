@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses flaws in sampling-based evaluation metrics for recommender systems, specifically the inconsistency with global metrics and poor accuracy at small K values. The authors propose a new item-sampling estimator with theoretical grounding and an adaptive sampling method using EM to fix the 'blind spot' problem.",
+    "key_idea": "By explicitly optimizing the estimator's error against ground truth and using adaptive sampling to concentrate samples near the top-K boundary, sampling-based metrics can reliably approximate global ranking metrics.",
+    "why_it_matters": "Full-ranking evaluation is computationally expensive at scale; if item sampling can be made reliable, practitioners can evaluate recommender systems much faster without sacrificing metric accuracy.",
+    "possible_use_cases": [
+      "Efficient offline A/B testing of recommendation models on large item catalogs",
+      "Hyperparameter tuning where repeated fast evaluations are needed without full-rank computation",
+      "Benchmarking multiple candidate models in resource-constrained research or production environments"
+    ],
+    "generated_at": "2026-03-22T06:29:47Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes two contributions for sampling-based recommendation evaluation: (1) a new item-sampling estimator that directly minimizes estimation error relative to ground-truth global metrics, with theoretical guarantees distinguishing it from prior mapping-based or rank-distribution-learning approaches; (2) an adaptive sampling strategy that concentrates samples near the top-K boundary to address the 'blind spot' problem where uniform sampling poorly estimates metrics at small K, coupled with an EM algorithm generalized to handle this adaptive setting.",
+    "key_innovation": "Prior work either heuristically mapped sampled metrics to global ones or learned empirical rank distributions without rigorous error bounds. This paper derives an estimator that explicitly optimizes estimation error w.r.t. ground truth and proves theoretical guarantees, while the adaptive sampler is the first to specifically target the blind spot (small-K inaccuracy) by concentrating sampling mass where it matters most for top-K evaluation.",
+    "technical_insight": "The adaptive sampling concentrates negative samples near the boundary of top-K rankings rather than sampling uniformly from all items, which dramatically reduces variance in the region that determines metric values at small K. This works because uniform sampling wastes samples on items ranked far below K that contribute little to top-K metric estimation, whereas targeted sampling near rank K directly reduces the estimation error that matters.",
+    "limitations": "The adaptive sampler requires knowing or estimating the rank distribution before sampling, creating a chicken-and-egg problem addressed by EM but adding computational overhead. The theoretical analysis likely assumes certain smoothness or regularity in the score distribution, which may not hold for all recommendation models. The approach may be sensitive to the accuracy of initial rank distribution estimates used to guide adaptive sampling, potentially degrading in cold-start or sparse scenarios.",
+    "interview_questions": [
+      "What is the 'blind spot' problem in sampling-based recommendation evaluation, and why does uniform item sampling fail to address it?",
+      "How does the proposed estimator differ theoretically from prior work that maps sampled metrics to global metrics?",
+      "Why is the EM algorithm needed for the adaptive sampling setting, and what are the E and M steps in this context?",
+      "Under what conditions would adaptive sampling provide the largest gains over uniform sampling?",
+      "How do you choose the number of sampled items S, and what is the trade-off between S and estimation accuracy for both the uniform and adaptive samplers?"
+    ],
+    "interview_answers": [
+      "The blind spot refers to the phenomenon where uniform negative sampling allocates too few samples near rank K, so when K is small (e.g., K=5 or 10), the estimator has high variance because almost none of the sampled negatives land in the critical top-K boundary region. Items ranked far below K are irrelevant to top-K metrics, yet uniform sampling wastes the majority of samples on them.",
+      "Prior mapping methods find a function f such that metric(sampled) ≈ f(metric(global)) using regression or analytical correction, but they optimize a proxy objective rather than directly minimizing estimation error. The proposed estimator is derived by minimizing the expected squared error between the estimated and true global metric, yielding estimator weights that are provably optimal under the stated loss, with explicit bias-variance decomposition.",
+      "EM is needed because adaptive sampling requires the rank distribution to set sampling probabilities, but the rank distribution is what we are trying to estimate. The E-step estimates the rank distribution (posterior over true ranks given sampled observations), and the M-step updates the sampling distribution to concentrate probability mass near rank K given the current rank estimate, iterating until convergence.",
+      "Adaptive sampling provides the largest gains when K is very small relative to the item catalog size, when score distributions are concentrated (many items have similar scores near rank K), and when the recommendation model produces well-calibrated scores. It is less beneficial when K is large or when the true top-K items are clearly separated in score from the rest.",
+      "S is typically chosen based on computational budget — common practice uses S in the range of 100–1000 per query. Larger S reduces variance for both methods, but the adaptive sampler achieves the same variance with far fewer samples at small K. The trade-off is that adaptive sampling adds overhead to estimate the sampling distribution, so the break-even point depends on catalog size and the cost of score computation."
+    ],
+    "generated_at": "2026-03-22T06:30:11Z"
+  }
+}

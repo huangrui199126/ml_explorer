@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes using graph convolutional neural networks to embed mathematical expressions into vector spaces, enabling semantic search across millions of equations from arXiv papers. The approach is unsupervised, combining embedding learning with self-supervised learning on 29M+ math expressions.",
+    "key_idea": "Mathematical expressions (parsed as XML graphs) are embedded into low-dimensional vector spaces via GCNs, so semantically similar equations cluster together and can be retrieved via fast nearest-neighbor search.",
+    "why_it_matters": "Keyword search fails across disciplines where the same concept uses different notation or terminology; math-based retrieval lets researchers find related work by mathematical structure rather than vocabulary, enabling true cross-domain discovery.",
+    "possible_use_cases": [
+      "Finding papers that solve the same mathematical problem under different names across disciplines",
+      "Identifying equivalent or similar models in different research communities (e.g., physics vs. ML)",
+      "Building recommendation systems that suggest related papers based on shared mathematical formulations"
+    ],
+    "generated_at": "2026-03-22T06:28:40Z"
+  },
+  "deep": {
+    "method_breakdown": "Mathematical expressions from arXiv papers are parsed into XML/MathML and treated as graph-structured data, where nodes represent operators/operands and edges represent their hierarchical relationships. Graph Convolutional Networks (GCNs) are then used to encode these expression graphs into dense low-dimensional embeddings via an unsupervised self-supervised learning objective. At query time, nearest neighbor search (e.g., approximate NN with FAISS) over the embedding space retrieves semantically similar equations efficiently at scale.",
+    "key_innovation": "Prior math retrieval relied on exact structural matching (tree edit distance) or keyword-based heuristics, which fail across notation conventions and disciplines. This work is the first to apply self-supervised graph embedding to mathematical expressions at large scale (29M equations), enabling retrieval by semantic mathematical meaning rather than syntactic form — bridging notation gaps across fields.",
+    "technical_insight": "Treating MathML as a graph rather than a string or tree and using GCNs is the critical design choice: it naturally captures the recursive, hierarchical structure of mathematical expressions while being permutation-aware and able to generalize across structurally similar but notationally different equations. The self-supervised pretext task (likely predicting masked subexpressions or contrastive objectives) avoids the prohibitive cost of manual annotation at this scale.",
+    "limitations": "The model may struggle with deeply nested or very long expressions where GCN message passing reaches its depth limit. Retrieval quality depends heavily on the quality of MathML parsing, which is lossy for complex or informal notation. The self-supervised objective may not align perfectly with human judgments of mathematical similarity — two equations can look structurally similar but be semantically unrelated. Evaluation on a single manually annotated query dataset limits generalizability claims.",
+    "interview_questions": [
+      "How does the self-supervised pretext task define 'similarity' between mathematical expressions, and what are the risks of this proxy objective diverging from true semantic equivalence?",
+      "GCNs suffer from over-smoothing with many layers — how did you handle expressions of varying depth and complexity without losing discriminative information?",
+      "How do you handle mathematical notation variance across disciplines (e.g., the same concept written differently in physics vs. statistics) — does the model learn cross-domain alignment or does it cluster within domains?",
+      "What is the nearest neighbor search strategy at inference time, and how do you maintain acceptable precision-recall tradeoffs at the 29M expression scale?",
+      "How was the manual annotation dataset constructed, and what inter-annotator agreement was achieved — given that mathematical similarity is itself subjective?"
+    ],
+    "interview_answers": [
+      "The self-supervised task likely uses contrastive learning or masked expression modeling where augmented views of the same expression are pulled together in embedding space. The risk is that structural similarity (same graph topology) is used as a proxy for semantic similarity, but two expressions can be structurally identical yet semantically distinct (e.g., same operator tree, different variable semantics). This is a known weakness of structure-only representations.",
+      "GCN depth was likely tuned empirically, and shallower networks (2-3 layers) were used to avoid over-smoothing — sufficient for capturing local operator context. For deeper expressions, this means only local subgraph structure informs embeddings. A hierarchical pooling or jumping knowledge network approach would better handle variable-depth expression trees.",
+      "The model learns embeddings from the co-occurrence and structural patterns in a domain-agnostic corpus. Whether it aligns cross-domain notation is an empirical question — it likely clusters by structural pattern, which may incidentally align cross-domain equations that share mathematical form (e.g., diffusion equations in physics and finance), but this is not explicitly enforced.",
+      "Approximate nearest neighbor search (e.g., FAISS with IVF or HNSW indexing) is the standard choice at this scale. The tradeoff is controlled by the number of index probes — more probes increase recall at the cost of latency. At 29M vectors in low-dimensional space (e.g., 128-256d), FAISS can achieve millisecond-scale queries with >95% recall@10 using product quantization.",
+      "Manual annotation typically involves expert annotators (mathematicians or domain scientists) judging relevance of retrieved equations to a query on a Likert scale. Inter-annotator agreement on mathematical similarity tends to be moderate (kappa ~0.5-0.7) because similarity is context-dependent. The dataset likely uses majority vote or adjudication for borderline cases, and its size is probably small (hundreds of queries), which limits statistical power of the evaluation."
+    ],
+    "generated_at": "2026-03-22T06:29:07Z"
+  }
+}

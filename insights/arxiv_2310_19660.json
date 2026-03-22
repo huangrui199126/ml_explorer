@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Text Bottleneck Models (TBM) make text classification interpretable by having an LLM automatically discover and measure a sparse set of human-understandable concepts, then combining those concept scores linearly to produce predictions. This gives both local (per-prediction) and global (model-wide) explanations without sacrificing much performance.",
+    "key_idea": "Replace the opaque final layers of a text classifier with LLM-measured categorical concept scores fed into a linear layer, making every prediction traceable to interpretable intermediate concepts.",
+    "why_it_matters": "High-stakes applications like healthcare, legal, and content moderation require explainable decisions; TBM provides auditable reasoning chains competitive with GPT-4 few-shot without needing manual concept curation.",
+    "possible_use_cases": [
+      "Medical text classification where clinicians need to audit why a model flagged a clinical note",
+      "Legal document categorization requiring explainable reasoning for compliance or review",
+      "Content moderation systems where platform teams need to understand and challenge automated decisions"
+    ],
+    "generated_at": "2026-03-22T06:30:19Z"
+  },
+  "deep": {
+    "method_breakdown": "TBM inserts a concept bottleneck layer between input text and output label: an LLM iteratively proposes and refines a sparse set of task-relevant concepts, then scores each input on those concepts (categorical values). A linear layer combines these concept scores to produce the final classification, making the decision path fully transparent.",
+    "key_innovation": "Unlike prior concept bottleneck models that require human-curated concept sets or continuous concept embeddings, TBM uses an LLM to automatically discover and measure discrete, human-readable concepts through an iterative generation loop — eliminating manual annotation while preserving interpretability.",
+    "technical_insight": "Using sparse categorical concept values (rather than continuous scores) forces the model to commit to interpretable discrete states per concept, which both aligns with how humans reason about text attributes and prevents the bottleneck from encoding opaque information in numerical magnitudes.",
+    "limitations": "Performance lags behind finetuned GPT-3.5, suggesting the discretization bottleneck loses some signal; concept quality depends on LLM capability and prompt design; scaling to very fine-grained or domain-specific tasks may require more concepts, reducing sparsity; evaluation on 12 datasets may not cover adversarial or low-resource regimes.",
+    "interview_questions": [
+      "How does the iterative concept generation process work, and what stops it from generating redundant or overlapping concepts?",
+      "How do you ensure the linear layer over concept scores doesn't become a black box itself when the number of concepts grows large?",
+      "What is the tradeoff between concept sparsity and predictive accuracy, and how did you tune the number of concepts?",
+      "How does TBM handle concepts that an LLM measures inconsistently — for instance, subjective or culturally variable attributes?",
+      "Could TBM be extended to structured prediction or generation tasks, or is it fundamentally limited to classification?"
+    ],
+    "interview_answers": [
+      "The LLM proposes an initial concept set, classifies examples, then receives feedback on misclassified cases and iteratively adds or refines concepts; redundancy is controlled by prompting the LLM to maintain a diverse, non-overlapping set and by capping total concept count.",
+      "The linear layer remains interpretable as long as the concept count is small and concepts are human-readable — each weight directly quantifies a concept's contribution to a class; the authors rely on sparsity (few active concepts) to keep this layer auditable.",
+      "Accuracy generally improves with more concepts but at the cost of interpretability; the authors treat concept count as a hyperparameter and show competitive performance with relatively few concepts, suggesting the bottleneck is not severely lossy for the tested tasks.",
+      "This is a real vulnerability — LLM measurement noise propagates directly into predictions since there is no learned correction layer; the paper mitigates this via human evaluation showing high alignment, but noisy concepts in specialized domains remain an open problem.",
+      "In its current form TBM is classification-specific because the linear output layer and categorical concept values assume a fixed label space; extending to generation would require replacing the linear head with a decoder and redefining what 'concept measurement' means for open-ended outputs."
+    ],
+    "generated_at": "2026-03-22T06:30:39Z"
+  }
+}

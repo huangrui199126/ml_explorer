@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes Extended Token Classification (ETC), a pre-training method tailored for short e-commerce search queries that inserts tokens via a generator network instead of masking, then trains a discriminator to identify inserted tokens. This addresses the weakness of standard masked language model pre-training on short text where masking destroys too much context.",
+    "key_idea": "Instead of masking tokens (which devastates short queries), extend the input by inserting generated tokens and train a discriminator to detect them — preserving contextual signals while still learning rich representations.",
+    "why_it_matters": "Standard BERT-style MLM pre-training degrades on short queries because there is too little context remaining after masking; ETC gives practitioners a drop-in pre-training strategy that produces better query embeddings for search and NLU tasks without architectural overhaul.",
+    "possible_use_cases": [
+      "E-commerce search query intent classification (e.g., navigational vs. transactional vs. informational)",
+      "Named entity recognition in search queries for product attribute extraction (brand, size, color)",
+      "Query-to-category matching and product ranking in search relevance pipelines"
+    ],
+    "generated_at": "2026-03-22T06:26:02Z"
+  },
+  "deep": {
+    "method_breakdown": "ETC uses a two-network architecture: a generator inserts synthetic tokens into short queries to create extended inputs, then a discriminator is trained to classify each token as original or inserted (replaced). This replaced token detection objective avoids masking — which destroys too much context in short text — and instead forces the model to learn fine-grained token-level semantics from a richer, artificially extended sequence. The discriminator's learned representations are then used downstream for query understanding tasks like intent classification and named entity recognition.",
+    "key_innovation": "The core novelty is adapting ELECTRA-style replaced token detection specifically for the short-text regime of e-commerce queries. Prior MLM approaches (BERT) suffer catastrophic context loss when masking short queries (e.g., a 4-token query loses half its meaning with standard 15% masking). ETC inverts this — instead of removing tokens, it adds them — so the model trains on a longer, context-rich sequence while still learning to discriminate real query tokens from generator-injected noise.",
+    "technical_insight": "The key design choice is extending rather than masking: by inserting tokens the model sees the full original query intact plus extra context, preserving intent signals while still creating a non-trivial discrimination task. This works because short queries have near-zero redundancy (every token is load-bearing), so masking is destructive, but insertion is constructive — the discriminator must learn deep token semantics to distinguish natural query tokens from plausible but artificial insertions.",
+    "limitations": "The quality of pre-training heavily depends on the generator's ability to produce realistic inserted tokens; a weak generator produces trivially detectable insertions, reducing learning signal. The approach requires training two networks (generator + discriminator), increasing computational cost. The method is evaluated only on one proprietary e-commerce store, limiting generalizability claims. Short-query-specific gains may not transfer to longer or more compositional search queries.",
+    "interview_questions": [
+      "Why does standard MLM pre-training fail for short e-commerce queries, and what property of short text causes this?",
+      "How does ETC's token insertion strategy preserve query intent while still creating a useful pre-training signal?",
+      "What role does the generator network play, and how does its quality affect the discriminator's learning?",
+      "How does ETC relate to ELECTRA, and what is the key architectural or objective difference motivated by the short-text setting?",
+      "What downstream tasks benefit most from ETC pre-training, and why would token-level discrimination pre-training help those specific tasks?"
+    ],
+    "interview_answers": [
+      "Standard MLM masks ~15% of tokens randomly. In long text this leaves ~85% context intact, enabling the model to recover masked tokens from surrounding words. In short queries (avg 3-5 tokens), masking even one token removes 20-33% of the sequence, often destroying the query's core shopping intent (e.g., masking 'red' from 'red nike shoes' makes intent ambiguous). The model then learns from impoverished, intent-altered inputs.",
+      "By inserting tokens into the query rather than removing them, ETC keeps the entire original token sequence present in the input. The model sees full query intent plus additional context, and its task is to identify which positions are injected. The original query tokens form a clean semantic signal the discriminator must protect, forcing it to model the natural token distribution of real queries.",
+      "The generator produces candidate tokens to insert at selected positions — ideally tokens that are plausible but not natural to the query. If the generator is too weak (random words), the discrimination task is trivially easy (high perplexity insertions) and the discriminator learns little. If the generator is too strong (indistinguishable tokens), the discrimination signal is noisy. A well-calibrated generator (e.g., a small MLM) produces challenging but learnable negative examples.",
+      "ETC is directly inspired by ELECTRA's replaced token detection, but ELECTRA replaces existing tokens (masking then generating substitutes), which still suffers context loss for short text. ETC inserts additional tokens, growing the sequence length. This preserves all original tokens and sidesteps the context-destruction problem specific to short text, while maintaining the same efficient binary classification objective that made ELECTRA more sample-efficient than BERT.",
+      "Tasks like query intent classification and named entity recognition (e.g., brand, product type extraction) benefit most. NER in particular aligns naturally with token-level pre-training: ETC's discriminator makes per-token binary decisions, directly mirroring the per-token tagging required in NER. Intent classification benefits because preserving full query semantics during pre-training yields representations that better capture the holistic shopping intent encoded in short query strings."
+    ],
+    "generated_at": "2026-03-22T06:26:28Z"
+  }
+}
