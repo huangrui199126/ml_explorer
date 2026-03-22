@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FanLoRA is a framework that identifies the most important LoRA adapter modules across Transformer layers by fine-tuning all modules first, scoring their importance, and retaining only the critical ones. This reduces inference latency while maintaining or improving performance compared to standard LoRA and other PEFT methods.",
+    "key_idea": "By training all LoRA modules on a large instruction dataset and then pruning to only the most critical modules per layer, FanLoRA achieves a sparse adapter configuration that is both more accurate and faster at inference than dense LoRA.",
+    "why_it_matters": "In multi-tenant production deployments, LoRA adapters add significant latency; FanLoRA gives practitioners a way to enjoy the fine-tuning quality of LoRA with substantially lower serving costs, making LLM customization more viable at scale.",
+    "possible_use_cases": [
+      "Multi-tenant LLM serving where multiple customer-specific adapters must run concurrently with low latency",
+      "Domain-specific fine-tuning (legal, medical, finance) where accuracy must be preserved but inference costs are a constraint",
+      "Edge or on-device deployment where model efficiency is critical and full LoRA overhead is prohibitive"
+    ],
+    "generated_at": "2026-03-22T06:37:08Z"
+  },
+  "deep": {
+    "method_breakdown": "FanLoRA first attaches LoRA adapters to all Transformer linear weights and fine-tunes on a large-scale instruction dataset to learn which modules are most useful. It then scores each LoRA module's importance using a novel metric and prunes away low-importance adapters, retaining only the most critical ones per layer. The resulting sparse LoRA configuration (the 'FanLoRA setting') is then used for downstream task fine-tuning, reducing the number of active adapters and thus inference latency.",
+    "key_innovation": "The core novelty is the data-driven, importance-score-based selection of which Transformer weight matrices actually benefit from LoRA adaptation, rather than applying LoRA uniformly to all weights (as in standard LoRA) or relying on hand-crafted heuristics. This 'find the fantastic LoRAs' approach decouples the search for the optimal adapter placement from the final fine-tuning, enabling a structured pruning of LoRA modules that is empirically grounded.",
+    "technical_insight": "The most important design choice is performing the importance assessment after fine-tuning on a large general instruction-tuning dataset rather than on the downstream task itself. This grounds the module selection in broad, task-agnostic utility signals, preventing overfitting the adapter placement to one narrow distribution and producing a configuration that transfers well across diverse downstream tasks while keeping latency low.",
+    "limitations": "The two-phase pipeline (pre-training LoRA search + downstream fine-tuning) adds upfront cost and complexity compared to vanilla LoRA; the importance scoring phase requires a large instruction dataset and a full LoRA fine-tuning run. The selected FanLoRA configuration is determined before seeing downstream data, so it may be suboptimal for highly specialized or out-of-distribution tasks. The latency benefits are most pronounced in multi-tenant serving; single-user inference gains are less clear. Details of the importance scoring function are not disclosed in the abstract, making reproducibility uncertain.",
+    "interview_questions": [
+      "How exactly is the importance score for each LoRA module computed, and what signals does it rely on?",
+      "How sensitive is the final downstream performance to the choice of the instruction-tuning dataset used in step (a)?",
+      "What is the relationship between the rank r chosen for LoRA in the search phase and the rank used in downstream fine-tuning — are they the same?",
+      "How does FanLoRA's latency reduction compare quantitatively to alternatives like AdaLoRA or SoRA, and under what batch/concurrency conditions are the gains most significant?",
+      "Can the FanLoRA-selected module configuration be shared across different base models of the same architecture family, or must the search be re-run per model?"
+    ],
+    "interview_answers": [
+      "Based on the abstract, the exact scoring method is described as 'novel' but its formula is not specified. Likely it combines gradient-based or magnitude-based signals (e.g., weight update norms, Fisher information, or activation sensitivity) measured during or after the instruction-tuning phase to rank each adapter's contribution to output quality.",
+      "The instruction-tuning dataset choice likely has a moderate-to-high impact: a diverse, high-quality dataset yields importance scores that generalize across tasks, while a narrow dataset may bias the selected modules toward specific capabilities. The authors likely ablate this, but a poor dataset choice could degrade the transferability of the FanLoRA configuration.",
+      "This is a key open question. If the search-phase rank differs from the downstream rank, the importance ranking may not faithfully reflect downstream utility. It is most natural to keep rank fixed, but some methods (e.g., AdaLoRA) vary rank per module — FanLoRA instead varies which modules exist at all, so rank is likely held constant throughout.",
+      "The latency reduction in multi-tenant settings comes from fewer active LoRA adapter computations per forward pass (fewer matrix multiplications to merge or apply). Quantitative gains depend on the fraction of modules pruned; if ~50% of adapters are removed, latency savings scale roughly proportionally with the bottleneck being adapter application overhead. Gains are most significant at high concurrency where adapter switching cost dominates.",
+      "The configuration is architecture-specific (tied to layer count and linear weight names) but could in principle transfer across models of the same family (e.g., all LLaMA-2 7B variants). Transfer across different model sizes or architectures would require re-running the search, as the relative importance of weight matrices changes with model capacity and training."
+    ],
+    "generated_at": "2026-03-22T06:37:33Z"
+  }
+}

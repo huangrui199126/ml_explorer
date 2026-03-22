@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper applies isotonic calibration to Gaussian Naïve Bayes classifiers for guitar chord recognition from audio, evaluating performance using Brier score loss across different harmonic counts. The results show isotonic calibration improves probability estimates by up to 5% even when harmonics up to the 9th order are included.",
+    "key_idea": "Isotonic calibration post-processes the probability outputs of a Gaussian Naïve Bayes model to better align predicted confidence with actual accuracy, improving calibration quality on audio classification tasks.",
+    "why_it_matters": "Practitioners building audio classification or music recognition systems with Naïve Bayes models can cheaply improve probabilistic output quality through isotonic calibration, which is especially relevant when downstream recommendations depend on well-calibrated confidence scores.",
+    "possible_use_cases": [
+      "Guitar chord recognition for music tutoring and learning apps",
+      "Music recommendation systems that require confident genre or instrument classification",
+      "Audio feature engineering pipelines where harmonic content selection impacts model calibration"
+    ],
+    "generated_at": "2026-03-22T06:41:55Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper applies Gaussian Naïve Bayes (GNB) to classify guitar chords from audio data preprocessed into numerical features via harmonic decomposition. Two harmonic configurations are evaluated (with and without higher-order harmonics up to the 9th position), and isotonic calibration is applied post-hoc to correct the probability outputs of the GNB classifier. Performance is measured using Brier score loss, which penalizes poorly calibrated probability estimates.",
+    "key_innovation": "The primary contribution is applying isotonic calibration to the guitar chord classification problem using GNB, demonstrating that post-hoc probability calibration can improve Brier scores by up to 5% across both harmonic inclusion settings. While isotonic calibration is an established technique, its application to audio-derived harmonic features for music classification is the novel application context here.",
+    "technical_insight": "The key design choice is using isotonic regression as the calibration method rather than Platt scaling, because isotonic regression is non-parametric and more flexible — it can model arbitrary monotonic relationships between raw GNB posterior probabilities and true outcome frequencies, which is important when GNB's conditional independence assumption is violated by correlated harmonic features.",
+    "limitations": "The paper is narrowly scoped to a single classifier (GNB) and a single calibration method (isotonic), without comparison to other classifiers or calibration techniques like Platt scaling or temperature scaling. The dataset and experimental setup details are underspecified, making reproducibility unclear. The connection to the stated topic of 'Fairness & Bias' is tenuous at best — Brier score calibration is a reliability metric, not a fairness metric. The 5% improvement figure lacks statistical significance testing.",
+    "interview_questions": [
+      "Why is Brier score the chosen evaluation metric here, and what does it capture that accuracy does not?",
+      "What is isotonic calibration and how does it differ from Platt scaling as a post-hoc calibration method?",
+      "Why does Gaussian Naïve Bayes tend to produce poorly calibrated probabilities, especially with correlated features like harmonics?",
+      "How do higher-order harmonics affect the classification problem, and why is their inclusion a meaningful experimental variable?",
+      "What would be the next steps to make this work production-ready for a real music recognition or recommendation system?"
+    ],
+    "interview_answers": [
+      "Brier score measures the mean squared error between predicted probabilities and true binary outcomes, penalizing confident wrong predictions more than accuracy does. It is a proper scoring rule that rewards well-calibrated probabilistic outputs, not just correct class labels — crucial for downstream recommendation systems that rely on confidence scores.",
+      "Isotonic calibration fits a non-parametric monotonic step function mapping raw classifier scores to calibrated probabilities using isotonic regression. Platt scaling fits a logistic sigmoid (parametric), which assumes a specific S-curve relationship. Isotonic is more flexible but requires more data to avoid overfitting, while Platt scaling generalizes better on small datasets.",
+      "GNB assumes features are conditionally independent given the class label, which is rarely true for harmonic features that have strong physical correlations (overtone series). This violation causes GNB to produce overconfident or poorly calibrated posteriors — probabilities pushed toward 0 or 1 — even when its ranking of classes is correct, hence the need for post-hoc calibration.",
+      "Harmonics are integer multiples of the fundamental frequency of a guitar note; including higher-order harmonics (up to 9th) provides richer spectral representation but also introduces more correlated and potentially noisy features. The experiment tests whether the calibration benefit is consistent regardless of whether the feature space is expanded with these higher-order terms, showing robustness of the calibration approach.",
+      "Next steps would include: benchmarking against stronger classifiers (SVM, random forests, neural networks), evaluating on larger and more diverse chord datasets, testing real-time inference latency, and integrating the calibrated probability outputs into an actual recommendation pipeline where calibration quality directly impacts ranking quality."
+    ],
+    "generated_at": "2026-03-22T06:42:17Z"
+  }
+}
