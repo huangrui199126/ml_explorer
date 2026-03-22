@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MAIF is a model-agnostic industrial framework that addresses cold-start recommendation by classifying features into three categories and using a Trans Block to map available features into the semantic space of missing ones, enabling accurate recommendations for new users/items without retraining.",
+    "key_idea": "Transfer available feature embeddings into the semantic space of missing interaction-based features using a learned Trans Block mapping, so cold-start entities can reuse warm-entity model infrastructure without degrading warm performance.",
+    "why_it_matters": "Cold-start is a pervasive production problem in ads and e-commerce; MAIF plugs into existing models without retraining or hurting warm-entity metrics, making it low-risk to deploy and directly improving revenue from new users and items.",
+    "possible_use_cases": [
+      "New item cold-start in e-commerce product catalogs where items have rich metadata but no purchase history",
+      "New user onboarding in ad-targeting systems where behavioral signals are absent",
+      "Zero-shot brand/campaign launch recommendations on content or media platforms"
+    ],
+    "generated_at": "2026-03-22T02:02:00Z"
+  },
+  "deep": {
+    "method_breakdown": "MAIF classifies item/user features into three categories based on availability and uses a Trans Block mapping to transfer available features into the semantic space of missing features, enabling predictions without retraining. An Auto-Selection serving mechanism dynamically chooses the appropriate inference path based on how much interaction data exists for an entity (zero-shot vs few-shot vs warm). The framework is model-agnostic, plugging into existing recommendation models without altering their predictions for warm entities.",
+    "key_innovation": "The core novelty is the Trans Block feature transfer that maps proxy features into the semantic space of cold/missing features, avoiding the need to retrain the entire model for new entities. Combined with the Auto-Selection mechanism, it cleanly separates cold and warm inference paths, eliminating the seesaw phenomenon where improving cold-start performance degrades warm performance.",
+    "technical_insight": "The most important design choice is keeping the warm prediction path completely frozen while routing cold entities through the Trans Block transformation. This orthogonal design is why it avoids the seesaw phenomenon — the model never trades off warm accuracy for cold accuracy because the two paths never interfere with each other's gradients or outputs.",
+    "limitations": "The Trans Block mapping assumes that proxy/available features contain sufficient signal to reconstruct missing embedding semantics, which may fail for truly novel item categories with no analogous warm items. The approach is validated only on a single platform (Dianping), so generalization to domains with very different feature structures (e.g., pure content-based or purely collaborative settings) is unclear. Few-shot boundary thresholds for Auto-Selection are likely dataset-specific and require manual tuning.",
+    "interview_questions": [
+      "How does the Trans Block learn to map available features into the semantic space of missing features, and what is the training objective?",
+      "What exactly are the three feature categories MAIF uses, and how does that classification drive the architecture?",
+      "How does the Auto-Selection mechanism decide which inference path to use, and what happens at the boundary between few-shot and warm regimes?",
+      "Why does the seesaw phenomenon occur in naive cold-start approaches, and how does MAIF's architecture structurally prevent it?",
+      "How is calibration performance measured and improved, and why does cold-start specifically hurt calibration?"
+    ],
+    "interview_answers": [
+      "The Trans Block is trained to minimize the distance between its output embeddings and the actual target embeddings of warm entities — essentially a distillation/regression objective where available features are the input and the learned warm embeddings are the supervision signal. At inference for cold entities, the Trans Block produces a proxy embedding that approximates what the model would have learned given full interaction history.",
+      "The three categories are: (1) features present for both cold and warm entities (e.g., content/side features), (2) features only available for warm entities (e.g., ID embeddings learned from interactions), and (3) features that are partially available in few-shot. This tripartite split determines which features go through the Trans Block and which are passed directly, allowing fine-grained control over what needs to be reconstructed.",
+      "Auto-Selection uses interaction count thresholds to route each entity: zero interactions go through the full Trans Block path, a small number of interactions use a blended few-shot path, and sufficient interactions use the standard warm path directly. The boundary thresholds are empirically tuned on validation data, and the mechanism operates at serving time without any retraining, making it compatible with real-time production systems.",
+      "The seesaw phenomenon occurs because most cold-start methods modify the shared embedding table or add auxiliary losses that affect all entities, causing gradient interference between cold and warm objectives. MAIF avoids this by leaving the warm model entirely untouched — the Trans Block is an additive module that only activates for cold entities, so warm entity predictions are mathematically identical to the base model's output.",
+      "Calibration is measured as the alignment between predicted click/conversion probability and observed empirical rates, typically via metrics like Expected Calibration Error or log-loss decomposition. Cold-start hurts calibration because randomly initialized or zero embeddings produce systematically biased predicted scores. The Trans Block improves calibration by producing embeddings whose scale and distribution match those of warm entities, so the final sigmoid/softmax layer outputs are in the correct probability range from the first impression."
+    ],
+    "generated_at": "2026-03-22T02:02:22Z"
+  }
+}

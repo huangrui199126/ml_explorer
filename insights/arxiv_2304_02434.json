@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RankDFM is a pre-ranking framework for search systems that uses DeepFM with pairwise training to enable query-document feature interaction, overcoming the limitation of standard vector-product models. It also includes a learnable feature selection scheme to maintain inference speed comparable to tree models while deployed at hundreds-of-millions scale.",
+    "key_idea": "By using DeepFM's feature crossing capability with a learnable feature selector, RankDFM achieves richer query-document interaction in the pre-ranking stage without sacrificing the inference efficiency required for large-scale deployment.",
+    "why_it_matters": "Pre-ranking is a critical efficiency bottleneck in multi-stage retrieval pipelines; this work shows you can close the quality gap with full rankers using smarter architectures rather than accepting the representation-model tradeoff.",
+    "possible_use_cases": [
+      "Pre-ranking stage in large-scale video/content search systems",
+      "E-commerce product search where query-item interaction is critical for relevance",
+      "Recommendation system candidate filtering where latency budgets are tight but precision matters"
+    ],
+    "generated_at": "2026-03-22T02:03:35Z"
+  },
+  "deep": {
+    "method_breakdown": "RankDFM uses DeepFM as its backbone to enable cross-feature interactions between query and document representations in the pre-ranking stage, overcoming the limitation of vector-product models that compute query and document embeddings independently. It adopts a pairwise training paradigm to learn relative ranking of videos under a query, rather than pointwise scoring. A learnable feature selection scheme prunes less informative features at inference time, reducing latency to be competitive with tree-based models.",
+    "key_innovation": "The core novelty is introducing explicit query-document feature crossing (via DeepFM's FM layer and deep component) into pre-ranking, which has traditionally been avoided due to latency constraints. Prior work used dual-tower or vector-product models that sacrifice interaction quality for speed. RankDFM recovers this interaction quality while managing inference cost through learned feature selection rather than architectural approximation.",
+    "technical_insight": "The learnable feature selection scheme is the critical design choice — it allows the model to be trained with full feature interactions but pruned to a sparse, fast inference path. This decouples training expressiveness from serving latency, solving the fundamental efficiency-effectiveness tradeoff without requiring a separate distillation model or rigid architectural constraint like fixed embedding dimensions.",
+    "limitations": "The paper targets a specific short-video search domain, so generalizability to text-heavy or heterogeneous retrieval systems is unproven. The feature selection scheme likely requires careful tuning of sparsity regularization and may be sensitive to feature distribution shifts. Pairwise training requires constructing query-level comparison pairs, which may be expensive and noisy in settings with sparse click signals. Latency equivalence to tree models is claimed but may not hold across different hardware or traffic distributions.",
+    "interview_questions": [
+      "Why does a vector-product model fail to capture query-document interaction, and what is the fundamental architectural reason for this limitation?",
+      "How does DeepFM's factorization machine component specifically enable feature crossing between query and document fields?",
+      "What is the pairwise training objective used in RankDFM, and how does it differ from pointwise or listwise approaches in this pre-ranking context?",
+      "How does the learnable feature selection scheme work, and how is sparsity enforced during training?",
+      "What are the practical challenges of deploying a cross-feature model like RankDFM in a pre-ranking stage that must process thousands of candidates under strict latency budgets?"
+    ],
+    "interview_answers": [
+      "Vector-product models encode query and document into separate embedding spaces and score via dot product or cosine similarity. Because the query and document towers are computed independently, no multiplicative or additive interaction between their raw features can occur — the model can only capture compatibility in a shared latent space, not fine-grained feature-level correlations like a specific query term matching a document attribute.",
+      "FM computes pairwise inner products between all input field embeddings in O(kn) time using the kernel trick. When query and document features are concatenated as input fields, the FM layer automatically computes cross terms between query fields and document fields (e.g., query category × video tag), which are exactly the interactions missing from dual-tower models.",
+      "RankDFM uses a pairwise loss (likely BPR or hinge loss) where for a given query, pairs of videos are compared and the model is trained to score the more relevant video higher. This is stronger than pointwise because it directly optimizes relative ordering, and more tractable than listwise because it only requires pairwise preference labels derivable from click/skip signals.",
+      "The scheme introduces per-feature gates (likely sigmoid-gated or L0/L1-regularized masks) that are jointly trained with the model weights. A sparsity penalty encourages gates toward zero, effectively dropping features. At inference, gates below a threshold are zeroed out, yielding a sparse feature set. The selected features approximate tree model complexity, reducing lookup and embedding retrieval cost.",
+      "The main challenges are: (1) retrieval latency — cross-feature models cannot precompute document scores offline, so all candidate scoring must happen online; (2) feature availability — query-side features may arrive with different latency than document features; (3) throughput — pre-ranking must score O(1000s) candidates per query, so even small per-item cost multiplies dramatically; (4) feature engineering — ensuring query-document field pairs are semantically meaningful for FM crossing, otherwise FM learns spurious correlations."
+    ],
+    "generated_at": "2026-03-22T02:04:02Z"
+  }
+}

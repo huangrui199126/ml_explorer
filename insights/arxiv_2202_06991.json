@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DSI encodes an entire document corpus into a single Transformer's parameters, enabling the model to map text queries directly to document identifiers without any external index. It outperforms dual-encoder baselines and even BM25 in zero-shot settings.",
+    "key_idea": "A Transformer can act as its own search index by memorizing document-to-docid mappings during training, collapsing indexing and retrieval into a single model forward pass.",
+    "why_it_matters": "Eliminates the need for separate indexing infrastructure (e.g., Elasticsearch, FAISS), reducing system complexity and potentially enabling end-to-end differentiable retrieval pipelines.",
+    "possible_use_cases": [
+      "Lightweight retrieval systems where maintaining a separate vector index is operationally expensive",
+      "Zero-shot document retrieval over new domains without reindexing",
+      "End-to-end trainable RAG pipelines where retrieval and generation share a unified model"
+    ],
+    "generated_at": "2026-03-22T02:04:49Z"
+  },
+  "deep": {
+    "method_breakdown": "DSI trains a single Transformer (T5) to directly map query strings to document identifiers (docids) using a seq2seq framework, bypassing traditional indexing pipelines entirely. The model is trained in two phases: first indexing (memorizing docid associations for each document passage) and then retrieval (learning to map queries to the correct docids). At inference time, constrained beam search over valid docids produces the ranked list of relevant documents.",
+    "key_innovation": "Prior retrieval systems either use sparse term matching (BM25) or dense dual-encoders that require a separate index and ANN search. DSI collapses the entire corpus index into model parameters, making retrieval a pure generative decoding problem — the first demonstration that a neural model can implicitly encode and retrieve from a large corpus without any external data structure.",
+    "technical_insight": "The choice of docid representation is the most critical design decision: atomic integer IDs fail to generalize, while semantically structured IDs (hierarchical k-means cluster paths over document embeddings) allow the model to learn a navigable taxonomy of the corpus. This works because the structured IDs impose an inductive bias that mirrors the latent topic structure of documents, enabling generalization to unseen queries via partial prefix matching during beam search.",
+    "limitations": "Scaling is the core limitation — the entire corpus must fit implicitly in model weights, so adding new documents requires retraining or fine-tuning rather than simple index updates. The approach has only been validated on relatively small corpora (NQ320k), and it is unclear whether parameter capacity scales gracefully to web-scale collections. Inference cost via beam search over a large docid vocabulary is also higher than ANN lookup over dense embeddings.",
+    "interview_questions": [
+      "How does DSI handle the addition of new documents to the corpus after the model has been trained?",
+      "Why do semantically structured docids outperform naive integer IDs, and what does this tell us about how the Transformer encodes corpus information?",
+      "DSI uses both indexing losses and retrieval losses during training — what is the risk of the model 'forgetting' indexed documents when fine-tuned heavily on retrieval signal?",
+      "How does constrained beam search work in the DSI decoding step, and why is it necessary?",
+      "What architectural or training changes would you propose to make DSI viable at web-scale (billions of documents)?"
+    ],
+    "interview_answers": [
+      "DSI currently requires retraining or incremental fine-tuning to incorporate new documents, which is a fundamental limitation compared to traditional indexes where a document can be appended in O(1). This is an open problem; one mitigation is continual learning with replay, but catastrophic forgetting remains a challenge at scale.",
+      "Structured docids encode semantic proximity in their prefix structure (documents in the same topic cluster share a common path prefix), so the model can generalize by learning to route queries toward the correct subtree during beam decoding. Integer IDs are arbitrary and provide no such gradient signal — the model must memorize exact mappings rather than learn a generalizable routing function.",
+      "This is a real tension: heavy retrieval fine-tuning can degrade indexing fidelity (the model forgets which passages map to which docids). The paper mitigates this by interleaving both objectives during training, but the catastrophic forgetting problem is not fully solved and becomes more severe as corpus size grows.",
+      "Constrained beam search restricts the output vocabulary at each decoding step to only tokens that form valid prefixes of known docids. Without this constraint, the model could generate docids that do not exist in the corpus, producing null results. It effectively turns decoding into a trie traversal over the docid space.",
+      "Scaling DSI would likely require a combination of: (1) mixture-of-experts architectures to increase effective capacity without proportional compute cost, (2) hierarchical models where a coarse model routes to a shard-specific fine model, (3) dynamic fine-tuning protocols for document ingestion, and (4) distillation from a retrieval-augmented teacher to compress corpus knowledge more efficiently into parameters."
+    ],
+    "generated_at": "2026-03-22T02:05:12Z"
+  }
+}
