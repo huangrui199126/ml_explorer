@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This tutorial provides a comprehensive overview of retrieval-based language models, covering their architectures, learning approaches, and applications across NLP tasks. It spans from foundational concepts like masked and autoregressive LMs to advanced retrieval-augmented systems in multilingual and multimodal settings.",
+    "key_idea": "Augmenting language models with external retrieval systems allows them to access and leverage relevant information at inference time, improving performance without encoding all knowledge in model parameters.",
+    "why_it_matters": "Retrieval-augmented models offer a practical path to more factual, up-to-date, and interpretable NLP systems without the prohibitive cost of scaling model parameters to memorize world knowledge.",
+    "possible_use_cases": [
+      "Open-domain question answering systems that fetch evidence from large document corpora",
+      "Knowledge-intensive text generation where factual accuracy and citability are required",
+      "Low-resource multilingual NLP by retrieving cross-lingual examples to guide generation"
+    ],
+    "generated_at": "2026-03-22T02:08:52Z"
+  },
+  "deep": {
+    "method_breakdown": "Retrieval-based language models augment standard LMs by conditioning generation or prediction on retrieved text passages from an external datastore, using nearest-neighbor search to find relevant context at inference time. The framework separates parametric knowledge (stored in model weights) from non-parametric knowledge (stored in a retrieval index), allowing the model to access up-to-date or task-specific information without full retraining. Retrieval can occur once before generation or iteratively during decoding, with the retrieved content concatenated to the input or fused via cross-attention.",
+    "key_innovation": "The core novelty relative to standard LMs is decoupling memory from computation: rather than encoding all world knowledge into fixed model parameters, retrieval-based LMs delegate factual storage to a scalable external index. This enables modular updates (refresh the index without retraining), explicit grounding, and generalization to low-resource or multilingual settings by swapping retrieval corpora.",
+    "technical_insight": "The most critical design choice is the representation alignment between query encoder and document encoder (dense retrieval via dual encoders or bi-encoders). When both are trained jointly with the downstream task signal, the retrieval becomes task-aware rather than generic, dramatically improving relevance. This works because end-to-end training collapses the semantic gap between what the LM needs and what the retriever surfaces.",
+    "limitations": "Retrieval latency introduces significant inference overhead, making real-time applications challenging. The system's performance is bounded by index quality — stale, noisy, or biased corpora propagate errors directly into generations. Multi-hop reasoning requiring chained retrievals suffers from error accumulation. Additionally, retrieval-augmented models can over-rely on retrieved content, failing when retrieved passages are misleading or irrelevant (retrieval hallucination). Multilingual and multimodal extensions face alignment challenges across modalities and languages.",
+    "interview_questions": [
+      "How does dense retrieval differ from sparse retrieval (e.g., BM25), and when would you prefer one over the other?",
+      "What are the training challenges when jointly optimizing a retriever and a reader/generator end-to-end?",
+      "How does kNN-LM work, and why can it improve perplexity without any additional training?",
+      "What strategies exist for keeping a retrieval index fresh without full re-indexing?",
+      "How do retrieval-based LMs handle cases where retrieved documents are contradictory or irrelevant?"
+    ],
+    "interview_answers": [
+      "Dense retrieval uses learned continuous embeddings and dot-product similarity (e.g., DPR, FAISS), capturing semantic similarity beyond lexical overlap. Sparse retrieval (BM25) relies on term frequency statistics and is faster, interpretable, and strong for exact-match queries. Dense retrieval excels for paraphrase-heavy or cross-lingual queries; sparse is preferred when terminology is highly specific or labeled retrieval data is scarce. Hybrid approaches combining both often outperform either alone.",
+      "Joint training faces the 'stale index' problem: document embeddings in the index are computed from a checkpoint of the retriever, but as the retriever updates, the index becomes stale. Solutions include periodic re-encoding (REALM, RAG), in-batch negatives to approximate full retrieval, asynchronous index refresh, or distillation-based approaches. Another challenge is that retrieval is non-differentiable, requiring marginalizing over top-k documents or using REINFORCE-style gradient estimators.",
+      "kNN-LM interpolates a standard LM's next-token distribution with a nearest-neighbor distribution computed by retrieving from a datastore of (context, next-token) pairs built from the training corpus. At inference, the current hidden state queries the datastore via L2 search; retrieved neighbors vote on the next token weighted by distance. This improves perplexity because rare or long-tail patterns are hard to memorize in weights but easy to retrieve explicitly, and the interpolation is tuned by a single scalar hyperparameter.",
+      "Strategies include: (1) incremental indexing — appending new document embeddings without full re-encoding; (2) document-level invalidation and re-encoding of changed documents only; (3) lightweight adapter layers that adjust old embeddings to reflect model drift without recomputing; (4) hybrid sparse+dense indices where sparse components update trivially; and (5) time-aware retrieval that filters by document timestamp to avoid stale facts.",
+      "Robustness mechanisms include: training with hard negatives and irrelevant documents so the reader learns to ignore unhelpful context; fusion-in-decoder (FiD) architectures that process each retrieved document independently and fuse at decoder cross-attention, reducing noise propagation; confidence-based filtering that discards low-score retrievals; and attribution/faithfulness training objectives that penalize the model for generating claims unsupported by any retrieved passage. At inference, self-consistency checks or ensemble voting across multiple retrieved sets can further reduce sensitivity to any single noisy document."
+    ],
+    "generated_at": "2026-03-22T02:09:22Z"
+  }
+}
