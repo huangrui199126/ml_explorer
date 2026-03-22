@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper identifies and addresses 'sentiment bias' in review-based recommender systems, where users who write negative reviews and niche items receive worse recommendation accuracy than positive reviewers. The authors use causal/counterfactual inference to disentangle and remove the indirect effect of sentiment from rating predictions during inference.",
+    "key_idea": "By building a causal graph that separates the direct effect of user/item features from the indirect sentiment-mediated effect, the model uses counterfactual inference at test time to remove sentiment bias without sacrificing rating prediction accuracy.",
+    "why_it_matters": "Recommender systems that rely on reviews systematically disadvantage critical users and niche items, creating unfair feedback loops; this work offers a principled causal approach to fairness that doesn't require retraining or reweighting data.",
+    "possible_use_cases": [
+      "Debiasing e-commerce recommendation engines (Amazon, Yelp) where critical reviewers receive worse personalization",
+      "Fairer content discovery for niche or independent creators on platforms like Netflix or Spotify whose items receive fewer positive reviews",
+      "Improving recommendation equity in academic or professional platforms where critical peer feedback skews visibility of authors or papers"
+    ],
+    "generated_at": "2026-03-22T07:10:38Z"
+  },
+  "deep": {
+    "method_breakdown": "The method constructs a causal graph modeling how user/item sentiment (derived from reviews) influences rating predictions, distinguishing direct effects (sentiment → rating) from indirect effects (sentiment → representation → rating). During training, the causal graph is integrated into a review-based recommender system to capture these pathways. At inference, counterfactual reasoning removes the indirect sentiment effect by comparing factual predictions against a counterfactual world where sentiment is neutralized, effectively isolating and subtracting the bias component.",
+    "key_innovation": "Prior debiasing work in RSs targets exposure bias, popularity bias, or position bias via IPW or causal methods, but none specifically address sentiment bias in review-based systems. This is the first work to formalize sentiment bias through a causal lens and apply counterfactual inference (total effect minus natural indirect effect) to surgically remove sentiment's indirect pathway without discarding its legitimate direct signal on ratings.",
+    "technical_insight": "The critical design choice is decomposing sentiment's influence into direct and indirect effects rather than simply removing all sentiment information. Completely removing sentiment would discard valid signals (genuinely bad products deserve low ratings), so the method only suppresses the indirect path where sentiment distorts learned representations — preserving fairness while maintaining predictive accuracy.",
+    "limitations": "The causal graph structure is manually defined and may not capture all confounding pathways specific to different domains or datasets. The approach assumes sentiment polarity can be cleanly extracted from reviews, which fails for nuanced or mixed-sentiment text. The counterfactual intervention requires a notion of 'neutral sentiment' baseline that may be ill-defined. Scalability to implicit feedback settings without reviews is not addressed, and the method may still inherit biases from the underlying review-based encoder.",
+    "interview_questions": [
+      "How do you define and operationalize 'sentiment' in the causal graph — is it a scalar, embedding, or categorical variable?",
+      "How is the counterfactual 'neutral sentiment' baseline constructed, and how sensitive are results to this choice?",
+      "What prevents the model from simply learning to re-encode sentiment through other feature pathways not captured in the causal graph?",
+      "How does the method handle items or users with very few reviews, where sentiment estimation is noisy?",
+      "How do you evaluate fairness mitigation — what metrics distinguish sentiment bias reduction from overall accuracy degradation?"
+    ],
+    "interview_answers": [
+      "Sentiment is typically derived from review text via a sentiment scorer or embedding that produces a continuous or categorical signal; in this causal graph it acts as an observed variable mediating between user/item identity and the predicted rating, with its polarity (positive/negative) serving as the intervention point.",
+      "The neutral baseline is usually the average or zero-sentiment counterfactual — replacing the actual sentiment embedding with a neutral representation (e.g., mean pooled or zeroed out); sensitivity is a real concern and ideally ablations over multiple baseline definitions should be reported to validate robustness.",
+      "This is a genuine limitation: if the model architecture allows sentiment information to leak into other latent dimensions not modeled in the causal graph, the intervention is incomplete — the causal graph must be comprehensive enough to block all backdoor paths, which is hard to guarantee without strong assumptions.",
+      "Sparse review users/items are a challenge because sentiment estimates are noisy; the method could apply confidence-weighted interventions or fall back to popularity-based priors, but this edge case likely needs explicit handling that may not be fully addressed in the paper.",
+      "Fairness metrics typically include per-group rating prediction error comparing positive-review vs. negative-review users/items (e.g., RMSE gap), fairness-accuracy trade-off curves, and potentially ranking fairness metrics like exposure equity — the goal is to close the performance gap without substantially raising overall RMSE."
+    ],
+    "generated_at": "2026-03-22T07:11:02Z"
+  }
+}
