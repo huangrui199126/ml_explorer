@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "A comprehensive survey of Parameter-Efficient Fine-Tuning (PEFT) methods applied to Foundation Models (FMs) like LLMs, image generation models, and multimodal systems, covering techniques, trends, and applications across diverse modalities.",
+    "key_idea": "PEFT methods reduce the number of trainable parameters and computational cost during fine-tuning while maintaining strong performance on downstream tasks, making large foundation models practical to adapt.",
+    "why_it_matters": "Fine-tuning large foundation models from scratch is prohibitively expensive for most practitioners; PEFT techniques enable cost-effective adaptation of powerful pretrained models to specific tasks with minimal resources.",
+    "possible_use_cases": [
+      "Adapting large language models to domain-specific tasks (e.g., medical, legal, code) without full fine-tuning",
+      "Fine-tuning multimodal models for specialized vision-language applications with limited GPU budget",
+      "Enabling on-device or edge deployment of adapted foundation models through parameter reduction"
+    ],
+    "generated_at": "2026-03-22T02:27:04Z"
+  },
+  "deep": {
+    "method_breakdown": "PEFT techniques reduce the number of trainable parameters during fine-tuning of large foundation models by either adding small adapter modules, reparameterizing weight updates (e.g., LoRA), or selectively activating/masking existing parameters. Rather than updating all model weights, PEFT freezes the pretrained backbone and only optimizes a small fraction of parameters, drastically cutting memory and compute requirements. This survey systematically categorizes these approaches across language, vision, and multimodal foundation models.",
+    "key_innovation": "The primary contribution is a unified taxonomy and comprehensive comparative analysis of PEFT methods across heterogeneous foundation model families (LLMs, vision transformers, multimodal models), whereas prior surveys focused narrowly on NLP or a single PEFT family. It bridges the gap between isolated PEFT literature and the broader FM ecosystem, identifying cross-domain transferability of techniques like LoRA, prefix tuning, and adapter layers.",
+    "technical_insight": "The most critical design insight is that low-rank decomposition of weight updates (as in LoRA) exploits the intrinsic low-dimensionality of task-specific adaptations — pretrained models already encode rich representations, so downstream tasks require only a small subspace of weight space to shift. This is why methods like LoRA achieve near full fine-tuning performance with <1% trainable parameters: the delta weights live in a low-rank manifold.",
+    "limitations": "As a survey, it lacks empirical benchmarking across unified settings, making direct method comparisons difficult. PEFT methods can underperform full fine-tuning on tasks requiring significant distributional shift from pretraining. Hyperparameter sensitivity (rank in LoRA, adapter bottleneck size) remains poorly understood theoretically. Coverage of very recent methods may lag the fast-moving field, and multimodal PEFT is underexplored relative to language-only settings.",
+    "interview_questions": [
+      "What is the fundamental assumption behind LoRA that allows it to work with so few parameters?",
+      "How does prefix tuning differ from prompt tuning, and when would you prefer one over the other?",
+      "What are the trade-offs between adapter-based methods and reparameterization-based methods like LoRA at inference time?",
+      "How would you select an appropriate PEFT method for a new task given constraints on memory, latency, and dataset size?",
+      "What challenges arise when applying PEFT to multimodal foundation models that don't exist in unimodal settings?"
+    ],
+    "interview_answers": [
+      "LoRA assumes that the weight updates needed for downstream task adaptation have low intrinsic rank — i.e., the pretrained model's weight matrices are already high-rank and task-specific changes live in a much lower-dimensional subspace. It decomposes delta_W = A*B where A and B are low-rank matrices, so only these are trained. This works because pretrained models have over-parameterized representations and task adaptation is a relatively simple transformation on top.",
+      "Prefix tuning prepends trainable continuous vectors to the key and value sequences at every transformer layer, influencing attention at all depths. Prompt tuning only prepends soft tokens to the input embedding layer. Prefix tuning has more capacity and is better for complex tasks but is harder to optimize; prompt tuning is simpler and works well when the pretrained model is very large (emergent ability to respond to soft prompts). Prefer prefix tuning for smaller models or harder tasks.",
+      "Adapter-based methods insert new modules between transformer layers, adding latency at inference even when frozen (sequential bottleneck computation). LoRA-style reparameterization can merge the trained delta weights back into the original weight matrix after training (W' = W + AB), incurring zero additional inference latency. Adapters however are more modular and can be swapped per-task without re-merging; LoRA is preferable when inference speed is critical.",
+      "Key factors: (1) dataset size — small datasets favor stronger regularization, so lower-rank LoRA or prompt tuning; (2) memory budget — LoRA is most memory-efficient; (3) latency constraints — LoRA with weight merging for zero overhead; (4) task similarity to pretraining — more distant tasks may need adapter methods with higher capacity; (5) multi-task serving — adapters allow hot-swapping. A practical heuristic: start with LoRA rank 8-16 and scale rank up if performance is insufficient.",
+      "Multimodal FMs require aligning representations across modalities (e.g., vision and language) which may shift during adaptation, risking modality misalignment if only one encoder is fine-tuned. The interaction mechanisms (cross-attention, projection layers) are sensitive and often undertrained. PEFT must decide which modality-specific and cross-modal components to tune, and the optimal strategy is task-dependent. Additionally, multimodal tasks have more heterogeneous downstream distributions, making a single PEFT configuration less generalizable."
+    ],
+    "generated_at": "2026-03-22T02:27:31Z"
+  }
+}

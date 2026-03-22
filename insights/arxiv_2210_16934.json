@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a siamese graph neural network that learns to rank nodes in branch-and-bound solvers for integer programming, trained by imitating an oracle that dives toward optimal solutions. The method outperforms SCIP's default node selection and other ML baselines on hard combinatorial optimization benchmarks.",
+    "key_idea": "Represent branch-and-bound nodes as bipartite graphs and train a siamese GNN to compare pairs of nodes, learning which to explore first by imitating a primal-diving oracle.",
+    "why_it_matters": "Better node selection in branch-and-bound can dramatically reduce solver runtime and tree size for NP-hard integer programs, and this learned approach generalizes to larger instances than seen during training — making it practically deployable.",
+    "possible_use_cases": [
+      "Accelerating MIP solvers for supply chain and logistics optimization",
+      "Improving scheduling and resource allocation solvers in operations research",
+      "Reducing compute time for combinatorial problems in chip design and network routing"
+    ],
+    "generated_at": "2026-03-22T02:26:01Z"
+  },
+  "deep": {
+    "method_breakdown": "The method represents branch-and-bound nodes as bipartite graphs (variables on one side, constraints on the other) with rich attributes capturing LP relaxation information, and trains a siamese GNN to compare pairs of nodes by predicting which one is closer to the optimal solution. The siamese architecture processes two nodes independently through shared GNN weights, then combines their embeddings to produce a pairwise ranking score. Training uses imitation learning against a diving oracle that greedily follows the optimal solution path.",
+    "key_innovation": "Prior ML-for-B&B work focused on variable selection (branching) or node selection heuristics using hand-crafted features; this work introduces pairwise node comparison via a siamese GNN on bipartite graph representations, replacing scalar node evaluation with a learned comparator that captures relational structure between variables and constraints rather than just node-level statistics.",
+    "technical_insight": "The bipartite graph representation is the critical design choice — encoding the LP relaxation state as a variable-constraint bipartite graph lets the GNN capture how constraint tightness and variable fractional values interact structurally, rather than collapsing this into a flat feature vector. This structural inductive bias allows generalization to larger instances because the graph topology scales naturally while learned features remain transferable.",
+    "limitations": "The method requires solving many instances to generate oracle training data, making data collection expensive for hard problem classes. The pairwise comparison approach has quadratic complexity in the number of open nodes, which can be costly for large B&B trees. Generalization is demonstrated on same-distribution larger instances but not across qualitatively different problem structures. The diving oracle may produce noisy supervision when multiple near-optimal solutions exist.",
+    "interview_questions": [
+      "Why use a siamese architecture specifically, and what are the tradeoffs versus training a direct node scoring function?",
+      "How does the bipartite graph representation encode the current state of a B&B node, and what attributes are used on each node type?",
+      "The diving oracle provides training signal — how sensitive is the learned policy to oracle quality, and what happens when the oracle dives suboptimally?",
+      "How do you handle the scalability challenge of pairwise comparison when the B&B tree has thousands of open nodes?",
+      "What does 'primal-difficult' mean in the context of benchmark selection, and why does this matter for evaluating node comparison methods?"
+    ],
+    "interview_answers": [
+      "A siamese network enforces that the comparison is antisymmetric and consistent by using shared weights — if you swap the two nodes, the ranking flips. A direct scorer could assign arbitrary scales to different instances, making cross-node comparisons unreliable. The tradeoff is that pairwise inference is slower than scoring each node independently, but the ranking signal is stronger because it directly optimizes the comparison objective rather than hoping scalar scores happen to be consistently ordered.",
+      "The bipartite graph has variable nodes and constraint nodes with an edge for each nonzero coefficient in the LP matrix. Variable node features include the LP relaxation value, bounds, objective coefficient, and branching history. Constraint node features include the slack, right-hand side, and dual variable value. This captures the full local LP state in a permutation-invariant, size-agnostic structure.",
+      "Oracle quality is important but the method shows robustness because the GNN learns structural patterns that generalize beyond memorizing specific oracle paths. When the oracle dives suboptimally (e.g., multiple optimal solutions exist), the training signal is noisy but the aggregation over many training instances averages this out. The bigger risk is systematic oracle bias, e.g., always preferring one of many symmetric optima.",
+      "In practice, you don't compare all pairs — you use the learned comparator as a sort key in a priority queue, which requires O(n log n) comparisons to maintain ordering. The GNN forward passes are the bottleneck; these can be batched on GPU. For very large trees, approximate sorting or only re-ranking a subset of frontier nodes is a practical mitigation.",
+      "Primal-difficult instances are those where finding a good feasible solution (primal bound) is hard, meaning the solver spends most of its time searching before pruning becomes effective. This setting specifically stresses node selection/comparison because the benefit of exploring promising subtrees first is amplified when the primal bound improves slowly — a good node comparator that dives toward feasible optima early has outsized impact compared to problem classes where the LP relaxation is already tight."
+    ],
+    "generated_at": "2026-03-22T02:26:25Z"
+  }
+}

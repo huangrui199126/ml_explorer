@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Deep-QPP is a supervised end-to-end neural model for query performance prediction (QPP) that uses 2D convolutional layers to capture pairwise semantic interactions between query terms and terms in top-retrieved documents. It outperforms both supervised and unsupervised QPP baselines on standard benchmarks without relying on hand-crafted statistics or outputs from other QPP estimators.",
+    "key_idea": "Model the semantic interaction matrix between query and top-document terms using 2D convolutions to predict how well a retrieval system will perform on a given query.",
+    "why_it_matters": "Accurately predicting when a retrieval system will fail on a query enables selective re-ranking, query reformulation, or fallback strategies — improving user experience without rerunning expensive full-pipeline searches.",
+    "possible_use_cases": [
+      "Selective query expansion or reformulation when low performance is predicted",
+      "Routing hard queries to more expensive retrieval or reranking pipelines",
+      "Confidence-based result presentation in search UIs to signal uncertain results"
+    ],
+    "generated_at": "2026-03-22T02:28:43Z"
+  },
+  "deep": {
+    "method_breakdown": "Deep-QPP builds a pairwise interaction matrix between query terms and terms in top-retrieved documents, capturing semantic similarity signals at the term level. This interaction matrix is processed through multiple layers of 2D convolutional filters to extract local and hierarchical patterns of query-document term overlap. The resulting features are passed through a feed-forward layer to produce a scalar QPP score predicting retrieval quality.",
+    "key_innovation": "Unlike prior QPP methods that rely on handcrafted statistics of document score distributions (e.g., NQC, WIG) or weak supervision from combining existing QPP estimators, Deep-QPP is fully end-to-end data-driven and learns directly from pairwise query-document term interaction matrices — borrowing the interaction-focused architecture from neural IR models like DRMM and MatchPyramid but repurposing it for predicting retrieval quality rather than relevance.",
+    "technical_insight": "The use of 2D convolution over the query-document interaction matrix is the critical design choice: it captures local n-gram-level interaction patterns (patches of term co-occurrence) and composes them hierarchically, allowing the model to detect whether the query's key concepts are consistently covered across top-retrieved documents — a strong proxy for retrieval success that flat statistics miss.",
+    "limitations": "The model requires labeled data (AP or nDCG annotations per query) which is expensive to obtain and limits generalization across domains or collections. Performance likely degrades on queries with very few top-retrieved documents or sparse interaction matrices. The 2D CNN architecture inherits fixed input-size constraints, requiring padding or truncation. The approach is also sensitive to the quality of the initial retrieval used to form the interaction matrix — if the retrieval is poor, the input signal is noisy.",
+    "interview_questions": [
+      "How does Deep-QPP construct its input representation and what does each cell in the interaction matrix encode?",
+      "Why is a 2D convolutional architecture more appropriate here than a recurrent or purely fully-connected architecture?",
+      "How does Deep-QPP differ from weakly supervised QPP approaches, and what are the tradeoffs?",
+      "What evaluation metric is used to assess QPP quality, and why is it appropriate?",
+      "What are the failure modes when Deep-QPP is applied to a domain with no labeled training queries?"
+    ],
+    "interview_answers": [
+      "The input is a 2D matrix of size |Q| x |D| where rows correspond to query terms and columns to document terms from the top-k retrieved documents; each cell typically encodes a similarity score (e.g., exact match or embedding cosine similarity) between the query term and document term, capturing fine-grained interaction signals.",
+      "2D convolutions capture spatially local interaction patterns — contiguous patches of term matches that correspond to phrase-level or concept-level coverage. This is more expressive than a flat feature vector (which loses positional structure) and more parameter-efficient than a dense layer over the full matrix. Recurrent models would impose an ordering assumption that isn't meaningful here.",
+      "Weakly supervised approaches use outputs from multiple existing QPP estimators as pseudo-labels or features, meaning they are upper-bounded by the quality of those estimators and inherit their biases. Deep-QPP instead uses actual retrieval effectiveness labels, enabling it to learn patterns that existing estimators may systematically miss — at the cost of requiring human-annotated relevance judgments.",
+      "Kendall's tau (rank correlation) between predicted QPP scores and actual per-query effectiveness scores (AP or nDCG) is the standard metric. It is appropriate because QPP is fundamentally a ranking problem over queries — we care about correctly ordering queries by difficulty, not predicting absolute effectiveness values.",
+      "Without in-domain labeled queries, the model cannot be trained and direct application fails. Transfer across collections is non-trivial because interaction patterns are corpus-vocabulary-dependent. One mitigation is to use pre-trained embeddings in the interaction matrix to reduce vocabulary mismatch, or to fine-tune on a small set of labeled queries from the target domain."
+    ],
+    "generated_at": "2026-03-22T02:29:05Z"
+  }
+}

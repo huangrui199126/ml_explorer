@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SVD-LLM V2 improves SVD-based LLM compression by using theoretical truncation loss to assign per-layer compression ratios and a loss-optimized truncation strategy that reduces practical truncation loss. It outperforms existing SVD-based methods across ten datasets and five LLMs.",
+    "key_idea": "Assign heterogeneous per-weight-matrix compression ratios based on theoretical truncation loss, then optimize the truncation to minimize actual loss degradation.",
+    "why_it_matters": "Enables more efficient deployment of LLMs on resource-constrained hardware by achieving better accuracy-compression tradeoffs than prior SVD methods, without requiring retraining.",
+    "possible_use_cases": [
+      "Deploying LLMs on edge devices or mobile hardware with limited memory",
+      "Reducing inference costs in production LLM serving by shrinking model size",
+      "Compressing fine-tuned or proprietary LLMs where full retraining is impractical"
+    ],
+    "generated_at": "2026-03-22T02:27:37Z"
+  },
+  "deep": {
+    "method_breakdown": "SVD-LLM V2 compresses LLMs by decomposing weight matrices via SVD and truncating smaller singular values, but does so with layer-wise adaptive compression ratios derived from each matrix's theoretical truncation loss rather than using a uniform ratio. It also introduces a loss-optimized weight truncation procedure that adjusts which singular values are dropped to minimize the actual post-truncation loss in practice, correcting for the gap between theoretical and empirical truncation error.",
+    "key_innovation": "Prior SVD-based methods (including SVD-LLM V1) apply uniform or heuristic compression ratios across layers and truncate singular values purely by magnitude without accounting for downstream loss impact. SVD-LLM V2 is the first to (1) derive per-matrix compression ratios analytically from truncation loss estimates, respecting redundancy heterogeneity across layers, and (2) directly optimize which singular values to truncate by minimizing empirical truncation loss rather than relying on magnitude ranking alone.",
+    "technical_insight": "The most important design choice is decoupling the compression ratio assignment from a global budget constraint and instead grounding it in each weight matrix's own loss sensitivity. Matrices that are more loss-sensitive receive lower compression ratios, preserving their capacity, while redundant matrices are compressed more aggressively. This works because loss sensitivity varies substantially across layers and weight types in LLMs, and a one-size-fits-all ratio wastes capacity in sensitive layers while under-compressing redundant ones.",
+    "limitations": "The method relies on calibration data to estimate truncation losses, making it sensitive to calibration set quality and distribution shift. The per-matrix ratio search and loss-optimized truncation add computational overhead at compression time compared to simple magnitude-based SVD. The approach is evaluated primarily on perplexity and standard benchmarks, leaving questions about performance on reasoning-heavy or instruction-following tasks. Additionally, SVD compression introduces structured low-rank approximation error that may compound unpredictably at very high compression ratios.",
+    "interview_questions": [
+      "How does SVD-LLM V2 compute the theoretical truncation loss for a weight matrix, and what assumptions underlie that estimate?",
+      "What objective is optimized in the loss-optimized weight truncation step, and how is it solved — is it a greedy search, gradient-based, or combinatorial?",
+      "How does the per-matrix compression ratio assignment algorithm enforce a global parameter budget while still assigning heterogeneous ratios?",
+      "How does SVD-LLM V2 compare to quantization-based compression methods (e.g., GPTQ, AWQ) in terms of compression ratio versus quality trade-offs?",
+      "What are the failure modes when the calibration data used to estimate truncation losses is out-of-distribution relative to the downstream task?"
+    ],
+    "interview_answers": [
+      "The theoretical truncation loss for a weight matrix is typically derived as the squared Frobenius norm of the truncated singular value components (the dropped rank-k tail), optionally weighted by input activation statistics to reflect how much each direction is actually exercised during inference. The key assumption is that this first-order approximation of output perturbation is a reliable proxy for task loss, which holds when the model operates near a local minimum and perturbations are small.",
+      "The loss-optimized truncation step formulates the problem as selecting which singular values to drop such that the resulting weight matrix minimizes a measured truncation loss on calibration data. In practice this is typically solved greedily or via a lightweight search over candidate truncation masks, since the full combinatorial search is intractable. The loss is evaluated using forward passes on calibration samples, making it an empirical rather than purely analytical optimization.",
+      "The algorithm uses the per-matrix theoretical truncation loss as a cost signal and performs a global allocation — analogous to rate-distortion optimization — where compression ratios are set proportionally to each matrix's loss tolerance under a total parameter budget constraint. Matrices with flat loss curves (high redundancy) are assigned higher truncation, while loss-sensitive matrices are protected, and the ratios are scaled to meet the global budget.",
+      "SVD-LLM V2 offers a complementary trade-off: it produces structured low-rank decompositions that reduce both memory and multiply-accumulate operations at inference time, whereas quantization reduces memory but typically does not reduce FLOPs. At comparable compression ratios, quantization methods often achieve lower perplexity degradation, but SVD-based methods can yield better wall-clock speedups on hardware without low-bit arithmetic support and are more composable with quantization.",
+      "When calibration data is out-of-distribution, the activation-weighted truncation loss estimates will misrank the importance of singular value directions — directions rarely activated on calibration data but important for the target task will be over-pruned. This leads to a larger gap between the theoretical truncation loss (measured on calibration) and the actual task loss, degrading performance. The method provides no mechanism to detect or correct for this, so calibration set selection is a critical but under-specified hyperparameter."
+    ],
+    "generated_at": "2026-03-22T02:28:04Z"
+  }
+}
