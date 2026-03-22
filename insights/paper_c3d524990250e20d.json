@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey paper reviews multi-task learning (MTL) approaches for e-commerce recommendation systems, focusing on solutions to the sample selection bias (SSB) and data sparsity (DS) problems that plague conversion rate prediction models. It consolidates existing methods and outlines future research directions for jointly predicting click-through, conversion, and purchase probabilities.",
+    "key_idea": "Training a single model to simultaneously predict multiple user actions (clicks, conversions, purchases) allows tasks to share representations and compensate for each other's data limitations, improving accuracy over single-task models.",
+    "why_it_matters": "Practitioners building ad ranking or recommendation systems need accurate CVR models despite sparse conversion signals and biased training data; MTL offers a principled way to leverage abundant click data to boost conversion prediction without waiting for more labeled purchase events.",
+    "possible_use_cases": [
+      "E-commerce ad ranking that jointly optimizes for click-through rate and purchase conversion to serve diverse advertiser goals",
+      "Recommendation systems that share learned representations across engagement signals (views, likes, purchases) to improve cold-start item recommendations",
+      "Online advertising budget allocation where multi-objective predictions (clicks, installs, revenue) enable more accurate ROI estimation per campaign"
+    ],
+    "generated_at": "2026-03-22T01:11:33Z"
+  },
+  "deep": {
+    "method_breakdown": "This paper surveys multi-task learning (MTL) approaches applied to e-commerce recommendation systems, focusing on simultaneous prediction of click-through rate (CTR), conversion rate (CVR), and purchase probability. It systematically reviews solutions to two core problems: sample selection bias (SSB), where CVR models trained on clicked samples must infer on all impressions, and data sparsity (DS), where conversion events are orders of magnitude rarer than impressions. The survey categorizes existing methods by how they share representations across tasks and how they address these twin problems.",
+    "key_innovation": "The paper's contribution is a structured taxonomy and critical synthesis of MTL solutions for industrial recommendation, specifically framing SSB and DS as the two fundamental obstacles rather than treating them in isolation. Prior work (ESMM, MMoE, PLE, etc.) addressed these individually; this survey maps the landscape of combined approaches and identifies gaps where no solution adequately handles both problems simultaneously at scale.",
+    "technical_insight": "The most important design insight across surveyed methods is entire-space modeling (exemplified by ESMM): by training CVR estimation over all impression samples using the factorization p(conversion) = p(click) × p(conversion|click), models eliminate SSB while leveraging CTR's abundant signal to alleviate DS. This works because it reframes CVR as a joint probability decomposable into a well-observed auxiliary task, allowing gradient flow from data-rich tasks to data-sparse ones through shared representations.",
+    "limitations": "As a survey, the paper inherits the limitations of the methods it covers: most solutions assume a fixed task graph (click→conversion→purchase) that may not generalize across domains, and entire-space methods introduce label noise since unclicked items have imputed zero conversion labels. The paper also lacks empirical meta-analysis comparing methods under controlled conditions, making it difficult to determine which approach dominates in practice. Additionally, cold-start scenarios and non-sequential conversion funnels are underexplored.",
+    "interview_questions": [
+      "What is sample selection bias in CVR modeling and why does it occur?",
+      "How does ESMM's entire-space modeling address both SSB and data sparsity simultaneously?",
+      "What is the difference between hard parameter sharing and soft parameter sharing in MTL, and what are the trade-offs?",
+      "How do gating mechanisms in models like MMoE and PLE prevent negative transfer between tasks?",
+      "What are the remaining open problems in multi-task learning for industrial recommendation that this survey identifies?"
+    ],
+    "interview_answers": [
+      "SSB occurs because CVR models are trained exclusively on clicked impressions (since only clicked items can convert), but at inference time they must score all candidate items including unclicked ones. The training distribution (clicked items) differs from the inference distribution (all items), causing systematic bias — the model never learns from the vast majority of the impression space.",
+      "ESMM decomposes the conversion probability as p(CVR) = p(CTR) × p(CVR|CTR), training both CTR and post-click CVR sub-networks jointly over the entire impression space. This eliminates SSB because the CVR label is propagated back through the CTR gate — an item only contributes a positive conversion signal if it was both clicked and converted, but all impressions contribute to learning. DS is alleviated because the shared bottom layers receive dense gradient updates from the abundant CTR task.",
+      "Hard parameter sharing uses a single shared encoder for all tasks with task-specific output heads, which is parameter-efficient and acts as a strong regularizer but risks negative transfer when tasks conflict. Soft parameter sharing gives each task its own encoder but adds constraints (e.g., L2 regularization between task parameters) to encourage similarity, offering more flexibility at higher parameter cost. The trade-off is between regularization strength and task-specific expressivity.",
+      "MMoE introduces multiple expert sub-networks and per-task gating networks that learn soft mixtures over experts, allowing each task to selectively weight different expert specializations rather than sharing a monolithic representation. PLE extends this with explicit task-specific and shared expert pools, with progressive routing across layers, preventing gradients from conflicting tasks from corrupting shared representations — effectively learning which knowledge to share and which to keep private per task.",
+      "The survey identifies several open problems: handling non-monotonic conversion funnels where the click→conversion assumption breaks, addressing extreme data sparsity in new product cold-start, developing methods robust to label delay (conversions often arrive hours/days after clicks), better theoretical understanding of when MTL helps vs. hurts, and scaling gating mechanisms to thousands of tasks in mega-scale platforms without prohibitive computational overhead."
+    ],
+    "generated_at": "2026-03-22T01:12:01Z"
+  }
+}
