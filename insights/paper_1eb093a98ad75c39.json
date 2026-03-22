@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles legal document retrieval by automatically generating paragraph-level semantic similarity labels from citation links between court cases and statutes, then training neural models with an extended attention mask to reduce input noise. The work focuses on German-language Swiss legal documents and compares neural vs. non-neural approaches for ranking paragraphs by semantic relevance.",
+    "key_idea": "Citation links between legal cases and statutes serve as weak supervision signals to automatically label paragraph-level semantic similarity, and an extended attention mask that suppresses noisy tokens boosts neural retrieval performance.",
+    "why_it_matters": "Legal professionals need to find relevant precedents using natural language rather than keyword queries — this approach enables semantic search over legal corpora without requiring expensive manual annotations by leveraging existing citation structure.",
+    "possible_use_cases": [
+      "Semantic search over case law databases for lawyers preparing legal arguments",
+      "Automated retrieval of relevant statutes given a natural language description of a legal situation",
+      "Paragraph-level document similarity for clustering or deduplicating legal documents across jurisdictions"
+    ],
+    "generated_at": "2026-03-22T06:32:27Z"
+  },
+  "deep": {
+    "method_breakdown": "The system encodes legal document paragraphs and queries as dense vectors using neural models (transformer-based), enabling cosine similarity ranking without requiring exact lexical matches. A link-based similarity algorithm automatically generates training labels by exploiting citation relationships between court cases and statutes in a Swiss German legal corpus. An extended attention mask is applied during transformer inference to suppress noisy tokens in the input, boosting the quality of paragraph-level embeddings.",
+    "key_innovation": "The primary novelty is twofold: (1) an automated label generation pipeline that mines citation links between cases and statutes as a proxy for semantic similarity, bypassing expensive manual annotation; and (2) an extended attention mask mechanism that selectively quenches noise in transformer inputs at inference time, a technique not previously applied to legal document retrieval at paragraph granularity.",
+    "technical_insight": "The extended attention mask is the most critical design choice — by masking out low-signal or noisy tokens (e.g., boilerplate legal language, formatting artifacts), the transformer's self-attention is focused on semantically meaningful content. This effectively sharpens paragraph representations, improving cosine similarity discrimination between relevant and irrelevant paragraph pairs without requiring model retraining.",
+    "limitations": "The label generation relies on citation links, which are sparse and may not capture all relevant semantic relationships — paragraphs semantically similar but never co-cited receive no positive signal. The approach is evaluated only on Swiss German legal text, limiting generalizability to other jurisdictions, languages, or legal systems. Paragraph-level granularity may miss cross-paragraph reasoning chains important in legal argumentation. The extended attention mask heuristic may require domain-specific tuning to define what constitutes 'noise'.",
+    "interview_questions": [
+      "How does the citation-based label generation algorithm estimate semantic similarity, and what are its assumptions about the citation graph?",
+      "What exactly does the 'extended attention mask' mask out, and how is the set of noisy tokens determined?",
+      "How does paragraph-level retrieval compare to document-level retrieval in terms of precision and recall for legal search?",
+      "How robust is the system to the vocabulary gap between natural language query snippets and formal legal statute language?",
+      "What are the failure modes of using citation links as a proxy for semantic similarity — when do cited paragraphs not actually share semantic content?"
+    ],
+    "interview_answers": [
+      "The algorithm treats citation co-occurrence as a semantic similarity signal: if a case paragraph cites a statute paragraph, they are assumed semantically related. Transitivity or frequency of citation may further weight similarity scores, essentially building a bipartite graph between case and statute paragraphs and using link-based measures (analogous to bibliographic coupling or co-citation) to derive soft similarity labels.",
+      "The extended attention mask likely masks tokens identified as low-information — such as punctuation, stop words, or domain-specific boilerplate — by setting their attention weights to zero or near-zero before softmax, preventing them from diluting the representation of content-bearing tokens. The specific masking strategy may be rule-based (token type) or learned from a secondary signal.",
+      "Paragraph-level retrieval offers higher precision for targeted legal queries since relevant content is often localized to specific paragraphs rather than spread across entire documents. However, recall may suffer if relevance spans multiple paragraphs or requires document-level context to interpret. The paper focuses on this trade-off specific to the legal domain where statutes are structured as discrete numbered paragraphs.",
+      "The system addresses vocabulary gap through dense semantic embeddings rather than lexical matching — transformer models trained on legal text can learn that informal query phrasing and formal statutory language describe the same legal concepts. However, this depends heavily on the pretraining corpus covering both registers of German legal language, and out-of-vocabulary legal terms remain a challenge.",
+      "Citations in legal documents can be procedural (citing jurisdiction or format rules) rather than substantive (citing semantically related law), which would introduce false positive labels. A statute paragraph may also be cited across many unrelated cases simply because it is frequently applicable, inflating its apparent semantic similarity to diverse case paragraphs. These noise sources could degrade the quality of the automatically generated training signal."
+    ],
+    "generated_at": "2026-03-22T06:32:50Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MCRPL addresses cross-domain recommendation without requiring overlapping users across domains, using a pretrain-prompt-fine-tune paradigm with shared domain-agnostic and domain-dependent prompts. It learns transferable knowledge across multiple source domains to improve recommendations in a sparse target domain while respecting user privacy constraints.",
+    "key_idea": "Learn shared domain-agnostic prompts plus domain-specific prompts during pretraining, then freeze all parameters except domain-dependent prompts during fine-tuning to transfer knowledge without needing user identity overlap across domains.",
+    "why_it_matters": "Most real-world cross-platform recommendation systems cannot share user identities due to privacy regulations (e.g., GDPR), making non-overlapping cross-domain methods essential for practitioners who want to leverage multi-platform data without legal risk.",
+    "possible_use_cases": [
+      "Cold-start recommendation on a new e-commerce platform by leveraging user behavior from existing unrelated platforms without sharing user PII",
+      "Improving recommendations for a niche streaming service by transferring knowledge from larger entertainment domains where no common users are known",
+      "Enterprise product recommendation that draws on behavioral signals from separate business units or subsidiaries that cannot legally share customer identity data"
+    ],
+    "generated_at": "2026-03-22T06:30:47Z"
+  },
+  "deep": {
+    "method_breakdown": "MCRPL adopts a pretrain-prompt-finetune paradigm for non-overlapping many-to-one cross-domain recommendation (NMCR). It learns two types of prompts — domain-agnostic (shared across all domains) and domain-dependent (specific to each domain) — during a pre-training stage across multiple source domains. During fine-tuning on the target domain, only the domain-dependent prompts are updated while all other parameters remain frozen, enabling knowledge transfer without requiring any user overlap between domains.",
+    "key_innovation": "Prior cross-domain recommendation methods assume at least partial user overlap to serve as alignment bridges between domains. MCRPL is novel in explicitly targeting the non-overlapping, many-to-one CDR setting where user identity sharing is legally/practically infeasible, using prompt-based transfer to bridge domains purely through learned behavioral patterns rather than user identity linkage.",
+    "technical_insight": "The critical design choice is the disentanglement of domain-agnostic and domain-dependent prompts. Domain-agnostic prompts capture universal preference patterns transferable across all domains, while domain-dependent prompts capture domain-specific distributions. Freezing all parameters except domain-dependent prompts during fine-tuning prevents catastrophic forgetting and negative transfer — the model adapts only what needs to change, preserving the generalizable knowledge extracted from rich source domains.",
+    "limitations": "The method assumes sufficient data in source domains to pre-train meaningful shared prompts, which may not hold for all real-world deployments. The fixed-parameter fine-tuning strategy may underfit if the target domain distribution is highly divergent from all source domains. The approach is also evaluated only on implicit feedback (likely ratings/clicks), and its effectiveness on more complex interaction types is unclear. Scalability to very large numbers of source domains and the sensitivity to prompt dimensionality are not deeply analyzed.",
+    "interview_questions": [
+      "Why can't you simply use existing overlapping CDR methods and just ignore the user overlap — what technically breaks down?",
+      "How do you train domain-agnostic vs domain-dependent prompts jointly without the agnostic prompts collapsing to encode domain-specific information?",
+      "During fine-tuning, only domain-dependent prompts are updated — how do you prevent these prompts from overfitting given the sparse target domain data?",
+      "How does MCRPL compare to simply pre-training a universal recommendation model on all source domains and then fine-tuning the full model on the target domain?",
+      "What is the theoretical justification for why prompts, rather than adapter layers or full fine-tuning, are the right mechanism for this non-overlapping transfer scenario?"
+    ],
+    "interview_answers": [
+      "Overlapping CDR methods rely on shared user embeddings or co-occurrence signals as explicit alignment anchors between domains. Without overlapping users, there is no entity to ground the cross-domain mapping, so learned user representations from source domains have no direct correspondence to target domain users. The distribution shift problem is also unmitigated — there is no shared latent space constraint that overlapping users would otherwise enforce.",
+      "The paper addresses this through the pre-training objective design where domain-agnostic prompts are shared and updated across all source domain tasks simultaneously, while domain-dependent prompts are task-specific. The implicit competition and averaging effect across multiple domains forces the agnostic prompts to encode only what generalizes, as any domain-specific signal would be contradictory across domains and thus suppressed during joint optimization.",
+      "Freezing all other parameters is itself the regularization mechanism — the model's representational capacity is constrained to only the prompt subspace, drastically reducing the degrees of freedom available for overfitting. The pre-trained backbone and agnostic prompts act as a strong prior, and only a small prompt vector is adapted, which is akin to prompt-tuning in NLP where few parameters are updated on small datasets.",
+      "Full fine-tuning risks catastrophic forgetting of source domain knowledge and is more prone to overfitting on sparse target data. The prompt-based approach preserves the pre-trained representations entirely and isolates adaptation to a minimal parameter set. This is analogous to the NLP finding that prompt-tuning matches or exceeds full fine-tuning on low-resource tasks while being more parameter-efficient and stable.",
+      "Prompts prepended to input representations modulate attention patterns in a globally consistent way without modifying the underlying feature extractor, making them well-suited for distribution shift scenarios. They act as soft, learnable task descriptors that steer the frozen model's behavior rather than rewriting its weights. This separation of 'what the model knows' from 'how to apply it to this domain' is theoretically cleaner for transfer under distribution mismatch than weight-space interpolation approaches."
+    ],
+    "generated_at": "2026-03-22T06:31:12Z"
+  }
+}
