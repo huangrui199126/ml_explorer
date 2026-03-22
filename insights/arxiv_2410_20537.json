@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SIGMA trains a single generative model on all data and interpolates its parameters across sideband regions to estimate background distributions in signal regions, replacing the need to retrain separate models for each region. This dramatically reduces computational cost in sliding window anomaly detection searches while maintaining high-quality background modeling.",
+    "key_idea": "Instead of training one generative model per signal region, interpolate the parameters of a single shared model conditioned on the sideband context to synthesize region-specific background distributions.",
+    "why_it_matters": "In physics anomaly searches spanning many signal regions, retraining generative models repeatedly is the dominant compute bottleneck; SIGMA collapses that cost to a single training run without sacrificing detection sensitivity.",
+    "possible_use_cases": [
+      "High-energy physics collider searches (e.g. LHC sliding window bump hunts) where hundreds of signal regions must be scanned efficiently",
+      "Any domain requiring unsupervised anomaly detection over a continuous feature space with local background estimation (e.g. financial time-series, sensor monitoring)",
+      "Scalable data-driven background estimation pipelines where compute budget limits the number of generative models that can be trained"
+    ],
+    "generated_at": "2026-03-22T01:26:12Z"
+  },
+  "deep": {
+    "method_breakdown": "SIGMA trains a single conditional generative model on the entire dataset, conditioning on the invariant mass (or sliding window variable) as a continuous parameter. Rather than retraining separate models per signal region as in CATHODE, SIGMA interpolates the model's behavior by conditioning on sideband mass values and extrapolating into the signal region, effectively learning a smooth functional mapping from mass to background distribution. This allows one training run to serve all signal regions in a sliding window search.",
+    "key_innovation": "The key innovation is parameter/conditioning interpolation of a single generative model across mass regions, replacing the CATHODE paradigm of training O(N) independent models for O(N) signal regions. Prior work (CATHODE, SALAD, CURTAINs) required per-signal-region retraining or reweighting; SIGMA amortizes this cost by making the generative model itself a function of the conditioning variable, reducing total compute from O(N × dataset_size) to O(dataset_size) training cost.",
+    "technical_insight": "The most important design choice is treating the mass variable as a continuous conditional input to the generative model (e.g., a normalizing flow or diffusion model conditioned on m), then evaluating that model at interpolated mass values within the signal region. This works because the background distribution varies smoothly and continuously with the invariant mass — a physically motivated inductive bias — so a model trained to capture this smooth dependence in sidebands can reliably extrapolate into the signal region without seeing signal-contaminated data.",
+    "limitations": "SIGMA assumes the background distribution varies smoothly and continuously with the conditioning variable, which may fail if there are sharp features, phase transitions, or detector effects that cause discontinuities. Signal contamination in the training data could bias the learned conditional distribution toward including signal-like events. The interpolation quality degrades if sideband regions are narrow or if the signal region is far from the sidebands. Additionally, the single-model approach may be less flexible per-region than individually tuned models if the background shape changes rapidly across the mass spectrum.",
+    "interview_questions": [
+      "How does SIGMA handle signal contamination in the training data when training on the full dataset rather than signal-region-excluded subsets?",
+      "What generative model architecture is used as the backbone, and how is the mass conditioning implemented — is it concatenated, embedded, or used via hypernetwork-style parameter modulation?",
+      "How do you validate that the interpolation into the signal region is accurate — what metrics or tests are used to confirm background modeling quality?",
+      "How does SIGMA's sensitivity to anomalous signals compare quantitatively to CATHODE across different signal hypotheses and injection rates?",
+      "Could SIGMA be extended to multi-dimensional sideband interpolation for searches with more than one resonant variable, and what challenges would that introduce?"
+    ],
+    "interview_answers": [
+      "Signal contamination is mitigated by the fact that true signals are rare (low injection rates) and the model is trained on a large dataset where signal events are a small fraction; the smooth interpolation from sidebands also provides regularization that down-weights sharp signal-like features. However, at high signal rates this remains a potential bias, similar to the vulnerability shared by all data-driven methods including CATHODE.",
+      "The backbone is typically a conditional normalizing flow (e.g., a masked autoregressive flow or coupling flow) where the invariant mass m is provided as a conditioning context vector, concatenated or embedded into each transformation layer. The model learns p(x | m) directly, and inference at signal-region mass values is just a forward pass with a new m value.",
+      "Validation is done by comparing the generated background distribution to the true background (in simulation) using metrics like the classifier AUC trained to distinguish generated from true events, and by checking that the bump hunt yields the correct signal significance under known signal injection tests. Sideband closure tests confirm that interpolation at held-out sideband masses matches the true distribution.",
+      "SIGMA retains comparable sensitivity to CATHODE — the significance improvement factor (SIC) curves are similar — while being orders of magnitude cheaper computationally. The small degradation in modeling quality from sharing a single model is outweighed in practice by the ability to run finer-grained sliding windows affordably.",
+      "Multi-dimensional sideband interpolation is conceptually feasible by conditioning on multiple resonant variables, but introduces challenges: the sideband geometry becomes complex, the model must learn a higher-dimensional smooth dependence, and ensuring signal-region exclusion across a multi-dimensional grid requires careful bookkeeping. Curse of dimensionality in the conditioning space would also require larger datasets and more expressive architectures."
+    ],
+    "generated_at": "2026-03-22T01:26:40Z"
+  }
+}

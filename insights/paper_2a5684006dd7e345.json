@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FAA proposes a jointly optimized cascade document ranking system where a passage selector and document ranker share fine-grained supervision signals with each other, rather than operating independently. The ranker's attention activations guide the selector's training, while the selector's relevance scores are fused back into the ranker's matching computation.",
+    "key_idea": "Use the ranker's passage-level attention weights as fine-grained supervision to train the selector, and feed selector scores back into the ranker, creating a bidirectional feedback loop that aligns both modules toward the same objective.",
+    "why_it_matters": "Independent selector-ranker pipelines propagate selection errors downstream with no correction mechanism; joint optimization with attention alignment reduces this error reinforcement and improves both retrieval efficiency and ranking quality without requiring architectural overhaul.",
+    "possible_use_cases": [
+      "Enterprise search systems that need to rank long technical documents or reports against user queries efficiently",
+      "Legal or medical document retrieval where irrelevant passages must be filtered before expensive re-ranking",
+      "Question answering pipelines that use a retrieve-then-rank architecture over large corpora like Wikipedia or PubMed"
+    ],
+    "generated_at": "2026-03-22T01:24:42Z"
+  },
+  "deep": {
+    "method_breakdown": "FAA jointly optimizes a cascade document ranking pipeline consisting of a passage selector and a document ranker. The ranker's cross-attention activations over passages serve as fine-grained supervision signals to train the selector, teaching it which passages the ranker actually attends to. Simultaneously, the selector's passage relevance scores are fused back into the ranker's matching representation, creating a bidirectional information flow between the two modules.",
+    "key_innovation": "Prior cascade ranking systems treat selector and ranker as independent modules trained separately, causing error propagation from selection mistakes. FAA introduces bidirectional soft alignment: attention-based distillation from ranker to selector (fine-grained, passage-level supervision beyond binary selection labels), and score fusion from selector to ranker (injecting a distinct structural perspective into the ranking computation). Neither direction alone is novel, but the joint closed-loop optimization across architecturally different modules is the key contribution.",
+    "technical_insight": "Using the ranker's attention weights as supervision for the selector is the critical design choice. Standard selector training uses coarse relevance labels, but attention activations capture which passages the ranker actually finds useful at inference time — making the selector's output distribution aligned with the ranker's internal needs rather than an external proxy label. This reduces the train/deploy distribution mismatch that causes cascading errors.",
+    "limitations": "The approach assumes the ranker's attention activations are reliable proxies for passage importance, which may not hold for poorly calibrated or distracted attention heads. The bidirectional coupling increases training complexity and likely requires careful hyperparameter tuning for the fusion weights. Evaluation is limited to MS MARCO and TREC DL (English, web domain), so generalization to other languages, domains, or document types is unverified. The method also inherits the latency of a two-stage pipeline and does not address cases where relevant content spans multiple passages or requires cross-passage reasoning.",
+    "interview_questions": [
+      "How do you extract and use the ranker's attention activations as supervision for the selector — what specific attention layers or heads do you use, and how is the loss formulated?",
+      "How does the selector's relevance score get fused into the ranker's matching representation — is it a simple weighted sum, a gating mechanism, or something else?",
+      "How do you handle the chicken-and-egg problem during training, where the ranker's attention is initially unreliable but is used to train the selector?",
+      "What happens when the selector and ranker disagree — does the fused representation help or hurt in cases where the selector selects a wrong passage?",
+      "How does FAA compare to simply training the selector with the ranker's final relevance labels as soft targets, rather than using intermediate attention activations?"
+    ],
+    "interview_answers": [
+      "The attention activations from the ranker's cross-attention layers over individual passages are aggregated (e.g., averaged across heads and tokens) to produce a passage-level attention score distribution, which is then used as a soft target to supervise the selector via KL divergence or MSE loss, providing richer signal than binary passage labels.",
+      "The selector outputs a relevance score per passage; these scores are used as weights in a weighted aggregation of passage representations (or their matching scores) before the final ranking decision, effectively re-weighting the ranker's evidence by the selector's confidence.",
+      "Training is likely bootstrapped with warm-up phases or joint training from the start where early ranker attention is noisy but gradually improves; the selector's loss is a combination of the attention-based signal and standard relevance labels to stabilize early training.",
+      "When the selector makes errors, the fused scores may down-weight relevant passages in the ranker, which could hurt performance — this is a key failure mode. The method likely mitigates this through the retained attention mechanism in the ranker itself, but the paper's ablations on selector error cases would clarify the robustness.",
+      "Using final relevance labels as soft targets is a form of knowledge distillation at the output level, which loses the fine-grained, passage-level resolution of attention activations. Attention activations provide supervision at the granularity of individual passages and potentially sub-passage tokens, making the selector aware of the ranker's internal information needs rather than just its final decision."
+    ],
+    "generated_at": "2026-03-22T01:25:05Z"
+  }
+}

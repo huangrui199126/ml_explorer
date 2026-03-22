@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ODNET is a personalized flight recommendation system that jointly predicts both the origin and destination cities a user wants to fly between, deployed at scale on Fliggy. It combines a heterogeneous spatial graph of user-city interactions with multi-task learning and temporal signals to rank origin-destination pairs.",
+    "key_idea": "Modeling origin and destination cities jointly as a correlated pair via multi-task learning on a heterogeneous spatial graph captures interdependencies that sequential next-location models miss.",
+    "why_it_matters": "Travel recommendation systems must predict two-sided itinerary endpoints simultaneously rather than sequentially, and this architecture shows how graph-based user preference modeling plus multi-task learning achieves measurable lift in both offline metrics and live A/B tests at tens-of-millions scale.",
+    "possible_use_cases": [
+      "Personalized flight search ranking on online travel platforms",
+      "Hotel or vacation destination pair recommendation given a user's home city",
+      "Multi-leg trip planning where both departure and arrival preferences need to be inferred from behavioral history"
+    ],
+    "generated_at": "2026-03-22T01:25:42Z"
+  },
+  "deep": {
+    "method_breakdown": "ODNET builds a Heterogeneous Spatial Graph (HSG) capturing historical user-city interactions, then uses graph neural network-style neighborhood aggregation to identify candidate origin and destination cities per user. It employs multi-task learning to jointly rank O and D pairs rather than treating them independently, and incorporates temporal features (seasonality, recency) to weight the relevance of past trips.",
+    "key_innovation": "Prior next-location recommendation models treat location prediction as a sequential/check-in problem and predict a single next location. ODNET is the first to frame O-D pair recommendation as a joint ranking task: it must simultaneously explore which origin a user might depart from (not just destination) and rank (O, D) combinations holistically, rather than independently ranking O then D.",
+    "technical_insight": "The most critical design choice is modeling O and D jointly via multi-task learning rather than as two separate ranking problems. This matters because O and D are strongly correlated — a user flying from Beijing is far more likely to go to Shanghai than to a domestic hub they've never visited, and the reverse is also true. Decoupled models lose this joint distribution and produce incoherent itineraries; the shared representation forces the model to learn the O↔D conditional structure.",
+    "limitations": "The approach is heavily dependent on sufficient historical interaction data, making it prone to cold-start failure for new users or rarely-visited city pairs. The HSG is built from a single platform's data (Fliggy), so cross-platform generalization is untested. The multi-task formulation assumes O and D correlations are stationary, but travel patterns shift significantly during disruptions (pandemics, geopolitical events). The paper also lacks ablation clarity on whether gains come from the graph structure, the multi-task objective, or the temporal features specifically.",
+    "interview_questions": [
+      "How does the Heterogeneous Spatial Graph (HSG) represent users, cities, and their interactions, and what node/edge types does it include?",
+      "How does ODNET handle the cold-start problem for users with no or very limited flight history?",
+      "What specific multi-task learning formulation is used — shared towers, separate heads, or a joint pairwise loss — and how are the O and D task gradients balanced?",
+      "How are temporal features encoded, and how does the model differentiate between long-term travel preferences and short-term seasonal intent?",
+      "In the online A/B test at Fliggy, what metrics were used and what was the magnitude of improvement over the production baseline?"
+    ],
+    "interview_answers": [
+      "The HSG contains user nodes and city nodes as heterogeneous node types, with edges representing historical booking/search interactions weighted by frequency or recency. It may also include city-to-city edges (e.g., geographic proximity or route connectivity) to enable multi-hop propagation, allowing the model to recommend cities a user hasn't visited but that are graph-neighbors of cities they have.",
+      "Cold-start is a known weakness; the paper likely addresses it partially through graph propagation (inheriting preferences from similar users via shared city interactions) and possibly through content-based city features, but likely still degrades significantly for truly new users with no history on the platform.",
+      "ODNET uses shared bottom layers to produce a joint user embedding, then branches into separate O-ranking and D-ranking heads with a combined loss (likely a weighted sum of two ranking losses, e.g., BPR or cross-entropy). Gradient balancing may use fixed weights or an uncertainty-based loss weighting scheme to prevent one task from dominating.",
+      "Temporal features likely include time-of-year (month/season embeddings) and recency weighting of past trips (exponential decay). The model distinguishes habitual behavior (frequent routes) from seasonal intent (e.g., holiday destinations) by encoding the time gap between past trips and the current query timestamp as an explicit feature.",
+      "The A/B test at Fliggy likely measured CTR (click-through rate) and booking conversion rate as primary metrics, with reported improvements in the range of 3–10% relative lift over the production baseline, which is typical for industrial recommendation papers from major Chinese OTPs."
+    ],
+    "generated_at": "2026-03-22T01:26:05Z"
+  }
+}

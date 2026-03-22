@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MHGRR is a multimodal recipe recommendation system that combines text and image features with a heterogeneous graph neural network (based on GraphSAGE) to model complex user-recipe relationships. It outperforms text-only baselines by fusing visual and textual modalities at a unified feature granularity.",
+    "key_idea": "Using shallow CNNs and embeddings to unify multimodal feature granularity, then passing them through a heterogeneous GraphSAGE network to capture rich user-recipe interaction patterns.",
+    "why_it_matters": "Most recommendation systems rely solely on text, but food decisions are heavily visual; incorporating image semantics alongside graph-based relational modeling meaningfully improves recommendation quality for real-world culinary applications.",
+    "possible_use_cases": [
+      "Personalized meal planning apps that surface recipes matching both dietary preferences and visual appeal",
+      "E-commerce platforms for grocery or meal-kit services recommending products based on recipe context",
+      "Health and nutrition tools that recommend recipes aligned with dietary needs using richer multimodal signals"
+    ],
+    "generated_at": "2026-03-22T01:27:28Z"
+  },
+  "deep": {
+    "method_breakdown": "MHGRR extracts text features via embedding layers and image features via shallow CNNs, normalizing both to a unified feature granularity before fusion. These fused multimodal recipe representations are then fed into a Heterogeneous Graph Neural Network built on GraphSAGE, which models the complex user-recipe interaction graph to capture relational patterns. The combined approach produces recipe recommendations that leverage both visual and textual recipe content alongside collaborative filtering signals from the user-recipe graph.",
+    "key_innovation": "The primary novelty is combining multimodal feature fusion (text + image) with heterogeneous graph neural networks for recipe recommendation, whereas prior work typically used either single-modality (text-only) recommendation or graph-based methods without multimodal inputs. The explicit attention to unifying feature fusion granularity across modalities before graph propagation is a practical engineering contribution.",
+    "technical_insight": "Using shallow CNNs rather than deep pretrained vision models is a deliberate granularity-matching choice — it extracts mid-level visual features at a representational depth comparable to text embeddings, preventing one modality from dominating the fused representation. This parity in feature abstraction level likely explains why adding image information yields measurable gains without requiring complex cross-modal attention mechanisms.",
+    "limitations": "The model relies on shallow CNNs for image feature extraction, which may miss high-level semantic content (e.g., dish appearance, plating style) that deeper pretrained models like ResNet or ViT would capture. The evaluation is on a single real-world dataset, limiting generalizability claims. The ablation finding that GraphSAGE output dimension has little effect on performance suggests the graph component may be underutilized or that the dataset lacks sufficient graph density to benefit from higher-dimensional propagation. No handling of cold-start users or new recipes is discussed.",
+    "interview_questions": [
+      "Why did you choose shallow CNNs over pretrained deep vision models like ResNet for image feature extraction?",
+      "How do you handle the heterogeneity in the graph — what node and edge types are defined, and how does GraphSAGE aggregate across different types?",
+      "The ablation shows image features help, but how do you prevent the image modality from dominating text features during fusion?",
+      "What does the finding that GraphSAGE output dimension has little effect tell you about the graph structure or your dataset?",
+      "How does MHGRR handle cold-start scenarios for new users or newly added recipes with no interaction history?"
+    ],
+    "interview_answers": [
+      "Shallow CNNs are used to match the representational depth of text embeddings, ensuring neither modality dominates the fusion. Using a deep pretrained model would produce highly abstract semantic features that may be misaligned with the lower-level text embedding space, making fusion harder without explicit alignment modules.",
+      "The heterogeneous graph contains at minimum user nodes and recipe nodes, with edges representing user-recipe interactions. GraphSAGE aggregates neighbor embeddings via mean or LSTM pooling, and in the heterogeneous setting, aggregation is performed per edge/node type separately before combining, allowing the model to distinguish user-user, user-recipe, and recipe-recipe relationship semantics.",
+      "Feature fusion granularity is explicitly controlled by ensuring both CNN output dimensions and text embedding dimensions are matched before concatenation or element-wise combination. This prevents scale imbalance that would cause one modality to overshadow the other during downstream graph propagation.",
+      "The insensitivity to output dimension suggests the dataset may have sparse user-recipe interactions, limiting the benefit of high-capacity graph representations. It could also indicate that the multimodal features themselves carry most of the predictive signal, and the graph primarily provides a smoothing/regularization effect rather than complex relational reasoning.",
+      "The paper does not explicitly address cold-start. For new users, the graph has no edges, so GraphSAGE cannot aggregate meaningful neighborhood information — the model would fall back to content-based signals from recipe multimodal features alone. This is a recognized limitation and future work could incorporate meta-learning or content-only fallback pathways."
+    ],
+    "generated_at": "2026-03-22T01:27:49Z"
+  }
+}
