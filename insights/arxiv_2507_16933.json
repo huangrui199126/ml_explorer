@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SiLQ is a quantization-aware training (QAT) method for LLMs that achieves state-of-the-art accuracy on quantized models with less than 0.1% additional training budget overhead. It works across weights, activations, and KV cache without adding any extra operations beyond the quantization itself.",
+    "key_idea": "By fine-tuning a pretrained LLM with quantization operators in the forward pass for a tiny fraction of the original training compute, the model learns to be robust to low-precision arithmetic without any hardware-incompatible tricks.",
+    "why_it_matters": "Practitioners can deploy smaller, faster, cheaper LLMs with near-full-precision accuracy using standard inference hardware, making production deployment of quantized models significantly more practical and accessible.",
+    "possible_use_cases": [
+      "Deploying LLMs on edge devices or mobile hardware with strict memory and latency constraints",
+      "Reducing cloud inference costs by running 4-bit or 8-bit quantized models without accuracy regression",
+      "Quantizing both base and instruction-tuned models for production APIs with minimal retraining overhead"
+    ],
+    "generated_at": "2026-03-22T01:40:18Z"
+  },
+  "deep": {
+    "method_breakdown": "SiLQ integrates quantization operations directly into the training forward pass (quantization-aware training, QAT), allowing gradients to flow through simulated quantization via straight-through estimators. It applies quantization to weights, activations, and KV-cache jointly within a fine-tuning phase that consumes less than 0.1% of the original training budget. Crucially, it introduces no auxiliary operations beyond the quantization nodes themselves, keeping the inference graph identical to what specialized accelerators expect.",
+    "key_innovation": "Prior QAT methods often require auxiliary structures (e.g., learned step-size parameters, extra normalization, or post-training calibration passes) that either conflict with hardware accelerator assumptions or add inference overhead. SiLQ's novelty is demonstrating that a minimalist QAT — no extra ops, no architecture changes, just quantization-aware fine-tuning for a tiny fraction of training — already dominates state-of-the-art post-training quantization (PTQ) and more complex QAT baselines across multiple benchmarks and model families.",
+    "technical_insight": "The most important design choice is keeping the quantization scheme hardware-pure: by not adding any learnable quantization parameters or corrective layers, the quantized model's compute graph is exactly what the inference accelerator will execute, eliminating the train-inference mismatch that plagues methods with fake-quantization scaffolding. This works because even a tiny continued-training phase with simulated quantization noise is sufficient for the model to re-learn weight and activation distributions that are well-suited to low-bit grids, without needing explicit parameterization of scale or zero-point as learned variables.",
+    "limitations": "The paper relies on access to a continued pre-training or fine-tuning data mixture, which may not be available for proprietary or data-constrained models. The <0.1% training budget claim likely still represents non-trivial absolute compute for frontier-scale models. The approach's effectiveness on very aggressive quantization (e.g., 2-bit or ternary) is not established. Generalization to sparse or mixed-precision schemes beyond uniform quantization is not addressed.",
+    "interview_questions": [
+      "How does SiLQ handle the non-differentiability of the quantization operator during backpropagation?",
+      "Why does SiLQ avoid learning the quantization scale and zero-point as trainable parameters, and what is the trade-off of that choice?",
+      "How does jointly quantizing activations, KV-cache, and weights differ in difficulty, and how does SiLQ treat them uniformly?",
+      "What does 'less than 0.1% of training budget' mean in practice for a model like LLaMA-3, and why is that threshold meaningful?",
+      "How would you extend SiLQ to handle mixed-precision quantization, where different layers get different bit-widths?"
+    ],
+    "interview_answers": [
+      "SiLQ uses the straight-through estimator (STE): during the forward pass, inputs are rounded to the nearest quantization grid point, but during the backward pass the gradient is passed through as if the rounding did not occur (i.e., gradient of the rounding function is treated as 1). This is the standard QAT trick; SiLQ's contribution is showing it is sufficient without further modifications.",
+      "Learning scale/zero-point as parameters would improve representational flexibility but introduces parameters that exist only at training time or require custom inference kernels to consume. SiLQ prioritizes inference-graph cleanliness — the trade-off is accepting fixed or heuristically chosen quantization grids, which turns out to be adequate because the QAT phase adjusts the weight distribution to fit the fixed grid rather than fitting the grid to the weights.",
+      "Weight quantization is static (grid is fixed post-training), while activation and KV-cache quantization are dynamic (values vary per input). Dynamic quantization is harder because the model must learn to keep activation ranges well-behaved under the quantization noise rather than just re-centering weight tensors. SiLQ applies QAT noise to all three during training, letting the model adapt holistically; the uniform treatment is the simplification claimed.",
+      "For a model trained on ~15T tokens, 0.1% is ~15B tokens of continued training — still expensive in absolute terms but small relative to full training. The threshold is meaningful because it falls within typical instruction-tuning or domain-adaptation budgets, making QAT practical as a near-final step rather than a full retraining effort.",
+      "Mixed-precision extension would require a differentiable bit-width selection mechanism (e.g., a Gumbel-softmax over candidate bit-widths per layer) and a regularization term penalizing total bit-budget. One could also use a sensitivity-based pre-assignment (e.g., keep attention layers at higher precision based on gradient norm) and then run SiLQ's QAT phase with per-layer quantization configs frozen, preserving the no-extra-ops property at inference time."
+    ],
+    "generated_at": "2026-03-22T01:40:47Z"
+  }
+}
