@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SeqGen is a pluggable module that generates synthetic behavior sequences for sparse users in recommendation systems by learning a mapping from user side information (demographics, profile data) to behavior sequences using only data from users with rich histories. It augments CVR models by feeding both real and generated sequence features into the classifier, improving predictions for cold/sparse users.",
+    "key_idea": "Train a generator to map user side information to behavior sequences using rich-behavior users as supervision, then use it to hallucinate plausible behavior histories for sparse-behavior users at inference time.",
+    "why_it_matters": "User behavior sparsity is a pervasive cold-start problem in industrial recommendation and advertising — SeqGen offers a drop-in, single-stage solution that measurably improves CVR without requiring architectural changes to existing models, validated with real A/B test gains at Alipay scale.",
+    "possible_use_cases": [
+      "Augmenting CVR models for new or infrequent users in e-commerce and advertising platforms",
+      "Improving recommendation quality for users with limited interaction history in streaming or content platforms",
+      "Enriching user representations in retrieval systems where sparse users receive poor embedding quality"
+    ],
+    "generated_at": "2026-03-22T01:39:16Z"
+  },
+  "deep": {
+    "method_breakdown": "SeqGen learns a mapping from user side information (demographics, profile attributes) to behavior sequence features using only users with long/rich behavior histories as training signal. At inference time, it generates synthetic sequence features for sparse-behavior users by passing their side information through this learned mapping. The generated features are concatenated with the user's original (sparse) sequence features and fed into any downstream CVR model's classifier tower.",
+    "key_innovation": "First work to use user side information as a proxy to synthesize behavior sequences for sparse users, rather than relying on data augmentation, transfer learning from similar users, or behavior imputation. It is also end-to-end trainable and pluggable — no two-stage training pipeline required, unlike prior sparse-behavior works.",
+    "technical_insight": "The core insight is that user side information (age, gender, location, etc.) encodes latent behavioral preferences that correlate with long-term behavior patterns. By training the mapping only on rich-behavior users (where ground-truth sequences exist), the model learns a reliable side-info-to-sequence prior that can generalize to sparse users who share similar side information profiles. This avoids the noise and cold-start issues of sequence interpolation methods.",
+    "limitations": "The approach assumes strong correlation between side information and behavior patterns, which may not hold across diverse user populations or in domains where side info is noisy/incomplete. The generated sequences are approximations and may hallucinate behavioral signals not reflective of true user intent. Evaluation is limited to MovieLens-1M (a rating dataset, not a click/conversion log) and a single proprietary Alipay system, limiting generalizability. The AUC gains (0.5%) are modest and the paper does not rigorously ablate the quality of generated sequences vs. simply using side information directly as features.",
+    "interview_questions": [
+      "How does SeqGen train the mapping from side information to behavior sequences, and what loss function is used to align generated sequences with real sequences?",
+      "Why is the pluggable, single-stage training property important compared to prior two-stage approaches, and what failure modes does it avoid?",
+      "What happens when users have both sparse behaviors and very limited or noisy side information — does SeqGen degrade gracefully?",
+      "How do you prevent the generated sequence features from dominating or overriding the user's actual (sparse) behavioral signal in the classifier?",
+      "What are the scalability challenges of deploying SeqGen in a real-time advertising system like Xlight, and how were they addressed?"
+    ],
+    "interview_answers": [
+      "SeqGen is trained on users with rich behavior sequences, using their side information as input and their actual sequence embeddings as supervision targets. The mapping (likely an MLP or attention-based encoder) minimizes a reconstruction loss (e.g., MSE or contrastive loss) between generated and real sequence representations, encouraging the model to learn a faithful side-info-to-behavior prior.",
+      "Two-stage training requires first pre-training a sequence generation model, then fine-tuning the downstream CVR model, which introduces optimization misalignment and makes the pipeline brittle. Single-stage training allows gradients to flow end-to-end, letting the CVR task loss guide what aspects of sequence generation matter most for conversion prediction.",
+      "SeqGen would generate low-quality sequences in this case, potentially introducing noise. The paper's design of concatenating generated features with original features provides a partial safeguard — if generated features are poor, the model can learn to down-weight them — but there is no explicit uncertainty or confidence mechanism described for this failure mode.",
+      "The generated features are concatenated alongside original sequence features rather than replacing them, so the model can learn to balance both. In practice, the classifier tower weights are trained jointly, allowing it to learn the relative reliability of generated vs. real features. However, the paper does not describe explicit gating or attention mechanisms to dynamically adjust this balance.",
+      "Real-time inference requires that SeqGen's forward pass (side-info encoding + sequence generation) be fast enough for online serving latency constraints. Common strategies include pre-computing and caching generated sequence embeddings for known users, using lightweight MLP architectures for the mapping function, and quantization — though the paper does not detail which specific optimizations were applied in Xlight."
+    ],
+    "generated_at": "2026-03-22T01:39:38Z"
+  }
+}

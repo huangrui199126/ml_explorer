@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DePoD is a sequential recommendation framework that uses progressive knowledge distillation to better capture user intents when similar interaction histories lead to different next items. It decouples distillation for target vs. non-target items and progressively selects peer experts based on a difference evaluator.",
+    "key_idea": "By separating target and non-target item distillation and scheduling training difficulty progressively (harder samples later, broader candidate sets over time), DePoD forces the model to learn more comprehensive intent representations from interaction sequences.",
+    "why_it_matters": "Real-world recommender systems struggle when similar user histories diverge in next-item outcomes; DePoD's curriculum-style distillation offers a principled way to improve accuracy without architectural overhaul, making it practical to apply on top of existing sequential models.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where browsing histories are similar but purchase intent varies",
+      "Streaming platform next-content prediction for users with overlapping viewing patterns",
+      "Resource allocation and inventory planning using predicted demand sequences in supply chain systems"
+    ],
+    "generated_at": "2026-03-22T01:38:06Z"
+  },
+  "deep": {
+    "method_breakdown": "DePoD frames sequential recommendation as a knowledge distillation problem with two decoupled streams: target item distillation (the ground-truth next item) and non-target item distillation (all other candidate items). Target distillation uses a curriculum that upweights low-confidence samples in later training stages, while non-target distillation incrementally expands the candidate subset ordered by item frequency. A difference evaluator selects the most informative peer expert dynamically, providing adaptive soft supervision throughout training.",
+    "key_innovation": "The core novelty is decoupling the distillation objective by item role (target vs. non-target) rather than treating all items uniformly, and applying distinct progressive schedules to each. Prior KD-based recommendation work (e.g., RD, CD, UnKD) uses a single distillation signal or static teacher selection; DePoD introduces per-role curriculum scheduling and peer-based expert selection driven by a difference evaluator — neither of which appeared together in prior sequential recommendation distillation work.",
+    "technical_insight": "The most important design choice is the asymmetric curriculum: target items follow a confidence-based schedule (easy-first then hard-focus) while non-target items follow a frequency-based expansion schedule. This is effective because target-side curriculum mirrors well-established self-paced learning theory (hard samples need more gradient signal late in training), while frequency-based non-target expansion ensures the model first learns from common negative signals before rare ones — preventing noisy long-tail negatives from destabilizing early optimization.",
+    "limitations": "The framework introduces multiple coupled hyperparameters (curriculum pace functions, subset growth rate, difference evaluator temperature) that likely require careful per-dataset tuning, limiting out-of-the-box transferability. The peer cohort selection for expert distillation is not clearly defined in the abstract, raising questions about computational overhead when candidate sets are large. The method is evaluated only on accuracy metrics; diversity, novelty, and serendipity — important in recommendation — are not addressed. Finally, 'similar sequences with different next items' is framed as a problem but the solution (distillation) addresses optimization difficulty rather than the underlying data ambiguity.",
+    "interview_questions": [
+      "How does the difference evaluator select the expert peer, and what prevents it from consistently selecting the same expert throughout training?",
+      "The non-target item distillation grows the subset by item frequency — how do you handle items with identical or near-identical frequencies, and does the ordering matter?",
+      "Why is knowledge distillation specifically the right inductive bias for handling interaction dynamics, compared to contrastive learning or data augmentation approaches?",
+      "How does the target item progressive difficulty schedule define 'confidence' — is it based on the student model's own predicted probability, a teacher's, or something else?",
+      "What is the computational cost of DePoD relative to a standard sequential model like SASRec, particularly regarding the expanding non-target distillation set?"
+    ],
+    "interview_answers": [
+      "The difference evaluator likely scores peers by the divergence between their output distributions and the student's, selecting the peer whose predictions differ most informatively from the current student — this prevents collapse to one expert because the most informative peer shifts as the student improves. However, without a diversity or staleness mechanism, there is a risk of oscillating between a small set of peers.",
+      "Frequency-based ordering provides a deterministic curriculum, but ties in frequency could cause arbitrary ordering that may affect early-training stability. The key assumption is that high-frequency items carry more reliable negative signal since they appear in more training interactions, so their ordering matters more in early phases than late phases when most items have been introduced.",
+      "KD is appropriate here because it provides soft label supervision over the full item distribution, capturing relative preference orderings rather than hard binary signals — this is especially useful when similar sequences have different next items, since soft targets encode uncertainty. Contrastive learning collapses this to binary in-batch signals and augmentation doesn't address the multi-intent ambiguity directly.",
+      "Confidence is almost certainly defined as the student model's own predicted probability for the target item at training time — low confidence means the model assigns low probability to the ground truth, making it a hard sample. The curriculum then increases the loss weight for these samples in later epochs, similar to focal loss but scheduled over training rather than per-batch.",
+      "The non-target distillation set grows from a small subset to potentially the full item catalogue, so worst-case cost approaches O(|I|) per sample — comparable to full softmax. In practice, the frequency-based schedule means the full set is only used late in training when gradients are smaller, but for catalogues with millions of items this remains a scalability concern that likely requires sampled approximations not detailed in the abstract."
+    ],
+    "generated_at": "2026-03-22T01:38:34Z"
+  }
+}

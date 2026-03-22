@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates whether data contamination in a large 'teacher' model propagates to smaller 'student' models during knowledge distillation, a common technique for deploying efficient ranking models. They simulate worst-case contamination scenarios and find that test set contamination transfers even when the contaminated data is a small fraction of the teacher's training set.",
+    "key_idea": "Contamination in a black-box teacher LLM leaks into distilled student models, inflating benchmark performance and making evaluation results unreliable.",
+    "why_it_matters": "Practitioners using commercial LLM APIs (e.g., GPT-4, Gemini) as teacher models for ranking distillation cannot trust standard benchmark results, since the teacher may have seen the test data and passed that advantage on to the student.",
+    "possible_use_cases": [
+      "Auditing distillation pipelines for benchmark contamination before reporting results",
+      "Selecting clean, held-out evaluation sets that postdate commercial model training cutoffs",
+      "Designing contamination-robust distillation methods or using open-source teachers with known training data"
+    ],
+    "generated_at": "2026-03-22T01:36:34Z"
+  },
+  "deep": {
+    "method_breakdown": "The authors simulate a worst-case contamination scenario where a teacher model (mimicking a commercial LLM) has been trained on or exposed to test collection documents/queries used in ranking benchmarks. They then distill this contaminated teacher into smaller student rankers using multiple distillation techniques (e.g., pairwise, listwise, score-based) and measure how much the teacher's inflated performance transfers to the student. Evaluation compares student models trained under contaminated vs. clean teachers across standard IR benchmarks.",
+    "key_innovation": "Prior work on knowledge distillation for ranking assumed teacher models are unbiased oracles; this paper is among the first to systematically study the contamination transfer problem in the distillation pipeline. The novelty is framing commercial LLM opacity as a data provenance risk in IR evaluation, and quantifying how contamination propagates from teacher to student even at low contamination rates.",
+    "technical_insight": "The most critical design choice is the controlled simulation of 'worst-case' contamination — by injecting known fractions of test data into teacher training, the authors can precisely measure contamination leakage rates across distillation methods. This works because it isolates the variable of contamination degree, allowing clean causal attribution rather than post-hoc speculation about whether a commercial API has seen test data.",
+    "limitations": "The study simulates contamination artificially, so findings may not perfectly reflect how real commercial LLMs encode test data (which may be diluted across massive corpora). The worst-case framing may overstate practical risk. Results are limited to ad-hoc retrieval benchmarks (e.g., TREC-style), and generalization to other IR tasks or distillation architectures (e.g., late-interaction models) is unclear. The paper cannot audit actual commercial APIs, so real-world contamination rates remain unknown.",
+    "interview_questions": [
+      "How do you operationally define 'contamination' in this ranking distillation context, and how is it distinguished from legitimate generalization?",
+      "Which distillation technique showed the highest contamination transfer, and what property of that method explains it?",
+      "At what fraction of test-data contamination in the teacher did you observe statistically significant performance inflation in the student?",
+      "How would you recommend practitioners audit or mitigate contamination risk when using black-box commercial LLMs as teachers?",
+      "Does contamination affect all evaluation metrics (e.g., nDCG, MAP, MRR) equally, or are some metrics more sensitive to it?"
+    ],
+    "interview_answers": [
+      "Contamination is defined as the teacher model having observed test collection queries or documents during its own training, causing it to produce artificially high-quality relevance signals for those inputs — signals that reflect memorization rather than genuine ranking capability.",
+      "Listwise or score-based distillation methods that directly regress on teacher scores are likely most susceptible, as they encode the teacher's absolute confidence values which carry the contamination signal most directly; pairwise methods partially dilute this by only using relative preferences.",
+      "The paper finds contamination transfer occurs even when test data is a small fraction of teacher training samples, suggesting the threshold is low — likely detectable with single-digit percentage contamination rates, though exact numbers depend on the benchmark and metric used.",
+      "Practitioners should prefer open-source teacher models with transparent training data, use held-out or temporally-split test collections unknown at the time of teacher training, apply multiple benchmarks to triangulate results, and treat unusually high teacher scores on proprietary APIs as a red flag warranting further scrutiny.",
+      "Metrics that reward top-rank precision (like nDCG@10 or MRR) are likely more sensitive to contamination since the teacher's inflated confidence on memorized queries concentrates at the top of the ranked list, amplifying metric impact beyond what bulk metrics like MAP would capture."
+    ],
+    "generated_at": "2026-03-22T01:36:58Z"
+  }
+}
