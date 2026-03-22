@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Lbl2Vec is an unsupervised document retrieval method that learns joint word and document embeddings from unlabeled data, using only a few topic-describing keywords to find semantically relevant documents without any labeled training examples. It achieves strong retrieval performance (AUC ~0.92–0.95) and improves unsupervised classification F1 scores significantly over baselines.",
+    "key_idea": "By jointly embedding documents and words in the same vector space, topic keywords serve as anchors to retrieve semantically similar documents purely from unlabeled corpora.",
+    "why_it_matters": "Practitioners can build topic-based document retrieval and classification systems with zero labeled data and minimal text preprocessing, drastically reducing annotation costs and enabling rapid deployment on new domains.",
+    "possible_use_cases": [
+      "Automatic tagging and categorization of large unlabeled document archives by predefined topics",
+      "Building a semantic search engine for internal knowledge bases without any labeled training data",
+      "Quickly bootstrapping a document classification pipeline for a new domain using only a handful of descriptive keywords per class"
+    ],
+    "generated_at": "2026-03-22T02:35:24Z"
+  },
+  "deep": {
+    "method_breakdown": "Lbl2Vec jointly trains word and document embeddings (via Doc2Vec) on an unlabeled corpus, then represents each predefined topic as the centroid of embeddings for its seed keywords. Documents are retrieved by computing cosine similarity between document vectors and topic label vectors, ranking candidates by semantic proximity to the keyword-defined topic centroid.",
+    "key_innovation": "Rather than requiring labeled documents or large external knowledge bases, Lbl2Vec derives topic representations purely from a small set of user-provided keywords by averaging their in-corpus word embeddings — making the label vector a corpus-native semantic anchor rather than an external signal.",
+    "technical_insight": "The critical design choice is training embeddings on the target corpus itself rather than using pretrained vectors: this ensures that word and document vectors share the same semantic space, so keyword centroids are directly comparable to document vectors without domain shift. This corpus-internal consistency is what enables high retrieval AUC with minimal preprocessing.",
+    "limitations": "Performance is sensitive to keyword quality and quantity — poorly chosen seed words produce degenerate label vectors. The method inherits Doc2Vec's weakness on short documents and rare vocabulary. It assumes topic distinctiveness; overlapping or fine-grained topics with shared vocabulary degrade precision. No cross-lingual or zero-shot transfer is supported since embeddings are corpus-specific.",
+    "interview_questions": [
+      "How does Lbl2Vec construct the label vector for a topic, and what happens if the seed keywords are out-of-vocabulary in the target corpus?",
+      "Why does Lbl2Vec train its own embeddings on the unlabeled corpus rather than using pretrained embeddings like Word2Vec trained on Google News?",
+      "How would you extend Lbl2Vec to handle hierarchical or overlapping topics where documents legitimately belong to multiple categories?",
+      "The paper reports AUC but what are the limitations of AUC as the primary evaluation metric for document retrieval, and what alternative metrics would you add?",
+      "What is the computational complexity of Lbl2Vec at inference time as corpus size scales to millions of documents, and how would you address this?"
+    ],
+    "interview_answers": [
+      "The label vector is the mean of the trained word embeddings for all seed keywords. If a keyword is OOV, it contributes no embedding and the centroid is computed over remaining keywords; with very few keywords this can significantly distort the topic representation, making keyword selection a critical failure point.",
+      "Pretrained embeddings encode a different corpus distribution and vocabulary context. By training on the target corpus, word and document vectors are guaranteed to inhabit the same geometric space under the same training objective (PV-DM/PV-DBOW), so cosine similarity between document vectors and keyword centroids is semantically meaningful without alignment correction.",
+      "One approach is soft multi-label retrieval: compute similarity scores against all topic vectors and apply a threshold per topic independently rather than argmax. Hierarchical topics could be handled by constructing label vectors at multiple granularities and using a tree-structured ranking. Alternatively, mixture-of-topics document representations could be learned via LDA-style decomposition on top of the embeddings.",
+      "AUC measures ranking quality averaged over all thresholds but obscures precision at the top-k positions most relevant in retrieval. Adding Precision@k, NDCG@k, and Mean Average Precision would better reflect real retrieval utility. AUC also treats all negative documents equally, masking performance on hard negatives from adjacent topics.",
+      "Inference requires computing cosine similarity between every document vector and each label vector — O(N·T·d) where N is corpus size, T is topic count, d is embedding dimension. For large N this becomes expensive. Approximate nearest neighbor search (FAISS, ScaNN) over the document embedding space would reduce retrieval to sub-linear time, trading exact similarity for scalable lookup."
+    ],
+    "generated_at": "2026-03-22T02:35:49Z"
+  }
+}
