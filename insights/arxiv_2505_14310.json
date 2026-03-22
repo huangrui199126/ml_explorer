@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CausalEPP addresses recommendation popularity bias by modeling each user's evolving personal preference for popular items, rather than applying uniform debiasing across all users. It uses a causal graph with deconfounded training to separate genuine user preferences from conformity effects, then leverages evolution consistency at inference time.",
+    "key_idea": "Model user-specific, time-varying popularity preference as a causal variable to disentangle true item affinity from conformity-driven popularity bias.",
+    "why_it_matters": "Most debiasing methods treat all users the same and ignore temporal dynamics, leading to over-correction for trend-seeking users and under-correction for others; personalized, evolving debiasing improves both fairness and recommendation accuracy simultaneously.",
+    "possible_use_cases": [
+      "E-commerce platforms where trending products dominate recommendations at the expense of niche but relevant items",
+      "Streaming services needing to balance blockbuster content exposure with long-tail catalog discovery for different user segments",
+      "News recommendation systems where recency and virality bias can be corrected differently for casual vs. depth-seeking readers"
+    ],
+    "generated_at": "2026-03-22T06:45:17Z"
+  },
+  "deep": {
+    "method_breakdown": "CausalEPP first computes an Evolving Personal Popularity (EPP) metric that tracks each user's time-varying preference for popular items using historical interaction sequences. It then constructs a causal graph where EPP modulates the conformity effect (the spurious path from item popularity to user interaction), and applies deconfounded training via backdoor adjustment to block this confounding path during training. At inference, the model additionally considers evolution consistency — aligning the temporal trajectory of a user's popularity preference with item popularity trends — to improve ranking quality.",
+    "key_innovation": "Prior debiasing work treats popularity bias uniformly across users and uses static or coarsely temporal signals. CausalEPP is the first to model per-user, time-evolving popularity preference as an explicit confounder in a causal graph, enabling personalized and temporally adaptive debiasing rather than a one-size-fits-all correction.",
+    "technical_insight": "The critical design choice is making the conformity confounder user-specific and dynamic rather than item-level and static. By conditioning the backdoor adjustment on EPP (which evolves over time), the model can correctly distinguish a user who genuinely prefers popular items from one who is merely conforming to popularity pressure — avoiding over-correction for the former and under-correction for the latter.",
+    "limitations": "EPP estimation relies on sufficient historical interaction data, so the method likely degrades for cold-start users with sparse histories. The causal graph structure is hand-designed and may not capture all confounders. Inference-time evolution consistency requires predicting item popularity trajectories, which adds complexity and potential error. The approach is validated on standard collaborative filtering benchmarks and may not generalize to contexts with very different popularity distributions (e.g., news or music streaming).",
+    "interview_questions": [
+      "How is the Evolving Personal Popularity (EPP) metric computed, and how does it capture temporal dynamics?",
+      "What does the causal graph look like, and which path does deconfounded training specifically block?",
+      "How does the method handle users with very sparse interaction histories where EPP estimates are unreliable?",
+      "What is 'evolution consistency' at inference time, and why is it applied only during inference rather than training?",
+      "How does CausalEPP compare empirically to static causal debiasing methods like MACR or PD on accuracy vs. fairness trade-offs?"
+    ],
+    "interview_answers": [
+      "EPP is typically computed by segmenting a user's interaction history into time windows and measuring the average popularity rank of interacted items within each window, producing a time series that reflects whether the user's engagement with popular content is increasing, decreasing, or stable.",
+      "The causal graph includes nodes for user, item, popularity, EPP, and interaction. The direct path from item popularity to interaction through conformity (the spurious path) is blocked during training via backdoor adjustment conditioned on EPP, isolating the true preference signal.",
+      "The paper likely falls back to group-level or global popularity preference estimates for sparse users, but this is a known weakness — EPP estimates for cold-start users are noisy, and the deconfounding may be less effective or potentially harmful for them.",
+      "Evolution consistency matches the temporal direction of a user's EPP trajectory with item popularity trends at inference to re-rank candidates — applied only at inference because training already removes the spurious conformity effect, while inference benefits from knowing whether a user's current preference aligns with an item's current momentum.",
+      "CausalEPP improves over static causal baselines by avoiding over-debiasing for conformity-prone users and under-debiasing for popularity-averse users; empirically it shows better NDCG and coverage simultaneously, though gains on pure accuracy metrics over strong non-causal baselines are typically modest."
+    ],
+    "generated_at": "2026-03-22T06:45:37Z"
+  }
+}
