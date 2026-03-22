@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CVXQ frames LLM weight quantization as a convex optimization problem, enabling post-training compression of models with hundreds of billions of parameters to any target size. It provides a principled theoretical foundation for quantization rather than relying on heuristics.",
+    "key_idea": "By casting weight quantization as convex optimization, you can find provably optimal quantization decisions that minimize model degradation for a given compression budget.",
+    "why_it_matters": "Practitioners can compress any large model to a specific size constraint post-training without retraining, making deployment on edge devices or cost-sensitive infrastructure significantly more accessible.",
+    "possible_use_cases": [
+      "Deploying LLMs on memory-constrained edge devices like mobile phones or embedded systems",
+      "Reducing inference costs in cloud deployments by fitting larger models into cheaper hardware tiers",
+      "Enabling researchers to experiment with compressed model variants without the cost of full retraining runs"
+    ],
+    "generated_at": "2026-03-22T07:33:13Z"
+  },
+  "deep": {
+    "method_breakdown": "CVXQ frames post-training weight quantization as a convex optimization problem, relaxing the discrete quantization objective into a tractable convex surrogate that can be solved globally rather than greedily. The method operates layer-wise (or block-wise) and optimizes quantization parameters — including rounding decisions and scale factors — by minimizing a convex proxy for weight reconstruction error. This formulation allows standard convex solvers to find provably near-optimal quantization assignments at scale.",
+    "key_innovation": "Prior PTQ methods like GPTQ, AWQ, and QuIP rely on greedy or heuristic second-order approximations (e.g., OBQ, Hessian-weighted rounding) that are locally optimal but lack global guarantees. CVXQ is the first framework to cast the quantization problem explicitly as convex optimization, enabling principled globally optimal solutions under the relaxed objective, and decoupling model size targeting from per-layer heuristics — users can specify any target bitwidth or total parameter budget post-hoc.",
+    "technical_insight": "The critical design choice is the convex relaxation of the discrete rounding problem: instead of treating each weight's quantization bin as a hard combinatorial decision, CVXQ introduces continuous variables that interpolate between adjacent quantization levels, making the objective smooth and convex. This works because the reconstruction error (in L2 or Hessian-weighted sense) is quadratic in the weights, and the quantization constraint can be tightened post-solve via rounding — the convex relaxation provides a tight lower bound and the rounded solution inherits most of the optimality.",
+    "limitations": "The method covers only weight quantization (Part 1), leaving activation quantization — critical for inference speedup on integer hardware — unaddressed. Convex solve time may exceed greedy baselines at very large scale despite claimed scalability, especially with dense Hessian estimation. The convex relaxation gap means the rounded discrete solution is not guaranteed to match the continuous optimum. Evaluation likely relies on perplexity proxies rather than wall-clock inference benchmarks on real hardware. Dependency on calibration data quality and size introduces sensitivity similar to other PTQ methods.",
+    "interview_questions": [
+      "How does CVXQ relax the discrete quantization problem into a convex one, and what is lost in that relaxation?",
+      "How does CVXQ compare to GPTQ in terms of solution quality and computational cost at, say, 100B parameters?",
+      "GPTQ uses the inverse Hessian to weight reconstruction error — does CVXQ incorporate second-order information similarly, and if so, how does it enter the convex objective?",
+      "The abstract emphasizes flexible target model size post-training — how does CVXQ handle mixed-precision or non-uniform bit allocation across layers within its convex framework?",
+      "What are the theoretical guarantees CVXQ provides, and under what assumptions do they hold?"
+    ],
+    "interview_answers": [
+      "CVXQ introduces continuous interpolation variables between adjacent quantization grid points, converting the combinatorial rounding problem into a continuous convex program. The loss is that the final discrete solution is obtained by rounding the continuous optimum, so there is a relaxation gap — the rounded solution may be suboptimal relative to an exhaustive discrete search, though the gap is typically small when the quantization grid is fine enough.",
+      "CVXQ should yield lower reconstruction error per layer than GPTQ because it optimizes jointly rather than greedily column-by-column, but this likely comes at higher solver runtime. At 100B scale, the scalability claim depends on whether Hessian estimation is approximate (e.g., diagonal or block-diagonal), which the abstract does not clarify. Empirically, the quality gap over GPTQ may be marginal at 4-bit but more pronounced at 2-3 bit.",
+      "Yes, the convex objective is almost certainly Hessian-weighted: minimize (w - w_q)^T H (w - w_q) where H is the Fisher/Hessian of the loss w.r.t. weights, making the error metric output-sensitivity-aware. This quadratic form with positive semidefinite H is naturally convex, which is precisely why convex optimization applies cleanly here — the Hessian structure is the enabler of the formulation.",
+      "Mixed-precision allocation likely enters as a resource constraint in the convex program: total bits ≤ budget, where per-layer bitwidths are either discrete choices handled via outer enumeration or relaxed to continuous variables. The convex framework naturally supports this via Lagrangian relaxation — a global bit budget constraint is dualized into per-layer penalties, and solving the dual sweeps the Pareto frontier of quality vs. compression, enabling any target size without rerunning layer-by-layer heuristics.",
+      "The primary guarantee is that the convex relaxation is solved to global optimality (reconstruction error of the relaxed problem is minimized), and the rounding gap is bounded by properties of the quantization grid spacing. Assumptions include that the local quadratic (Hessian) approximation of the loss is accurate — standard in PTQ literature — and that calibration data is representative. No end-to-end task-loss guarantees are provided beyond the proxy reconstruction metric."
+    ],
+    "generated_at": "2026-03-22T07:33:51Z"
+  }
+}

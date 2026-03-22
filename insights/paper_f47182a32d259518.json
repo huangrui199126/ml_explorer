@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "I-LoRA is a fine-tuning method for Vision-Language models that uses routing-tuned LoRA adapters merged iteratively to enable continual multi-task learning without forgetting previous capabilities or adding model parameters.",
+    "key_idea": "By minimizing LoRA activation values on general tasks during routing-tuned fine-tuning and then iteratively merging adapters, new tasks can be added independently without interfering with each other or existing knowledge.",
+    "why_it_matters": "Practitioners can continually extend VLMs to new tasks (e.g., new game environments or robotic skills) without catastrophic forgetting, retraining from scratch, or bloating model size.",
+    "possible_use_cases": [
+      "Continual learning for game-playing agents across diverse Atari-style environments",
+      "Fine-tuning embodied AI robots on new manipulation tasks without forgetting prior skills",
+      "Incrementally adding domain-specific capabilities to a deployed VLM in production without retraining"
+    ],
+    "generated_at": "2026-03-22T07:31:03Z"
+  },
+  "deep": {
+    "method_breakdown": "I-LoRA trains separate low-rank adapters for each new task using a routing-tuning strategy that minimizes LoRA activation values on general tasks, reducing interference between the base model's existing capabilities and new task-specific adaptations. After per-task training, adapters are merged iteratively rather than all at once, so each successive merge operation preserves previously integrated task performance. The result is a continual learning system that scales to many tasks without adding parameters to the base model.",
+    "key_innovation": "The combination of routing-aware LoRA training (actively suppressing activations on general tasks during fine-tuning) with an iterative sequential merge strategy is the core novelty. Prior LoRA merging work (e.g., LoRAHub, TIES-merging) merges adapters in a single pass without accounting for inter-adapter interference during training, and standard continual fine-tuning suffers from catastrophic forgetting. I-LoRA addresses both problems jointly.",
+    "technical_insight": "The routing-tuning constraint — penalizing large LoRA activation magnitudes on general/prior tasks during new-task training — is the critical design choice. By keeping adapter updates orthogonal to the subspace used by general capabilities, each adapter stays 'local' in parameter space, making subsequent merging far less destructive. This is essentially an implicit gradient projection mechanism that makes the merge step tractable.",
+    "limitations": "The paper evaluates only on Atari, a relatively narrow and homogeneous domain; generalization to heterogeneous NLP or multimodal tasks is unvalidated. The iterative merge order may matter (tasks merged early could be overwritten by later merges), yet the paper likely does not exhaustively study merge ordering. Routing-tuning requires access to general-task data during fine-tuning, which may not always be available in true continual learning settings. Finally, LoRA rank selection and the weighting of the routing regularization term add hyperparameters that could be brittle across task distributions.",
+    "interview_questions": [
+      "How does the routing-tuning loss term prevent interference with the base model's general capabilities during task-specific fine-tuning?",
+      "Why is iterative merging preferable to merging all adapters simultaneously, and what is the theoretical justification?",
+      "How sensitive is I-LoRA to the order in which adapters are merged, and did the authors study this?",
+      "The method is evaluated on Atari — how would you expect it to perform on tasks with very different input distributions, such as code generation versus visual QA?",
+      "What guarantees, if any, does the routing-tuning constraint provide that the adapter updates lie in a subspace orthogonal to the base model's important directions?"
+    ],
+    "interview_answers": [
+      "The routing-tuning strategy adds a regularization term during LoRA fine-tuning that penalizes large activation magnitudes of the LoRA branch on a held-out set of general tasks. This forces the adapter to find task-specific updates that minimally perturb the outputs the base model already produces for general inputs, effectively constraining the adapter to a task-local subspace.",
+      "Simultaneous merging aggregates all adapter deltas at once, so conflicting parameter updates from different tasks cancel or overwrite each other in proportion to their magnitudes. Iterative merging allows each adapter to be incorporated one at a time with potential re-scaling or conflict resolution at each step, reducing destructive interference and making it easier to diagnose which merge introduces degradation.",
+      "The paper likely does not provide a thorough ablation over merge ordering; this is a common gap in iterative merging literature. In practice, tasks with more similar representation demands may be safer to merge early, while outlier tasks merged late could disproportionately shift the merged model. This remains an open empirical and theoretical question.",
+      "Atari tasks share visual frame inputs and discrete action outputs, making them relatively homogeneous. For truly heterogeneous tasks (code vs. vision-language), the routing-tuning regularization would need general-task coverage from both modalities, and adapter subspaces would likely overlap less cleanly, potentially making the merging step more destructive and requiring larger LoRA ranks to preserve performance.",
+      "The routing-tuning constraint provides a soft, empirical form of orthogonality — it does not offer hard mathematical guarantees like explicit gradient projection (e.g., OWM or GradOrth methods). The guarantee is only as strong as the coverage and representativeness of the general-task dataset used during regularization, so gaps in that dataset could allow adapters to inadvertently overwrite important base model directions."
+    ],
+    "generated_at": "2026-03-22T07:31:29Z"
+  }
+}
