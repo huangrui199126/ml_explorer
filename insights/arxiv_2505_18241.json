@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes reframing intent classification as a query similarity search problem, using example queries to define intents and finding the closest matches in latent space rather than training a traditional classifier. This approach enables zero-shot intent classification in low-resource languages by leveraging multilingual embeddings.",
+    "key_idea": "Instead of training a classifier on labeled intent data, represent each intent as a set of example queries and classify new queries by finding their nearest neighbors in a shared multilingual embedding space.",
+    "why_it_matters": "Building intent classifiers for new languages typically requires expensive data annotation; this approach can extend an existing system to low-resource languages with zero additional labeled data, dramatically reducing the cost and time of multilingual NLP deployment.",
+    "possible_use_cases": [
+      "Extending a voice assistant or chatbot to new languages without re-annotating training data",
+      "Rapidly prototyping intent detection for a new domain by providing only a handful of example queries per intent",
+      "Building multilingual search systems that route queries to the correct handler across languages with minimal labeled data"
+    ],
+    "generated_at": "2026-03-22T01:49:10Z"
+  },
+  "deep": {
+    "method_breakdown": "The approach reframes intent classification as a nearest-neighbor retrieval problem: each intent is defined by a set of example queries, and an incoming query is classified by finding its most similar examples in a shared embedding (latent) space using a similarity metric (e.g., cosine similarity). For low-resource languages, a multilingual encoder maps queries from any language into the same latent space, enabling zero-shot transfer by leveraging labeled examples from high-resource languages to classify queries in unseen languages.",
+    "key_innovation": "Instead of training a parametric classifier head (which requires per-language labeled data and retraining to add new intents), the system defines intents non-parametrically through example queries. This makes the system data-efficient, easily extensible to new intents without retraining, and naturally cross-lingual when backed by a multilingual embedding model — none of which are properties of standard fine-tuned classifiers.",
+    "technical_insight": "The critical design choice is using a multilingual sentence encoder (e.g., LaBSE or multilingual USE) as the backbone, which aligns semantically equivalent queries across languages in a shared latent space. This works because cross-lingual transfer is implicit in the encoder's pretraining, so similarity-based classification inherits zero-shot multilingual capability without any target-language supervision.",
+    "limitations": "Performance degrades for languages that are underrepresented in the multilingual encoder's pretraining data, which is precisely the low-resource setting of interest. The approach also inherits sensitivity to query paraphrase diversity in the example set — poorly representative examples yield poor intent boundaries. Nearest-neighbor search can fail when intents are semantically overlapping, and latency scales with the size of the example store, posing efficiency concerns at production scale.",
+    "interview_questions": [
+      "Why is framing intent classification as a similarity search problem better suited for low-resource languages than a standard fine-tuned classifier?",
+      "What properties must the embedding model have for this approach to work in a zero-shot cross-lingual setting?",
+      "How does the system handle the addition of a new intent at inference time, and what are the tradeoffs compared to a parametric model?",
+      "What are the failure modes when two intents are semantically close in the embedding space, and how might you mitigate them?",
+      "How would you evaluate whether the quality of example queries for each intent is sufficient, and what strategies would you use to improve coverage?"
+    ],
+    "interview_answers": [
+      "A standard classifier requires labeled training data in the target language and must be retrained to support new languages or intents. The similarity search approach only needs a multilingual encoder that already aligns cross-lingual semantics; labeled examples in any language serve as intent anchors, and zero-shot transfer follows from the encoder's shared latent space — no target-language labels are needed.",
+      "The encoder must be multilingual and trained with a cross-lingual objective (e.g., parallel sentence alignment) so that semantically equivalent sentences in different languages map to nearby points in the same embedding space. Models like LaBSE or multilingual sentence-BERT satisfy this by training on multilingual parallel corpora with contrastive or distillation objectives.",
+      "Adding a new intent requires only providing a few example queries for that intent — no retraining is needed. The example set is added to the retrieval index and immediately available. The tradeoff is that the boundary between the new intent and existing ones is governed entirely by embedding geometry and the example density, whereas a parametric model could learn a sharper decision boundary given sufficient data.",
+      "When intents are close in embedding space, the nearest-neighbor decision boundary becomes noisy and ambiguous queries are misclassified. Mitigations include: curating more discriminative or diverse examples, applying a confidence threshold (abstaining when top-k neighbors span multiple intents), using a re-ranker or a lightweight classifier on top of retrieved candidates, or explicitly augmenting example sets with hard negatives.",
+      "Coverage can be evaluated by measuring recall@k on a held-out validation set and analyzing confusion between intents. To improve it: use query paraphrase augmentation (back-translation, LLM-based rewriting), mine real user queries from logs and assign them to intents, or apply active learning to identify under-covered regions of the embedding space and collect targeted annotations."
+    ],
+    "generated_at": "2026-03-22T01:49:34Z"
+  }
+}
