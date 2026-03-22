@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ENR (Epistemic Neural Recommendation) is a scalable neural contextual bandit algorithm that uses an epistemic neural network architecture to enable efficient Thompson sampling for recommender systems, balancing exploration of unknown user preferences with exploitation of known interests.",
+    "key_idea": "By designing an epistemic neural network that captures uncertainty estimates cheaply, ENR enables Thompson sampling-based exploration at scale without the prohibitive computational cost of existing neural contextual bandit methods.",
+    "why_it_matters": "Real-world recommender systems are stuck in supervised learning loops that only reinforce known preferences; ENR provides a practical path to online exploration that improves CTR by 9%+ and requires 29% fewer user interactions, all with orders-of-magnitude less compute than prior bandit approaches.",
+    "possible_use_cases": [
+      "Content recommendation platforms (e.g., news, video) seeking to surface novel items users didn't know they'd enjoy",
+      "E-commerce product recommendation to balance promoting bestsellers vs. discovering niche preferences",
+      "Ad targeting systems that need to explore new user segments efficiently without expensive A/B testing overhead"
+    ],
+    "generated_at": "2026-03-22T06:19:21Z"
+  },
+  "deep": {
+    "method_breakdown": "ENR (Epistemic Neural Recommendation) designs an epistemic neural network that separates aleatoric and epistemic uncertainty, enabling Thompson sampling by maintaining a distribution over network weights without the need to retrain or invert large matrices. The architecture uses a last-layer approximation or hypermodel structure so that uncertainty estimates scale with model size without quadratic cost. At inference, parameters are sampled from the posterior to produce diverse recommendations that balance exploration and exploitation.",
+    "key_innovation": "Prior neural contextual bandits (e.g., NeuralUCB, NeuralTS) require O(p²) operations for the Neural Tangent Kernel covariance or last-layer covariance updates, making them infeasible at production scale. ENR replaces this with an epistemic network — a small auxiliary network that parameterizes the posterior over the base network's outputs — achieving Thompson sampling with O(p) overhead, making it the first approach to demonstrate scalable uncertainty-aware exploration in a real deployed recommender system.",
+    "technical_insight": "The key design choice is the epistemic (hypermodel) head: rather than tracking a full covariance matrix over weights, a small network takes a random seed as input and outputs posterior weight samples. This amortizes Bayesian inference into a learned function, preserving the diversity needed for Thompson sampling while keeping compute linear in model size. It works because the hypermodel only needs to capture uncertainty in the output layer, not the full parameter space, exploiting the low-dimensional structure of the reward signal.",
+    "limitations": "The epistemic head still requires careful tuning of the prior and the hypermodel capacity — if the hypermodel is too small, posterior collapse reduces exploration; if too large, it reintroduces computational cost. The approach is validated on click-through and rating tasks but may not generalize to sparse-reward or long-horizon settings where the reward signal is delayed. Additionally, the theoretical regret guarantees under the epistemic network approximation are not as tight as exact NTK-based methods, relying on empirical validation rather than formal bounds.",
+    "interview_questions": [
+      "What is the core computational bottleneck in classical neural contextual bandits like NeuralUCB, and how does ENR sidestep it?",
+      "How does Thompson sampling differ from UCB-based exploration, and why might it be preferred in large-scale recommendation?",
+      "What is an epistemic (hyper)network and how does it represent a posterior over model outputs?",
+      "How do you prevent the epistemic head from collapsing to a point estimate and losing exploration diversity?",
+      "What are the real-world deployment trade-offs when moving from a supervised ranking model to a bandit-based one?"
+    ],
+    "interview_answers": [
+      "Classical neural bandits maintain a covariance matrix over the last-layer features (NTK approximation), requiring O(p²) storage and O(p²) or O(p³) updates per step, where p is the feature dimension. ENR replaces this with a small hypermodel that maps random seeds to output perturbations, reducing the uncertainty tracking cost to O(p) and making it feasible to run on production-scale embedding tables.",
+      "UCB constructs an explicit upper confidence bound requiring the covariance inverse, which is expensive. Thompson sampling instead draws a parameter sample from the posterior and acts greedily — stochastic by construction, parallelizable across requests, and avoids explicit matrix operations. At large scale with many simultaneous users, Thompson sampling's per-request cost is a single forward pass through the hypermodel rather than a matrix solve.",
+      "A hypermodel (epistemic network) is a secondary neural network f_φ(z) that takes a random noise vector z as input and outputs a perturbation to the base model's parameters or logits. The distribution over z (e.g., Gaussian) induces a distribution over predictions, approximating the Bayesian posterior. During exploration, z is sampled once per request and held fixed for that user context, yielding a consistent but stochastic reward estimator.",
+      "The hypermodel is trained with a combination of a data-fit loss (matching observed rewards) and a prior regularization loss that penalizes the posterior from collapsing. Techniques include prior networks (adding a fixed random network's output as a baseline), ensemble diversity losses, or KL regularization toward the prior. The injected noise z must have sufficient variance and the hypermodel must have enough capacity to produce meaningfully different outputs across samples.",
+      "Key trade-offs include: (1) online learning requires infrastructure for real-time model updates, unlike static supervised models; (2) exploration means intentionally showing suboptimal items to some users, requiring stakeholder buy-in and careful cold-start handling; (3) reward delay (clicks arrive hours/days later) complicates credit assignment; (4) the bandit policy must be constrained to stay within business rules (diversity, freshness, safety), which can conflict with pure reward maximization."
+    ],
+    "generated_at": "2026-03-22T06:19:51Z"
+  }
+}
