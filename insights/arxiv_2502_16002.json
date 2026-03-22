@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "KVLink enables LLMs to precompute and cache KV representations for individual documents, then reuse them across multiple queries by concatenating caches at inference time. It fixes the resulting accuracy degradation via positional embedding adjustment and trainable special tokens that restore cross-document attention.",
+    "key_idea": "Precompute KV caches per document independently, then stitch them together at inference with corrected positional embeddings and learned connector tokens — eliminating redundant encoding without sacrificing model accuracy.",
+    "why_it_matters": "RAG and multi-document QA systems repeatedly encode the same retrieved documents for every query; KVLink cuts time-to-first-token by up to 96% and improves accuracy by 4% over prior methods, making large-scale context reuse both faster and cheaper.",
+    "possible_use_cases": [
+      "RAG pipelines where the same document corpus is repeatedly queried by many users",
+      "Long-context inference with shared system prompts or instructions across requests",
+      "Multi-turn chat systems that reuse conversation history or tool outputs across sessions"
+    ],
+    "generated_at": "2026-03-22T02:34:52Z"
+  },
+  "deep": {
+    "method_breakdown": "KVLink precomputes KV caches for individual documents independently, then concatenates them at inference time to avoid redundant encoding of shared contexts. To fix the accuracy degradation from independent encoding, it adjusts positional embeddings at inference to reflect each token's global position after concatenation. It also inserts trainable special tokens between document KV caches to restore cross-document attention context that was lost during independent encoding.",
+    "key_innovation": "Prior work either recomputed context from scratch or required documents to be encoded jointly. KVLink enables truly modular, precomputable KV caches per document by solving the two core failure modes: (1) positional embedding mismatch (fixed at inference via re-indexing, no retraining needed) and (2) broken cross-document attention (fixed via lightweight trainable connector tokens, requiring only fine-tuning rather than full retraining).",
+    "technical_insight": "The most important design choice is decoupling positional embedding correction from model weights — by re-assigning positions at inference time rather than baking them into the cache, KVLink avoids storing position-specific caches and remains flexible to arbitrary document orderings. This works because RoPE-style embeddings can be applied lazily at attention time, so the cached keys/values can be re-rotated to their global positions without recomputation.",
+    "limitations": "The trainable special tokens require fine-tuning, which adds training cost and may not generalize to all base models or domains. Performance may degrade when the number of concatenated documents is large or when documents have complex inter-dependencies that cannot be captured by a single connector token. The 96% TTFT reduction assumes caches are pre-stored and available, which introduces significant storage overhead, and cache staleness is not addressed for dynamic retrieval settings.",
+    "interview_questions": [
+      "How does KVLink handle the positional embedding mismatch when concatenating independently encoded KV caches, and why doesn't this require retraining the model?",
+      "What role do the trainable special tokens play, and why are they necessary even after fixing positional embeddings?",
+      "How does KVLink interact with KV cache compression methods, and what are the trade-offs?",
+      "What are the failure modes when the number of retrieved documents grows large, and how might you mitigate them?",
+      "How does KVLink compare to prefix caching and other KV reuse strategies like RAG with shared prefixes?"
+    ],
+    "interview_answers": [
+      "KVLink re-assigns positional indices to each token at inference time to reflect its true global position in the concatenated sequence. Since RoPE embeddings are applied during the attention operation (not stored in the cache values themselves, only in keys), the keys can be re-rotated from their local-document positions to global positions at query time. This is a post-hoc correction that does not change model weights, only the positional encoding applied during attention score computation.",
+      "Even with correct positional embeddings, self-attention was computed independently per document during encoding, so each token's key/value representations do not incorporate cross-document context. The trainable special tokens act as learned 'bridges' inserted at document boundaries; they are fine-tuned to summarize and transmit cross-document signals, partially compensating for the missing cross-attention that would have existed in joint encoding.",
+      "KVLink is orthogonal to KV cache compression (e.g., token eviction, quantization) and can be applied after caches are precomputed. Compression reduces storage and loading latency further, but introduces an additional accuracy trade-off on top of the degradation from independent encoding. The paper shows that combined KVLink + compression still outperforms baselines, suggesting the gains are complementary, though the stacking of approximations may hurt on harder reasoning tasks.",
+      "As the number of documents grows, the connector tokens must bridge increasingly distant contexts, and a single special token per boundary may be insufficient to capture complex inter-document dependencies. Mitigation strategies could include using multiple connector tokens, hierarchical encoding, or limiting retrieval to top-k most relevant documents. Additionally, longer concatenated sequences increase memory and attention cost quadratically, partially eroding the TTFT savings.",
+      "Prefix caching requires all queries to share an exact common prefix, limiting flexibility. RAG with shared prefixes similarly needs a fixed shared context. KVLink is more general — any document can be precomputed independently and reused across arbitrary queries regardless of order or combination. The trade-off is that KVLink requires fine-tuning and positional correction, while prefix caching works zero-shot but only for strict prefix matches."
+    ],
+    "generated_at": "2026-03-22T02:35:15Z"
+  }
+}

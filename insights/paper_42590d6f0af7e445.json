@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PPCDR is a federated graph learning framework that enables cross-domain recommendation by modeling both global (shared) and local (domain-specific) user preferences across distributed data silos without sharing raw interaction data.",
+    "key_idea": "Each domain maintains a graph transfer module that fuses global and local user embeddings, while local differential privacy and personalized aggregation allow collaborative global preference learning across heterogeneous domains without data leakage.",
+    "why_it_matters": "Enables real-world cross-domain recommender systems that respect data privacy regulations (e.g., GDPR) and platform data-sharing restrictions, closing the gap between CDR research and production deployment.",
+    "possible_use_cases": [
+      "Recommending products to users across separate e-commerce platforms (e.g., Amazon + eBay) without sharing user purchase histories",
+      "Cold-start recommendation for new users on one platform by leveraging their behavioral signals from another platform in a privacy-safe way",
+      "Federated content recommendation across media apps (e.g., music + video streaming) owned by different companies under data partnership agreements"
+    ],
+    "generated_at": "2026-03-22T02:29:55Z"
+  },
+  "deep": {
+    "method_breakdown": "PPCDR uses federated graph learning where each domain maintains a local graph transfer module that fuses domain-specific (local) and cross-domain (global) user preference embeddings. In the private update phase, local models update using only local interaction data; in the federated update phase, local differential privacy (LDP) is applied before aggregating user preference updates across domains, and a personalized aggregation strategy adapts global preferences to each domain's heterogeneous data distribution.",
+    "key_innovation": "Unlike prior privacy-aware CDR methods that either share raw data or ignore domain heterogeneity, PPCDR explicitly disentangles global (shared) and local (domain-specific) user preferences and uses personalized federated aggregation to reconcile heterogeneous multi-domain data — all without any central data sharing, approximating full multi-domain joint training under strict privacy constraints.",
+    "technical_insight": "The graph transfer module that fuses global and local preference embeddings per domain is the critical design choice: it prevents the global preference signal from overriding domain-specific behavior (a common failure mode in naive federated averaging), allowing the model to benefit from cross-domain knowledge while remaining adaptive to each domain's item distribution and interaction patterns.",
+    "limitations": "LDP introduces noise that can degrade preference quality, especially for users with sparse cross-domain interactions (cold-start users benefit less). The personalized aggregation assumes some structural similarity across domains; highly heterogeneous domains (e.g., e-commerce vs. news) may yield weak global signals. Communication cost scales with the number of participating domains and users. The method is evaluated on only three CDR datasets, limiting generalizability claims.",
+    "interview_questions": [
+      "How does PPCDR disentangle global and local user preferences, and why is this separation necessary in a federated setting?",
+      "What specific local differential privacy mechanism is used, and how does the privacy budget epsilon affect recommendation quality in your experiments?",
+      "How does personalized aggregation differ from standard FedAvg, and how does it handle domain heterogeneity?",
+      "In the cold-start scenario where a user has no interactions in a target domain, how does PPCDR leverage global preferences to make recommendations?",
+      "How does PPCDR approximate the performance of a non-private centralized multi-domain model, and what is the empirical gap?"
+    ],
+    "interview_answers": [
+      "Each user has a global preference embedding updated collaboratively across domains and a local preference embedding updated only on domain-specific data. The graph transfer module learns to fuse these via attention or gating, allowing the model to capture shared tastes (e.g., genre preferences) while preserving domain-specific behavior (e.g., price sensitivity in e-commerce). Without this separation, federated averaging would conflate heterogeneous signals and degrade local accuracy.",
+      "PPCDR applies randomized response or Gaussian/Laplace noise mechanisms consistent with LDP to the gradient or embedding updates before transmission. Smaller epsilon (stronger privacy) introduces more noise, which the paper shows degrades NDCG/HR metrics — the experiments typically report results at a moderate epsilon that balances utility and privacy, though the exact sensitivity to epsilon is a key empirical finding.",
+      "Standard FedAvg applies uniform averaging of model parameters, which is suboptimal when domains have different data distributions. PPCDR's personalized aggregation weights domain contributions based on similarity to the target domain (e.g., via embedding cosine similarity), so a domain with highly different item semantics contributes less to another domain's global preference, reducing negative transfer.",
+      "PPCDR initializes the target domain representation using the global preference embedding learned from source domains, effectively transferring cross-domain behavioral signals as a prior. The graph transfer module then refines this with whatever sparse local interactions exist. This is analogous to meta-learning initialization — the global embedding provides a warm start that outperforms random initialization in cold-start evaluations.",
+      "The paper measures the gap by comparing PPCDR against a centralized baseline that shares all interaction data. PPCDR achieves competitive or superior performance, attributed to the personalized aggregation reducing negative transfer that even the centralized model suffers. The privacy cost under LDP is partially offset by better domain adaptation, making the practical gap small on benchmark datasets."
+    ],
+    "generated_at": "2026-03-22T02:30:16Z"
+  }
+}
