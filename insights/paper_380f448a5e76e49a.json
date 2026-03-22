@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FMC-LLM proposes a memory-centric streaming architecture that enables FPGAs to efficiently run batched decoding for large language models with 70B+ parameters without requiring lossy model compression. It addresses the twin FPGA bottlenecks of limited compute throughput and accuracy degradation from quantization.",
+    "key_idea": "By reframing LLM inference as a memory-bandwidth-bound problem and designing a streaming dataflow that maximizes DRAM utilization rather than peak FLOPS, FPGAs can compete with GPUs for batched LLM decoding.",
+    "why_it_matters": "FPGAs offer lower power consumption, reconfigurability, and lower deployment cost than GPUs, and this work shows they can serve production-scale LLMs without the accuracy tradeoffs that previously made FPGA deployment impractical.",
+    "possible_use_cases": [
+      "Low-power edge inference servers running 70B-class models in data centers with strict power budgets",
+      "Reconfigurable AI accelerator cards for cloud providers wanting hardware flexibility without GPU lock-in",
+      "On-premise LLM deployment for regulated industries (finance, healthcare) where custom FPGA pipelines offer auditability and security guarantees"
+    ],
+    "generated_at": "2026-03-22T07:19:25Z"
+  },
+  "deep": {
+    "method_breakdown": "FMC-LLM reframes FPGA-based LLM decoding as a memory-bandwidth-bound problem rather than a compute-bound one, designing a streaming dataflow architecture that maximizes DRAM bandwidth utilization for weight streaming during autoregressive decoding. The system pipelines weight loading and matrix-vector operations so that compute units are continuously fed from off-chip HBM/DDR, effectively hiding memory latency. Batched decoding is used to amortize the cost of weight fetching across multiple concurrent requests, improving arithmetic intensity without requiring model compression.",
+    "key_innovation": "Prior FPGA LLM accelerators either required aggressive quantization (4-bit or lower) to fit models on-chip — incurring accuracy loss — or were limited to sub-7B models. FMC-LLM instead embraces external memory streaming for 70B+ models at higher precision, shifting the architectural goal from maximizing peak FLOPS to maximizing sustained memory throughput and batching efficiency, which better matches the decoding bottleneck.",
+    "technical_insight": "The critical design choice is treating weight streaming from DRAM as the primary design constraint and building a deep pipeline that sustains near-peak memory bandwidth utilization across batched requests. This works because autoregressive decoding is inherently memory-bandwidth-bound (weights dominate data movement vs. activations), so a well-tuned memory-centric pipeline achieves better tokens/sec/watt on FPGAs than architectures optimized for raw compute throughput.",
+    "limitations": "FPGA peak memory bandwidth is still lower than high-end GPU HBM bandwidth, so absolute throughput may lag behind A100/H100 deployments. The batched decoding strategy introduces latency tradeoffs — larger batch sizes improve throughput but hurt per-request latency, which may be unacceptable for interactive applications. The architecture likely assumes static batch sizes and sequence lengths, making it less flexible for dynamic workloads. Results are also highly dependent on the specific FPGA device's memory hierarchy.",
+    "interview_questions": [
+      "Why is LLM decoding considered memory-bandwidth-bound rather than compute-bound, and how does FMC-LLM exploit this property?",
+      "How does batched decoding improve the arithmetic intensity of transformer weight operations, and what is the latency-throughput tradeoff?",
+      "What architectural decisions allow FMC-LLM to avoid model compression while still fitting 70B+ models on FPGA systems?",
+      "How does the streaming pipeline ensure sustained DRAM bandwidth utilization rather than burst-idle patterns typical of naive implementations?",
+      "What are the key differences in deploying this system on FPGAs with HBM versus DDR memory, and how does the design adapt?"
+    ],
+    "interview_answers": [
+      "During autoregressive decoding, each token generation step requires loading all model weights (tens to hundreds of GB) while computing on a small activation vector (batch_size × hidden_dim). The compute-to-memory ratio (arithmetic intensity) is very low — often under 10 FLOP/byte — well below the ridge point of any accelerator. FMC-LLM maximizes tokens/sec by ensuring weights stream continuously from DRAM into compute units with minimal stalls, making bandwidth the effective throughput limiter.",
+      "With batch size B, the same weight matrix is reused for B simultaneous token computations, increasing arithmetic intensity by factor B. A weight matrix loaded once serves B independent decode streams, so memory traffic per token decreases as 1/B. The tradeoff is that all B requests must wait for the slowest one (head-of-line blocking), and KV cache memory grows linearly with B×seq_len, potentially exhausting DRAM capacity for very large batches.",
+      "FMC-LLM stores weights in external DRAM (HBM or DDR) rather than on-chip BRAM/SRAM, treating the FPGA as a compute and control engine rather than a storage device. The streaming architecture pipelines weight loads with matrix-vector multiplications so that on-chip buffers only need to hold a sliding window of weight tiles, not entire layers. This allows models far exceeding on-chip capacity to run at full precision without quantization.",
+      "The streaming pipeline uses double-buffering or multi-buffering between DRAM controllers and compute arrays: while one weight tile is being processed by MAC units, the next tile is being prefetched from DRAM. The pipeline depth is tuned so that prefetch latency is fully hidden behind computation, maintaining a continuous flow. Careful DMA scheduling and memory access pattern optimization (sequential streaming favors DRAM row-buffer locality) further sustain near-peak bandwidth.",
+      "HBM provides significantly higher bandwidth (1-2 TB/s) and lower latency than DDR (50-100 GB/s), which directly translates to higher token throughput since throughput is bandwidth-bound. With DDR, larger batches are needed to maintain reasonable utilization, increasing latency. The streaming pipeline architecture is bandwidth-agnostic in design, but the operating point (optimal batch size, pipeline depth) must be recalibrated per memory type. HBM-equipped FPGAs (e.g., Xilinx Alveo U280) are substantially more competitive with GPUs on this task."
+    ],
+    "generated_at": "2026-03-22T07:19:58Z"
+  }
+}

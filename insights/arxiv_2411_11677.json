@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a framework for stealing sequential recommendation models using only a small fraction (≤10%) of training data, combining synthetic data generation with a specialized distillation loss to build high-fidelity surrogate models.",
+    "key_idea": "Autoregressive augmentation generates synthetic interaction data that mimics real user behavior distributions, while a bidirectional repair loss corrects the surrogate model's ranking errors by aligning its output lists with the victim model's.",
+    "why_it_matters": "Practitioners deploying recommendation systems need to understand this attack vector to build defenses, as adversaries can replicate proprietary models with minimal data access, threatening competitive advantage and user privacy.",
+    "possible_use_cases": [
+      "Auditing recommendation system vulnerabilities before deployment",
+      "Benchmarking model robustness against low-resource extraction attacks",
+      "Developing watermarking or output perturbation defenses for recommender APIs"
+    ],
+    "generated_at": "2026-03-22T07:22:50Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework attacks sequential recommenders under few-shot conditions (≤10% raw data) via two components: an autoregressive augmentation generation strategy that uses a probabilistic interaction sampler to capture item dependency patterns and a synthesis determinant signal module to model user behavioral signatures, generating synthetic training data. A bidirectional repair loss then guides knowledge distillation from the victim model to the surrogate by penalizing ranking discrepancies in both directions between the two models' recommendation lists.",
+    "key_innovation": "Prior model extraction attacks on recommenders assumed zero data access (data-free), relying purely on query-response pairs. This work fills the few-shot regime — where an adversary has limited but nonzero raw interaction data — by combining generative data augmentation with a novel bidirectional distillation loss that corrects surrogate errors in both ranking directions, rather than standard one-sided KD losses.",
+    "technical_insight": "The bidirectional repair loss is the critical design choice: standard KL-divergence or ranking losses only penalize the surrogate for items it wrongly promotes, but bidirectional loss also penalizes items the surrogate wrongly suppresses. This symmetry captures the full structure of the victim's ranking function, enabling higher functional similarity even when training signal is scarce.",
+    "limitations": "The attack assumes query access to the victim model is unrestricted during distillation, which may not hold in rate-limited APIs. The evaluation is on only three datasets, limiting generalizability claims. The autoregressive augmentation quality degrades further below 10% data, and the framework's effectiveness against victim models with differential privacy or output perturbation defenses is not assessed. The few-shot threshold (10%) is somewhat arbitrary and the performance cliff below it is not characterized.",
+    "interview_questions": [
+      "How does the probabilistic interaction sampler capture item dependencies differently from simply using the raw co-occurrence statistics?",
+      "Why is a bidirectional repair loss necessary — what failure mode does the unidirectional distillation loss exhibit in the few-shot regime?",
+      "How does the synthesis determinant signal module distinguish between different user behavioral patterns, and how is it parameterized?",
+      "What are the threat model assumptions — specifically, what exactly does the adversary query from the victim model and how many queries are needed?",
+      "How does the surrogate model's architecture relate to the victim model, and how sensitive are the results to architecture mismatch?"
+    ],
+    "interview_answers": [
+      "The probabilistic interaction sampler models item transition probabilities as a learned distribution over sequences rather than raw counts, allowing it to generalize to unobserved transitions by smoothing over the interaction graph — this matters because few-shot data has sparse coverage of the item space.",
+      "In the few-shot regime, the surrogate tends to overfit to the limited query responses and produces systematically biased rankings: it over-ranks items seen in training and under-ranks unseen items. A unidirectional loss only corrects over-ranking errors; the bidirectional form additionally penalizes under-ranking, preventing the surrogate from ignoring large portions of the item catalog.",
+      "The synthesis determinant signal module encodes user-level behavioral signals — such as session length distribution, recency weighting, and category preference — as conditioning vectors appended to the autoregressive generation process, effectively steering synthetic sequences to match the statistical fingerprint of individual users in the limited observed data.",
+      "The adversary submits item sequences as queries and receives top-K recommendation lists (rank-ordered items) in return; the victim's internal model weights and training data remain hidden. Query budget is not explicitly bounded in the paper, which is a weakness — the practical cost in API calls is not analyzed.",
+      "The paper evaluates surrogate models with the same architecture family as the victim (e.g., SASRec-to-SASRec), which is a favorable assumption. Cross-architecture extraction (e.g., extracting a BERT4Rec victim into a GRU4Rec surrogate) is not systematically studied, so the robustness of the approach under architecture mismatch is an open question."
+    ],
+    "generated_at": "2026-03-22T07:23:12Z"
+  }
+}
