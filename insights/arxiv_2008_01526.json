@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This work advances biomedical information retrieval by introducing Multi-Perspective Sentence Relevance, a BERT-based methodology that retrieves clinically relevant documents from large biomedical corpora. It is evaluated on the BioASQ challenge and demonstrated in a live IR system for medical professionals.",
+    "key_idea": "Using multiple BERT-based contextual perspectives to score sentence-level relevance improves retrieval of biomedical literature beyond classical probabilistic methods like BM25.",
+    "why_it_matters": "Medical professionals need accurate, fast access to relevant literature from millions of articles; domain-adapted neural IR systems can handle clinical jargon and semantic similarity better than keyword-based search, directly impacting clinical decision support.",
+    "possible_use_cases": [
+      "Clinical decision support systems that surface relevant research for patient diagnosis or treatment",
+      "Systematic review automation to help researchers identify relevant studies from large biomedical corpora",
+      "Hospital or medical search engines that handle domain-specific terminology and symptom-query matching"
+    ],
+    "generated_at": "2026-03-22T06:59:04Z"
+  },
+  "deep": {
+    "method_breakdown": "The system introduces Multi-Perspective Sentence Relevance, which leverages BERT-based models to assess relevance between biomedical queries and candidate passages from multiple contextual perspectives rather than a single embedding comparison. It combines neural re-ranking on top of an initial BM25 retrieval stage, using domain-adapted BERT (likely BioBERT) fine-tuned on biomedical corpora to handle clinical terminology. The multi-perspective component aggregates relevance signals across different semantic dimensions of a query-passage pair to produce a final ranking score.",
+    "key_innovation": "The key novelty is the multi-perspective framing of sentence relevance — treating a query-passage pair not as a single similarity score but as a combination of several semantic relationship signals (e.g., topical overlap, entailment, specificity). This contrasts with prior BERT re-rankers like monoBERT that use a single [CLS] token score, and with sparse methods like BM25 that rely on term overlap without semantic understanding.",
+    "technical_insight": "The most important design choice is applying a domain-specific pretrained BERT (trained on biomedical literature) rather than general-domain BERT, because biomedical text contains dense clinical jargon and entity relationships (e.g., symptom-disease associations) that general language models systematically misrepresent. This domain adaptation directly addresses the vocabulary mismatch problem that cripples both BM25 and general BERT in clinical IR.",
+    "limitations": "The system relies on a two-stage pipeline where BM25 recall bounds the upper performance of the neural re-ranker — relevant documents not retrieved in stage one cannot be recovered. The multi-perspective approach likely increases inference latency, limiting real-time applicability at scale. Evaluation is confined to BioASQ, so generalization to other biomedical IR benchmarks (e.g., TREC Clinical Trials) is unverified. The abstract does not report ablations, making it unclear which perspectives contribute most.",
+    "interview_questions": [
+      "What specific 'perspectives' are used in Multi-Perspective Sentence Relevance, and how are they combined into a final ranking score?",
+      "How does the system handle the vocabulary mismatch between lay clinical queries and technical biomedical literature?",
+      "What are the latency and scalability trade-offs of replacing BM25 with or layering BERT re-ranking on top of it in a production medical search system?",
+      "How was the BioASQ benchmark used for evaluation, and what metrics (MAP, MRR, NDCG) were reported?",
+      "What are the key differences between your multi-perspective approach and existing cross-encoder BERT re-rankers like monoBERT or MedBERT?"
+    ],
+    "interview_answers": [
+      "The perspectives likely correspond to different semantic signals such as lexical overlap, entailment likelihood, and topic relevance extracted from separate BERT forward passes or attention heads, combined via a learned aggregation layer or weighted sum — though the abstract does not specify exact implementation details.",
+      "Domain-adapted BERT (e.g., BioBERT or PubMedBERT) pretrained on large biomedical corpora is used so that the model's token embeddings and attention patterns already encode clinical synonymy and entity relationships, reducing reliance on exact term matching.",
+      "BERT re-ranking is computationally expensive (O(n) forward passes per query for n candidates), so the system uses BM25 to shortlist a manageable candidate set (e.g., top 100) before applying the neural re-ranker, trading recall risk for feasible latency.",
+      "BioASQ provides factoid and list question-answering tasks over PubMed abstracts; the IR subtask measures retrieval of relevant snippets/documents, typically evaluated with Mean Average Precision (MAP) and Mean Reciprocal Rank (MRR) across multiple challenge phases.",
+      "Existing cross-encoders produce a single relevance score from the concatenated [CLS] representation, whereas the multi-perspective approach explicitly models distinct semantic relationships between query and passage, potentially capturing relevance signals that a single classification head would conflate or ignore."
+    ],
+    "generated_at": "2026-03-22T06:59:28Z"
+  }
+}
