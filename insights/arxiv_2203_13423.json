@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces a new multi-armed bandit framework called 'departing bandits' where users can permanently leave if dissatisfied, making the interaction horizon itself dependent on the recommendation policy. It provides algorithms with provable regret bounds for both single-type and two-type user settings.",
+    "key_idea": "By modeling user churn as a policy-dependent stopping condition rather than a fixed horizon, the bandit problem requires simultaneously learning user types and balancing exploration/exploitation to avoid permanently losing users.",
+    "why_it_matters": "Real recommender systems lose users who receive bad recommendations, so optimizing for engagement without accounting for churn leads to suboptimal long-term outcomes; this framework gives theoretical grounding for retention-aware recommendation policies.",
+    "possible_use_cases": [
+      "Designing recommendation algorithms for new user onboarding where early bad recommendations cause permanent churn",
+      "Streaming or subscription services optimizing content recommendations to reduce subscriber cancellations",
+      "E-commerce platforms balancing product exploration with user retention to maximize lifetime customer value"
+    ],
+    "generated_at": "2026-03-22T06:21:04Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper models recommender systems as multi-armed bandits where user dissatisfaction can cause permanent departure, creating policy-dependent horizons. Users have unknown types (latent variables) inferred only through their binary responses to recommendations, and each (user type, arm) pair has an unknown Bernoulli reward probability. For the two-type case, the authors design an algorithm that balances exploration for type inference with exploitation, achieving O(sqrt(T)ln(T)) regret over T users.",
+    "key_innovation": "The core novelty is the 'departing bandit' formulation where the horizon itself is endogenous to the policy — a user who receives a bad recommendation may leave permanently, reducing future learning opportunities. Prior bandit work assumes fixed or stochastic horizons independent of arm choices; here the horizon shrinks as a consequence of poor decisions, coupling exploration cost with user retention in a fundamentally new way.",
+    "technical_insight": "The critical design choice is treating user type as a latent variable that must be inferred online before the user potentially departs. The algorithm must commit to recommendations quickly enough to avoid driving users away, yet explore enough to identify user type — this tension is resolved by leveraging UCB-style confidence bounds adapted to the departure risk, ensuring that over-exploration is penalized not just in regret but in lost future interactions, which tightens the effective exploration budget.",
+    "limitations": "The model is restricted to a finite discrete set of user types (analyzed in depth only for two types), which may not capture the continuous heterogeneity of real users. The Bernoulli payoff assumption is simplistic. The departure model (a fixed dissatisfaction probability) does not account for context, session dynamics, or partial satisfaction. Scaling the algorithm to many types likely degrades regret bounds, and the work does not address cold-start for entirely new user populations or non-stationary preferences.",
+    "interview_questions": [
+      "How does the departing bandit formulation differ from a standard multi-armed bandit with a random horizon?",
+      "Why is the single-type case easier, and what property of UCB makes it optimal there?",
+      "What makes the two-type case fundamentally harder, and how does the proposed algorithm handle type ambiguity?",
+      "How does the O(sqrt(T)ln(T)) regret bound compare to standard bandit lower bounds, and is it tight?",
+      "What real-world assumptions does this model still fail to capture, and how might you extend it?"
+    ],
+    "interview_answers": [
+      "In a standard bandit with random horizon, the stopping time is independent of the policy, so regret decomposes cleanly over pulls. In the departing bandit, the horizon shrinks endogenously when the policy makes poor choices — a bad arm pull can permanently remove a user, so the policy directly controls how many future interactions remain. This creates a feedback loop between exploration and survival that standard bandit analysis does not handle.",
+      "With a single user type, the latent variable inference problem disappears — every user responds to the same reward probabilities, so the learner only needs to identify the best arm. UCB is optimal here because it achieves the minimax regret for Bernoulli bandits, and the departure risk only adds a constant multiplicative factor to the regret since the type is unambiguous and exploration is efficient.",
+      "With two types, the learner cannot distinguish which type a new user is without observing their responses, but recommendations that are suboptimal for one type may drive that user away before enough observations accumulate. The algorithm addresses this by first running a type-identification phase with carefully chosen arms that are informative about user type, then switching to the UCB strategy tuned to the inferred type — balancing the cost of misidentification against the risk of premature departure.",
+      "The O(sqrt(T)ln(T)) bound is near-optimal; standard bandit lower bounds give Omega(sqrt(T)) for problems with uncertainty in user type, so the extra ln(T) factor reflects the overhead of latent type inference. Whether the log factor is necessary or an artifact of the analysis is an open question, but the bound is substantially better than naive approaches which can suffer linear regret by failing to adapt to user types.",
+      "The model assumes users have a single fixed type and that dissatisfaction probability is stationary, neither of which holds in practice — users evolve, context matters, and satisfaction is graded not binary. The two-type restriction is also unrealistic at scale. Extensions could include Gaussian process priors over continuous user embeddings, contextual bandits with departure risk, or reinforcement learning formulations where user state evolves across sessions — though each adds significant theoretical complexity to the regret analysis."
+    ],
+    "generated_at": "2026-03-22T06:21:28Z"
+  }
+}

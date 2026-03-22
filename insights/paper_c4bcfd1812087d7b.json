@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses item-side unfairness in multimodal recommender systems, where items with dominant modality content (e.g., better images or videos) get over-recommended. The authors propose a counterfactual inference framework that captures and removes modality bias during training and inference.",
+    "key_idea": "By adding unimodal prediction branches to isolate modality-specific biases and then using counterfactual inference to subtract those biases at inference time, the model learns to recommend items based on genuine relevance rather than modality quality advantages.",
+    "why_it_matters": "Practitioners building recommendation systems for e-commerce or video platforms risk systematically disadvantaging content creators whose items lack high-quality multimodal content, leading to unfair exposure; this framework offers a model-agnostic plug-in fix that improves fairness without sacrificing accuracy.",
+    "possible_use_cases": [
+      "E-commerce platforms wanting to give equal exposure to small sellers whose product images are lower quality than large retailers",
+      "Short-video platforms aiming to fairly surface new creators whose videos lack polished production",
+      "Any multimodal recommendation pipeline where auditing and correcting modality-driven popularity bias is a regulatory or ethical requirement"
+    ],
+    "generated_at": "2026-03-22T06:23:26Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework introduces auxiliary unimodal prediction branches during training to explicitly capture modality-specific biases — learning how much each modality (e.g., visual, textual) independently inflates or deflates item scores. During inference, counterfactual reasoning is applied: the model estimates what the recommendation score would have been if the item lacked its prevailing modality content, then subtracts this counterfactual bias term from the final score. This adaptive debiasing allows the model to remain pluggable on top of existing multimodal recommenders without architectural changes.",
+    "key_innovation": "Prior fairness work in recommendation focuses on user-side or demographic fairness, and prior debiasing work targets popularity or exposure bias. This paper is among the first to identify and formalize modality bias — where items rich in one modality (e.g., high-quality images) are systematically over-recommended purely due to modality dominance rather than genuine user preference alignment — and addresses it via counterfactual inference rather than re-weighting or adversarial training.",
+    "technical_insight": "The critical design choice is decomposing the final score into a 'full multimodal score' minus a 'counterfactual unimodal score' (what the model would predict using only the dominant modality). This works because it directly measures and removes the marginal unfair advantage conferred by modality richness, rather than applying a uniform correction. The adaptive nature — the counterfactual term varies per item based on its actual modality distribution — avoids over-correcting items that legitimately benefit from strong multimodal content.",
+    "limitations": "The method requires identifying which modality is 'prevailing' per item, which may be unclear for items with balanced or weak multimodal content, and the unimodal branches add training overhead. The counterfactual subtraction can degrade recommendation accuracy non-trivially if the bias term is miscalibrated, creating a fairness-accuracy tradeoff that may be hard to tune. Evaluation is limited to two datasets, and the framework assumes modality bias is the primary source of item-side unfairness, ignoring interaction sparsity or catalog position effects.",
+    "interview_questions": [
+      "How do you formally define 'modality bias' in this framework, and how do the unimodal branches isolate it from genuine preference signal?",
+      "The counterfactual inference subtracts a bias term at test time — how do you prevent this from over-correcting items that legitimately deserve higher scores due to richer content?",
+      "This framework is described as model-agnostic — what are the actual requirements a base multimodal recommender must satisfy to integrate your debiasing approach?",
+      "How does your item-side fairness metric differ from standard exposure fairness or provider fairness metrics, and why is it more appropriate here?",
+      "In cases where training data is extremely non-uniform (e.g., one modality missing for 90% of items), does the unimodal branch receive enough signal to accurately capture bias?"
+    ],
+    "interview_answers": [
+      "Modality bias is defined as the portion of a predicted score attributable to a single modality's content quality rather than user-item affinity. The unimodal branches are trained to predict scores using only one modality's encoding, so their output approximates the score inflation caused by that modality alone. Subtracting this from the full multimodal score isolates the bias component.",
+      "The subtraction is adaptive per item — only the dominant modality's counterfactual contribution is removed, and the magnitude reflects the actual bias learned during training. Items where multimodal content genuinely correlates with user preference will have lower bias terms because the full model and unimodal branch diverge less. The framework relies on the assumption that real preference signal requires cross-modal interaction, so unimodal-only high scores are treated as bias.",
+      "The base model must produce a score that is a function of fused multimodal embeddings, and those embeddings must be separable by modality so unimodal branches can be attached. The inference stage only requires access to the final score computation graph to inject the counterfactual correction. Models that fuse modalities implicitly (e.g., via attention over concatenated tokens) may require architectural exposure of per-modality representations.",
+      "Standard exposure fairness measures whether items receive proportional impressions relative to relevance. The proposed item-side fairness metric focuses on whether items with weaker modality content but comparable user-preference signals receive comparable recommendation rates — it conditions on intrinsic preference alignment rather than raw relevance, making it sensitive specifically to modality-driven distortion.",
+      "This is a real limitation. If a modality is absent for most items, the unimodal branch for that modality trains on few examples and produces noisy bias estimates. The paper partially addresses this by weighting the counterfactual correction by modality prevalence, but extremely skewed distributions likely reduce debiasing effectiveness and could introduce noise into scores for the minority of items that do have that modality."
+    ],
+    "generated_at": "2026-03-22T06:23:56Z"
+  }
+}

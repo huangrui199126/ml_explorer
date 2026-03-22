@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper applies Bayesian regularization techniques (Laplace approximations) to parameter-efficient fine-tuning (LoRA) to prevent catastrophic forgetting, preserving a pre-trained model's original capabilities while adapting it to new tasks. Experiments on language modeling and speech synthesis show the approach works without sacrificing fine-tuning performance.",
+    "key_idea": "Using Laplace approximations to estimate the curvature of the pre-training loss landscape as a regularizer during LoRA fine-tuning penalizes parameter shifts that would destroy previously learned knowledge.",
+    "why_it_matters": "Practitioners who fine-tune large models on specific domains (e.g., TTS, domain-specific LLMs) often sacrifice general capabilities; this method offers a principled, compute-efficient way to retain them without full continual-learning pipelines.",
+    "possible_use_cases": [
+      "Domain-specific TTS adaptation that retains general speech synthesis quality",
+      "Fine-tuning instruction-following LLMs on specialized corpora without degrading general language understanding",
+      "Continual learning pipelines where models must be sequentially adapted to multiple tasks or languages"
+    ],
+    "generated_at": "2026-03-22T06:24:35Z"
+  },
+  "deep": {
+    "method_breakdown": "The method applies Bayesian continual learning techniques to parameter-efficient fine-tuning (PEFT), specifically LoRA, by using Laplace approximations to estimate the posterior distribution over pre-trained parameters. A regularization term derived from this posterior penalizes large deviations from the pre-trained weights during fine-tuning. Both diagonal (per-parameter) and Kronecker-factored (block-structured) approximations of the Fisher Information Matrix are used to construct this regularizer.",
+    "key_innovation": "The key novelty is demonstrating that established Bayesian continual learning methods (Laplace approximations via EWC-style regularization) can be seamlessly integrated with PEFT methods like LoRA, provided the parameter shift of fine-tuned layers is differentiable — which LoRA's low-rank decomposition satisfies. Prior work applied Bayesian forgetting prevention to full fine-tuning; this work shows it transfers effectively to the PEFT regime, including for TTS adaptation.",
+    "technical_insight": "The critical design choice is using Kronecker-factored (KFAC) rather than diagonal approximations of the Fisher Information Matrix. KFAC captures inter-parameter correlations within weight matrices by decomposing the curvature as a Kronecker product of two smaller matrices, yielding a richer geometry of the loss landscape. This better approximates the true posterior and thus more accurately identifies which parameters are important for pre-training knowledge, leading to superior retention.",
+    "limitations": "The Kronecker-factored approximation requires computing and storing two factor matrices per layer, increasing memory overhead compared to diagonal approaches. The method requires access to pre-training data or a proxy dataset to compute the Fisher Information Matrix, which may not always be available. The approach is validated primarily on LoRA and TTS/LM tasks, so generalization to other PEFT methods (adapters, prefix tuning) and domains is not fully established.",
+    "interview_questions": [
+      "Why is LoRA particularly well-suited for integration with Bayesian continual learning regularization?",
+      "What is the role of the Fisher Information Matrix in preventing catastrophic forgetting in this framework?",
+      "Why does the Kronecker-factored approximation outperform the diagonal approximation for knowledge preservation?",
+      "How does this approach differ from standard EWC (Elastic Weight Consolidation), and what changes are needed to apply it to LoRA?",
+      "What are the practical trade-offs between diagonal and Kronecker-factored Laplace approximations when deploying this method at scale?"
+    ],
+    "interview_answers": [
+      "LoRA reparameterizes weight updates as a product of two low-rank matrices (W = W0 + AB), making the parameter shift from pre-training weights analytically tractable and differentiable. This differentiability is the key prerequisite for computing the Bayesian regularization term, since the penalty requires computing gradients with respect to the effective weight change.",
+      "The Fisher Information Matrix (FIM) approximates the curvature of the log-likelihood at the pre-trained parameters, serving as a proxy for parameter importance. Parameters with high Fisher information contributed heavily to pre-training performance, so the regularizer penalizes moving these parameters far from their pre-trained values, effectively encoding which weights should be preserved.",
+      "The diagonal approximation treats each parameter independently, ignoring correlations between weights in the same layer. The Kronecker-factored approximation models the joint curvature of an entire weight matrix as a product of two smaller matrices capturing input- and output-side statistics, recovering second-order interactions. These correlations better reflect the true geometry of the loss surface, yielding a more accurate importance estimate and tighter regularization.",
+      "Standard EWC computes Fisher information over all model parameters and applies diagonal regularization during full fine-tuning. Adapting it to LoRA requires computing the Fisher with respect to the effective weight matrices (W0 + AB) and then propagating this through the low-rank factorization to regularize A and B. The KFAC variant additionally requires computing activation and gradient covariance statistics per layer rather than per-scalar-parameter.",
+      "Diagonal approximations are cheap — O(P) memory and computation — making them scalable but less accurate. KFAC requires storing two matrices per layer of sizes proportional to input/output dimensions, increasing memory by roughly O(d_in + d_out) per layer versus O(d_in × d_out) for the full FIM, which is still far cheaper than the full matrix. For very large models, KFAC's overhead may become prohibitive, making diagonal a practical fallback despite its inferior knowledge retention."
+    ],
+    "generated_at": "2026-03-22T06:25:00Z"
+  }
+}
