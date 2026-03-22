@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DART is a black-box red-teaming method that uses text-diffusion techniques to find harmful prompts that stay close to reference examples, enabling targeted security audits of LLMs. By perturbing prompts in embedding space rather than using autoregressive generation, it outperforms fine-tuning and few-shot prompting baselines.",
+    "key_idea": "Perturbing reference prompts in continuous embedding space with controlled magnitude finds harmful variants more effectively than discrete token-level generation methods.",
+    "why_it_matters": "Practitioners can audit LLMs for specific categories of harm (by topic, style, or behavior type) rather than generic vulnerability discovery, making safety evaluations more systematic and targeted.",
+    "possible_use_cases": [
+      "Auditing LLMs for compliance with domain-specific safety policies (e.g., medical, legal, financial misuse)",
+      "Stress-testing moderation filters by generating boundary-case harmful prompts near known policy violations",
+      "Benchmarking LLM robustness by generating diverse harmful variants anchored to curated red-team datasets"
+    ],
+    "generated_at": "2026-03-22T01:17:34Z"
+  },
+  "deep": {
+    "method_breakdown": "DART perturbs reference prompts in the continuous embedding space using a diffusion-inspired process, allowing controlled deviation from the original prompt while searching for adversarial inputs. The method operates in a black-box setting — it only requires output scores from the target LLM — and uses proximity constraints to keep discovered prompts semantically close to a reference dataset. The perturbation magnitude directly controls the trade-off between faithfulness to the reference and adversarial effectiveness.",
+    "key_innovation": "Prior automated red-teaming methods (fine-tuning-based or few-shot LLM approaches) treat prompt generation as unconstrained, producing adversarial inputs that may be semantically distant or topically unrelated to any reference. DART introduces proximity-constrained red-teaming by operating in embedding space rather than token space, borrowing the diffusion paradigm of controlled noise injection to navigate the prompt manifold within a bounded neighborhood of reference prompts.",
+    "technical_insight": "Working in the continuous embedding space rather than discrete token space is the critical design choice: it allows gradient-free, smooth perturbations with a tunable radius, bypassing the combinatorial explosion of token-level search and the mode-collapse tendencies of autoregressive generators when constrained. This makes the proximity constraint tractable and differentiable in principle, enabling systematic coverage of the adversarial region around any reference prompt.",
+    "limitations": "The method relies on a reference dataset that must already cover the topics or harm types of interest, limiting discovery of entirely novel attack surfaces. Embedding-space perturbations may produce inputs that are semantically incoherent or unnatural when decoded, reducing real-world transferability. Black-box evaluation still requires many queries to the target LLM, which can be expensive at scale. The approach is also sensitive to the choice of embedding model — mismatches between the embedding space and the target LLM's tokenizer can degrade proximity guarantees.",
+    "interview_questions": [
+      "How does DART define and enforce the proximity constraint in embedding space, and how is the constraint radius chosen?",
+      "Why do autoregressive models fail at proximity-constrained red-teaming, and what specific failure modes did you observe?",
+      "How do you decode perturbed embeddings back into valid discrete tokens, and how do you handle incoherence in the decoded outputs?",
+      "How does DART compare to GCG (Greedy Coordinate Gradient) and other white-box adversarial prompt methods, and why did you focus on the black-box setting?",
+      "What metrics do you use to jointly evaluate proximity to the reference prompt and harmfulness of the discovered input, and are these metrics in tension?"
+    ],
+    "interview_answers": [
+      "DART enforces proximity by bounding the L2 (or cosine) distance between the perturbed embedding and the reference embedding, treating this as a hard constraint during the diffusion-inspired perturbation process. The radius is treated as a hyperparameter controlling the exploration-exploitation trade-off and is evaluated across a sweep to characterize the Pareto frontier between proximity and attack success rate.",
+      "Autoregressive models struggle because their generation is conditioned on a prefix in a left-to-right manner, making it hard to impose a global similarity constraint on the full output. In practice they either ignore the constraint and generate freely adversarial (but dissimilar) prompts, or they over-anchor to the reference and fail to find harmful variants — there is no natural mechanism to balance these objectives mid-generation.",
+      "Decoding uses nearest-neighbor lookup in the vocabulary embedding matrix to map each perturbed continuous vector to the closest valid token, analogous to the decode step in soft-prompt or embedding-space attack literature. Incoherence is partially mitigated by constraining perturbation magnitude and by filtering decoded outputs with a fluency or perplexity threshold before querying the target model.",
+      "GCG and similar methods require white-box access to model gradients, making them inapplicable to closed-source target LLMs. DART targets the more realistic black-box threat model where only output logits or scores are accessible. The trade-off is that black-box search is less sample-efficient, but the proximity constraint partially compensates by restricting the search space.",
+      "The paper uses attack success rate (ASR) — fraction of discovered prompts that elicit harmful responses — as the primary effectiveness metric, and embedding distance or token-level edit distance as the proximity metric. These are inherently in tension: larger perturbations generally yield higher ASR but violate proximity. The authors report both jointly and use the proximity-constrained ASR (ASR at a fixed distance budget) as the main comparison metric."
+    ],
+    "generated_at": "2026-03-22T01:18:01Z"
+  }
+}

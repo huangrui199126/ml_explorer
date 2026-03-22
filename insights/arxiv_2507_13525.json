@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper conducts a large-scale empirical study comparing 23 prompt engineering strategies across 8 datasets and 12 LLMs for single-user personalized recommendation, finding that effective prompts differ significantly by model tier. Key findings challenge common NLP assumptions, showing that step-by-step reasoning and reasoning models often hurt accuracy in recommendation tasks.",
+    "key_idea": "For LLM-based recommendation in single-user settings, prompt complexity should be matched to model capability — cost-efficient models benefit from instruction rephrasing and background knowledge prompts, while high-performance models work best with simple prompts.",
+    "why_it_matters": "Practitioners building recommendation systems with LLMs can avoid costly over-engineering by choosing the right prompt style for their model tier, especially in privacy-sensitive or cold-start scenarios where collaborative filtering is not viable.",
+    "possible_use_cases": [
+      "Cold-start product recommendations for new users with no interaction history",
+      "Privacy-preserving personalization where cross-user data cannot be used",
+      "Cross-domain recommendation where a user's preferences in one domain inform another"
+    ],
+    "generated_at": "2026-03-22T01:21:39Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper conducts a large-scale empirical evaluation of 23 prompt engineering strategies for LLM-based personalized recommendation in a single-user setting, testing across 8 public datasets and 12 LLMs. Prompts are categorized into types including instruction rephrasing, background knowledge injection, chain-of-thought, persona-based, and others, evaluated on both recommendation accuracy and inference cost. Statistical analysis uses linear mixed-effects models to disentangle the effects of prompt type, LLM family, and dataset characteristics.",
+    "key_innovation": "Unlike prior work that evaluates a handful of prompts on one or two LLMs, this study provides the first systematic, statistically rigorous benchmark of 23 prompt types across 12 LLMs and 8 datasets in a privacy-preserving single-user (no collaborative filtering) setting. The key novel finding is that chain-of-thought and reasoning models — dominant paradigms in NLP — actually hurt recommendation accuracy, while simpler instruction-rephrasing and background-knowledge prompts excel for cost-efficient models.",
+    "technical_insight": "The most important design choice is isolating the single-user setting (no cross-user information), which forces the study to measure how well prompts alone can compensate for the absence of collaborative signals. This reveals that prompts providing background knowledge or clearer reasoning scaffolding help cost-efficient LLMs by reducing the inference gap, while high-performance LLMs already internalize sufficient world knowledge and are degraded by over-specified prompts that introduce noise or distract from the recommendation objective.",
+    "limitations": "The study is limited to pointwise recommendation framing and may not generalize to listwise or conversational recommendation. Evaluation relies on public datasets that may not reflect production-scale cold-start distributions. The single-user constraint, while practically motivated, excludes collaborative signals that are often available in real systems. Prompt effectiveness may be highly sensitive to exact wording and tokenization across LLM families, making reproducibility across future model versions uncertain.",
+    "interview_questions": [
+      "Why does chain-of-thought prompting hurt recommendation accuracy in this study, contrary to its success in reasoning tasks?",
+      "How do the authors handle the confounding effects of dataset characteristics when attributing performance differences to prompt type?",
+      "What specific properties of 'instruction rephrasing' prompts make them effective for cost-efficient LLMs?",
+      "How does the single-user setting fundamentally change what information a prompt must encode compared to collaborative filtering baselines?",
+      "What are the practical tradeoffs a practitioner should consider when choosing between a high-performance LLM with simple prompts versus a cost-efficient LLM with engineered prompts?"
+    ],
+    "interview_answers": [
+      "Chain-of-thought forces the model to generate intermediate reasoning steps that are not grounded in user preference signals — the model tends to produce generic or hallucinated rationales rather than preference-relevant reasoning, which then biases the final recommendation. Recommendation is a retrieval/ranking task where the answer is implicit in the user history, not derivable through logical deduction, so CoT adds noise rather than signal.",
+      "The authors use linear mixed-effects models (LMEMs) with prompt type as a fixed effect and LLM, dataset, and their interactions as random effects. This allows them to estimate the marginal contribution of prompt type while accounting for variance attributable to model family and domain-specific dataset characteristics, providing statistically sound conclusions beyond simple average accuracy comparisons.",
+      "Instruction-rephrasing prompts restate the recommendation task in alternative natural language formulations, which reduces sensitivity to specific phrasing artifacts in cost-efficient models that have less robust instruction-following. They effectively act as a form of ensemble signal within a single prompt, aligning the model's interpretation of the task more reliably with the intended objective without adding extraneous cognitive load.",
+      "In the single-user setting, the prompt must encode all relevant preference context — item interaction history, implicit tastes, and domain framing — since there are no collaborative signals from similar users. This means prompt design must compensate for the absence of neighborhood-based generalization, making background knowledge injection and clear task framing critical, whereas in CF settings the model only needs to rank candidates given already-rich user embeddings.",
+      "If latency and cost are constrained, a cost-efficient LLM with rephrasing or background-knowledge prompts can approach the accuracy of expensive models at a fraction of inference cost. If accuracy is paramount and cost is secondary, high-performance LLMs with minimal prompt complexity are preferred since over-engineering prompts for these models degrades performance. The crossover point depends on domain: cold-start or sparse-history scenarios favor engineered prompts more strongly regardless of model tier."
+    ],
+    "generated_at": "2026-03-22T01:22:03Z"
+  }
+}

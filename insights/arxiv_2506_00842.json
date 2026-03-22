@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CoRE is a framework that improves LLM performance on structured data (tables, databases) by building an experience memory via Monte Carlo Tree Search and using contrastive in-context learning to help models transfer knowledge across data modalities. It achieves average gains of 3.44% on Text-to-SQL and 4.24% on TableQA without requiring additional training.",
+    "key_idea": "Use MCTS-generated experience memory combined with contrastive ICL to simulate how humans retrieve and apply analogous past experiences when reasoning over structured data.",
+    "why_it_matters": "Most enterprise data lives in tables and databases, not plain text — CoRE offers a training-free, continually improvable way to close the gap between LLM text reasoning and structured data querying, directly improving NL-to-SQL and table QA pipelines.",
+    "possible_use_cases": [
+      "Natural language interfaces to relational databases (Text-to-SQL) for business intelligence tools",
+      "Automated table question answering over financial reports, spreadsheets, or medical records",
+      "Few-shot adaptation of LLMs to new database schemas without fine-tuning"
+    ],
+    "generated_at": "2026-03-22T01:20:36Z"
+  },
+  "deep": {
+    "method_breakdown": "CoRE builds an Experience Memory by using Monte Carlo Tree Search (MCTS) to generate diverse reasoning trajectories over structured data tasks, expanding training data 8-9x. At inference, it retrieves contrastive examples — both positive (similar, correct) and negative (similar but incorrect) — to provide richer ICL context that guides the LLM away from common error patterns. This contrastive ICL simulates how humans learn from both successes and failures when transferring knowledge to new structured data tasks.",
+    "key_innovation": "The contrastive retrieval mechanism that pairs positive and negative ICL examples from the experience memory is the core novelty. Prior RAG-for-structured-data work retrieves only positive exemplars; CoRE explicitly surfaces near-miss failures so the model can discriminate correct from incorrect reasoning paths. The MCTS-based experience generation is also novel as a training-free data augmentation strategy for structured reasoning rather than relying on static human-annotated examples.",
+    "technical_insight": "Using contrastive examples rather than purely positive demonstrations is the critical design choice. Positive-only ICL suffers from the model being unaware of superficially similar but structurally wrong solutions; by including hard negatives that share surface similarity but contain reasoning errors, the model is forced to attend to subtle structural distinctions in tables and SQL schemas, directly addressing the implicit relationship inference problem the paper identifies.",
+    "limitations": "The MCTS experience generation is computationally expensive at memory construction time, and the quality of the memory is bounded by the LLM used to generate it — errors compound if the base model is weak on structured data. Contrastive retrieval assumes a high-quality retriever can surface meaningfully similar negatives; retrieval failures could inject misleading context. The gains (3-4% average) are modest on standard benchmarks, and the 17.2% gain on 'challenging tasks' is not consistently reproducible across all domains. The method has not been evaluated on highly heterogeneous or non-relational structured formats beyond tables and SQL.",
+    "interview_questions": [
+      "How does MCTS generate the experience memory, and what defines a 'node' and 'rollout' in this context for SQL/TableQA tasks?",
+      "How are contrastive pairs (positive/negative) selected during retrieval — what similarity metric is used, and how are hard negatives identified versus easy negatives?",
+      "The paper claims the method is 'training-free' — does this mean the base LLM weights are never updated, and if so, how does the system handle distribution shift between memory examples and test queries?",
+      "How does CoRE compare to fine-tuning approaches like DAIL-SQL or instruction-tuned models on the same benchmarks, and what is the computational cost trade-off?",
+      "What failure modes arise when the retrieved negative examples are too dissimilar from the query, and does the paper provide any ablation on negative example quality or quantity?"
+    ],
+    "interview_answers": [
+      "Each MCTS node represents a partial SQL query or reasoning step, with rollouts simulating completions evaluated against execution accuracy or exact match. The tree explores diverse reasoning paths, and successful terminal nodes plus their erroneous siblings are stored as experience trajectories, yielding 8-9x data expansion by capturing multiple solution attempts per training instance.",
+      "Retrieval uses embedding similarity (likely schema/question embedding) to find examples close to the test query. Hard negatives are examples that score high in similarity but have low task accuracy — the assumption is that queries retrieving structurally similar but wrong SQL are the most instructive contrasts. The exact negative mining strategy is a key implementation detail the paper likely ablates.",
+      "Yes, the base LLM weights remain frozen; the system is purely prompt-based with retrieved context. Distribution shift is partially handled by the diversity of MCTS-generated memory, but if the test domain has schema patterns unseen in memory, retrieval degrades and the contrastive signal weakens — the method relies on coverage of the experience memory being sufficient.",
+      "CoRE is positioned as complementary to fine-tuning rather than competitive; it targets scenarios where retraining is infeasible. On execution accuracy benchmarks like Spider, fine-tuned models typically outperform prompt-based methods, but CoRE narrows the gap without gradient updates. The trade-off is MCTS memory construction cost upfront versus per-query inference cost staying low.",
+      "When negatives are too dissimilar, they add noise rather than useful contrast, potentially confusing the model with irrelevant error patterns. The paper likely shows diminishing returns or degradation when negative quality is poor. An ideal ablation would compare: no negatives (positive-only RAG), random negatives, and hard negatives — confirming that the hardness of the negative is load-bearing for the gains."
+    ],
+    "generated_at": "2026-03-22T01:21:03Z"
+  }
+}
