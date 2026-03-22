@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MOSR is an online multi-objective ranking algorithm for email platforms that dynamically balances relevance, recency, and brevity to match shifting user preferences over time. It uses an adaptive control model evaluated on the Enron Email Dataset, outperforming baselines especially under non-stationary preference conditions.",
+    "key_idea": "An adaptive control mechanism continuously reweights multiple ranking objectives (closeness, timeliness, conciseness) in response to detected changes in user preference distributions, maintaining stable personalized rankings without retraining.",
+    "why_it_matters": "Real-world recommendation systems must handle concept drift in user preferences without expensive retraining; MOSR provides a lightweight online approach that stays performant as preferences shift, directly applicable to any multi-criteria ranking pipeline.",
+    "possible_use_cases": [
+      "Personalized email triage and prioritization in enterprise or consumer mail clients",
+      "Multi-objective feed ranking in social or news platforms where recency and relevance must be balanced dynamically",
+      "Adaptive document retrieval systems that need to reweight ranking signals as user context or goals change over a session"
+    ],
+    "generated_at": "2026-03-22T01:04:02Z"
+  },
+  "deep": {
+    "method_breakdown": "MOSR frames email ranking as a multi-objective optimization problem balancing three criteria: closeness (sender/topic relevance), timeliness (recency), and conciseness (brevity). It employs an adaptive control model that dynamically reweights these objectives in an online fashion, adjusting to detected shifts in user preferences over time. The algorithm maintains stationarity assumptions locally while globally tracking non-stationary preference drift through its control mechanism.",
+    "key_innovation": "The primary novelty is the adaptive control model that treats preference drift as a control problem rather than a static or sliding-window reweighting scheme. Unlike prior multi-objective recommenders that use fixed or manually-tuned weights, MOSR automatically detects and responds to preference shifts without requiring explicit user feedback signals, enabling truly online adaptation.",
+    "technical_insight": "The most important design choice is the 'stationary algorithmic balancing' — maintaining a locally stationary model while using the control layer to absorb non-stationarity. This works because it decouples the ranking signal estimation (where stationarity aids sample efficiency) from preference adaptation (where flexibility is required), avoiding the bias-variance tradeoff that plagues purely adaptive or purely static approaches.",
+    "limitations": "The method is evaluated only on the Enron dataset, a corpus with known distributional peculiarities (internal corporate email, specific time period), limiting generalizability to modern email platforms. The three chosen criteria (closeness, timeliness, conciseness) are hand-engineered and may miss critical user-preference dimensions. The control model's convergence behavior under rapid or adversarial preference shifts is not thoroughly characterized, and there is no real user study — evaluation relies on proxy metrics rather than actual user satisfaction.",
+    "interview_questions": [
+      "How does MOSR detect that user preferences have shifted, and what signal triggers a reweighting of the three objectives?",
+      "Why were closeness, timeliness, and conciseness chosen as the three objectives, and how sensitive is performance to this particular decomposition?",
+      "How does the adaptive control model differ mechanistically from simpler approaches like exponential moving average reweighting or multi-armed bandit methods?",
+      "The paper claims robustness on a down-sampled high-variance dataset — what specific properties of that dataset test robustness, and what metrics support the claim?",
+      "What are the computational complexity and latency characteristics of MOSR at inference time, and how would it scale to a production email system with millions of users?"
+    ],
+    "interview_answers": [
+      "MOSR's control model monitors aggregate scoring statistics across the three objectives and uses discrepancies from expected stationary behavior as a drift signal. When the observed distribution of scores deviates beyond a threshold from the stationary baseline, the control layer adjusts the objective weights — effectively treating preference shift as a disturbance to be corrected rather than a parameter to be re-estimated from scratch.",
+      "The three objectives were chosen to capture the dominant axes of email utility identified in prior email management literature: relevance (closeness), urgency (timeliness), and cognitive load (conciseness). Performance is likely sensitive to this decomposition — emails requiring action or containing attachments, for instance, may need additional criteria. The paper does not perform ablations over alternative objective sets.",
+      "Unlike EMA reweighting which smoothly interpolates weights based on recency, or bandits which require explicit reward signals, MOSR's control model uses a feedback loop that compares current multi-objective scores against a stationary reference model. This allows it to distinguish genuine preference drift from noise and respond proportionally, whereas EMA conflates the two and bandits require observable rewards per decision.",
+      "The down-sampled dataset was constructed to have high variance in email frequency, sender distribution, and content length — stressing the algorithm's ability to produce consistent rankings when input statistics fluctuate. Robustness is measured via ranking stability metrics (e.g., rank correlation across samples), showing MOSR degrades less than baselines, though the absolute sample sizes and variance magnitudes are not fully detailed.",
+      "The paper does not explicitly analyze computational complexity. Inference requires computing three feature scores per email and a weighted combination, which is O(n) in inbox size — tractable at scale. However, the control model's overhead depends on how frequently preference drift detection runs and whether it requires batch statistics, which could introduce latency in streaming settings. Scaling to millions of users with personalized control models would require distributed parameter storage not addressed in the paper."
+    ],
+    "generated_at": "2026-03-22T01:04:29Z"
+  }
+}
