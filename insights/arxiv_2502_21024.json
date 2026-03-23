@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "TempRetriever is a lightweight framework that improves dense passage retrieval for time-sensitive queries by fusing semantic embeddings with temporal representations using four learned fusion strategies. It achieves significant gains over standard DPR and state-of-the-art temporal retrieval systems on historical QA benchmarks spanning 1800–2022.",
+    "key_idea": "Combine standard dense retrieval embeddings with a learned temporal encoder via fusion strategies (feature stacking, vector summation, relative embeddings, element-wise interaction) and time-based negative sampling to explicitly align query and document temporality.",
+    "why_it_matters": "Most retrieval systems ignore when documents or facts are temporally relevant, causing failures on time-sensitive questions; TempRetriever is modular and plugs into existing retrievers without architectural overhauls, making temporal-aware retrieval practical for production RAG pipelines.",
+    "possible_use_cases": [
+      "Retrieval-augmented generation (RAG) systems answering time-sensitive questions (e.g., 'Who was president in 1942?')",
+      "Archival and historical document search engines requiring temporal grounding",
+      "News and journalism tools that need to surface documents from specific time periods"
+    ],
+    "generated_at": "2026-03-23T01:58:12Z"
+  },
+  "deep": {
+    "method_breakdown": "TempRetriever augments standard dense retrievers (e.g., DPR) by learning a temporal encoder that maps timestamps to temporal representations, then fusing these with semantic embeddings via four strategies: Feature Stacking (concatenation), Vector Summation, Relative Embeddings (encoding time difference between query and document), and Element-Wise Interaction (Hadamard product). Training uses time-based negative sampling, where negatives are drawn from documents temporally misaligned with the query, forcing the model to distinguish temporal relevance explicitly. At inference, the fused representation scores passages by joint semantic and temporal alignment.",
+    "key_innovation": "The modular fusion framework that wraps any existing dense retriever without architectural changes or re-pretraining — prior work like BiTimeBERT and TS-Retriever baked temporal awareness into pretraining or model architecture, making them hard to combine or swap. TempRetriever is plug-in compatible, and empirically improves BiTimeBERT and TS-Retriever when used on top of them, demonstrating composability rather than replacement.",
+    "technical_insight": "Time-based negative sampling is the most critical design choice: by constructing training negatives from documents that are semantically similar but temporally wrong, the model is forced to learn temporal discriminability rather than relying on semantic signal alone. Without this, temporal embeddings could be ignored or marginalized during training since standard negatives do not create gradient signal for temporal alignment.",
+    "limitations": "The method assumes queries and documents carry explicit or inferable timestamps, which is unrealistic for many real-world corpora where temporal metadata is absent or noisy. Performance on NobelPrize is not highlighted as a strong gain, suggesting the approach may struggle when temporal signals are sparse or when events cluster densely in time. The learned temporal encoder is evaluated on historical/archival domains (1800–2022) but generalization to future-leaning or rapidly evolving corpora (e.g., news streams) is untested. Additionally, the four fusion strategies are ablated but the paper does not deeply explain why one works better than another in specific regimes.",
+    "interview_questions": [
+      "How does TempRetriever handle queries or documents where an explicit timestamp is unavailable or ambiguous?",
+      "Among the four fusion strategies, which performed best empirically and what intuition explains why Element-Wise Interaction or Relative Embeddings might outperform simple concatenation?",
+      "How is the temporal encoder designed — is it a learned lookup, sinusoidal encoding, or something else — and how sensitive is performance to its architecture?",
+      "Why does TempRetriever improve BiTimeBERT and TS-Retriever when stacked on top, and does this suggest the fusion layer is learning something orthogonal to what those models already encode?",
+      "What is the time-based negative sampling strategy precisely — are negatives sampled uniformly outside a time window, or is there a curriculum or distance-weighted scheme?"
+    ],
+    "interview_answers": [
+      "The paper does not fully address this; it evaluates on datasets with explicit publication dates. In practice, one would need a date extraction or estimation module upstream, which is a real deployment gap for open-domain corpora.",
+      "The paper shows Relative Embeddings and Element-Wise Interaction tend to outperform simpler strategies; intuitively, Relative Embeddings capture the temporal gap between query and document (directional signal) while Element-Wise Interaction allows the model to gate semantic dimensions by their temporal relevance, which is more expressive than additive or concatenative fusion.",
+      "The temporal encoder is a learned projection mapping timestamp scalars (or normalized year values) into a dense vector space, likely a small MLP or embedding table over discretized time bins. The paper does not report extensive ablations on encoder depth, so sensitivity is unclear.",
+      "Yes — BiTimeBERT and TS-Retriever encode temporal information differently (via pretraining objectives), so TempRetriever's fusion layer likely adds orthogonal signal: explicit query-document temporal distance that those models do not directly optimize for at retrieval time.",
+      "Negatives are sampled from documents whose timestamps fall outside a defined temporal window around the query's target time, pushing the model to treat temporal proximity as a hard constraint. Whether sampling is uniform or distance-weighted within that out-of-window region is not clearly specified in the abstract."
+    ],
+    "generated_at": "2026-03-23T01:58:37Z"
+  }
+}

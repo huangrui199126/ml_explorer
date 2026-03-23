@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper systematically investigates how model size, training data scale, and inference-time compute affect generative retrieval systems that use LLMs to directly generate target documents from queries. The authors introduce a new evaluation metric based on contrastive entropy and generation loss to enable consistent comparisons across methods.",
+    "key_idea": "Generative retrieval follows predictable scaling laws where n-gram-based methods benefit consistently from larger models, more training data, and increased inference compute, with decoder-only LLMs (LLaMA) outperforming encoder-decoder models (T5).",
+    "why_it_matters": "Practitioners can make principled resource allocation decisions for retrieval systems — knowing that scaling model size, data, and inference compute all reliably improve performance removes guesswork when designing or budgeting generative retrieval pipelines.",
+    "possible_use_cases": [
+      "Designing scalable document retrieval backends for RAG systems by choosing the right model size vs. inference compute tradeoff",
+      "Replacing traditional BM25/dense retrieval in search engines with generative retrieval tuned to available compute budgets",
+      "Building knowledge-intensive QA systems where direct document ID generation replaces approximate nearest-neighbor search"
+    ],
+    "generated_at": "2026-03-23T01:59:31Z"
+  },
+  "deep": {
+    "method_breakdown": "Generative retrieval reformulates document retrieval as an autoregressive sequence generation task, where LLMs directly generate document identifiers (typically n-gram-based) given a query, rather than computing similarity scores over embeddings. The paper systematically studies how model size, training data scale, and inference-time compute (e.g., beam search width) jointly affect retrieval performance. A novel evaluation metric based on contrastive entropy and generation loss provides a continuous signal to compare methods across configurations without relying solely on discrete recall metrics.",
+    "key_innovation": "The primary novelty is a comprehensive empirical characterization of scaling laws specific to generative retrieval — a gap since prior scaling law work focused on language modeling or discriminative retrieval. The proposed contrastive entropy-based metric is also new: it offers a smooth, differentiable-friendly proxy for retrieval quality that enables fairer cross-method comparison. The finding that decoder-only LLaMA models consistently outperform encoder-decoder T5 models at generative retrieval challenges the assumption that encoder-decoder architectures are preferred for this task.",
+    "technical_insight": "The most important design choice is using n-gram-based document identifiers rather than learned atomic IDs, because n-grams align naturally with the pretraining distribution of LLMs, allowing scaling benefits from larger models and more data to transfer effectively. Learned or random IDs lack this alignment, which is why n-gram methods exhibit clean power-law scaling behavior while other identifier schemes do not benefit as predictably from scale.",
+    "limitations": "The study focuses primarily on n-gram-based identifiers, so conclusions about scaling may not generalize to semantic or hierarchical ID schemes. Experiments are bounded by available compute and corpus size, leaving open whether the observed scaling laws hold at frontier model scales (e.g., 70B+). The proposed metric, while continuous, is a proxy and may not perfectly correlate with downstream task utility. The work also does not address dynamic corpora where documents are added or removed, a practical limitation of generative retrieval broadly.",
+    "interview_questions": [
+      "Why do n-gram-based identifiers exhibit cleaner scaling laws compared to other document identifier schemes in generative retrieval?",
+      "What does the contrastive entropy metric measure, and why is it more informative than standard Recall@K for studying scaling?",
+      "Why do decoder-only models like LLaMA outperform encoder-decoder models like T5 on generative retrieval tasks?",
+      "How do training data scale and inference-time compute interact — are they substitutable or complementary in improving retrieval performance?",
+      "What are the practical implications of these scaling laws for deploying generative retrieval in real-world systems with limited compute budgets?"
+    ],
+    "interview_answers": [
+      "N-gram identifiers are substrings drawn directly from document text, so they overlap heavily with sequences the LLM encountered during pretraining. This means the model already has strong priors for generating them, and additional training or model capacity can be efficiently directed toward learning query-to-document mappings rather than memorizing arbitrary token sequences. Learned or random IDs lack this prior, so scaling yields diminishing or noisy returns.",
+      "Contrastive entropy measures how confidently and distinctively the model assigns probability mass to the correct document identifier relative to competing identifiers. Unlike Recall@K, which is binary and discrete, it provides a graded signal that varies smoothly with model quality, making it sensitive enough to detect differences across model sizes and data scales that Recall@K would flatten into identical values.",
+      "Decoder-only models are pretrained on massive next-token prediction objectives that directly train the autoregressive generation capability needed for generative retrieval. Encoder-decoder models split capacity between encoding and decoding, and their decoders are typically smaller and less pretrained on pure generation. As model scale increases, decoder-only architectures can leverage their full parameter count on the generation objective, compounding the advantage.",
+      "The paper finds these factors are complementary rather than substitutable. More training data improves the model's coverage of the document space, while larger inference-time compute (wider beam search) improves the likelihood of finding the correct identifier given what the model has learned. Neither fully compensates for deficits in the other: a data-rich but inference-constrained system and a compute-rich but data-poor system both underperform relative to balancing both.",
+      "The scaling laws provide practitioners with principled guidance: for a fixed compute budget, smaller models with wider beam search can rival larger models with greedy decoding, enabling cost-effective deployment. The laws also suggest that generative retrieval will continue improving with scale, justifying investment in larger corpora and models. However, the n-gram constraint means corpus indexing must be revisited when documents change, so these systems are best suited to relatively static corpora."
+    ],
+    "generated_at": "2026-03-23T02:00:00Z"
+  }
+}

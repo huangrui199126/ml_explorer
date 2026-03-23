@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "InstructRAG enhances LLM-based task planning by combining retrieval-augmented generation with a graph of past instruction paths, using two specialized agents: an RL-Agent to expand graph coverage and an ML-Agent for meta-learning to generalize to new tasks. The system achieves up to 19.2% improvement over existing approaches on four task planning benchmarks.",
+    "key_idea": "Organizing successful action sequences as a graph and training RL and meta-learning agents end-to-end to retrieve and generalize from these paths addresses the twin challenges of scaling knowledge coverage and transferring to unseen tasks.",
+    "why_it_matters": "Practitioners building LLM agents for complex, multi-step workflows can use this framework to systematically accumulate and reuse successful planning experiences, reducing reliance on the LLM's built-in knowledge and improving robustness on novel tasks.",
+    "possible_use_cases": [
+      "Automated software development agents that learn from past coding task solutions",
+      "Robotic process automation where agents reuse verified action sequences for enterprise workflows",
+      "Customer support orchestration systems that retrieve and adapt successful resolution paths for new support tickets"
+    ],
+    "generated_at": "2026-03-23T02:02:15Z"
+  },
+  "deep": {
+    "method_breakdown": "InstructRAG builds a directed instruction graph where nodes represent states and edges represent correct actions from past planning trajectories, enabling retrieval of relevant instruction paths at inference time. An RL-Agent uses reinforcement learning to explore and expand graph coverage by discovering new valid instruction paths, addressing the enlargability challenge. An ML-Agent uses meta-learning (MAML-style) to learn task-agnostic initializations that enable rapid adaptation to new task distributions, addressing transferability — both agents are trained end-to-end jointly.",
+    "key_innovation": "Prior RAG-for-planning work retrieves static demonstrations without adapting the retrieval corpus or generalizing across task types. InstructRAG is the first to frame the retrieval database itself as a dynamic, learnable structure: the RL-Agent actively grows the graph while the ML-Agent learns to transfer across tasks, combining graph-based structured retrieval with a dual-agent meta-RL framework trained jointly.",
+    "technical_insight": "Organizing retrieved knowledge as an instruction graph (structured paths of correct action sequences) rather than flat document chunks is the critical design choice — it preserves sequential action dependencies and task structure that flat retrieval destroys, allowing the model to retrieve contextually coherent multi-step plans rather than isolated facts, which directly matches the sequential nature of task planning.",
+    "limitations": "The instruction graph grows over time and may become expensive to maintain and query at scale; graph quality depends heavily on the correctness of initial seeded trajectories, so noisy or suboptimal demonstrations can propagate errors. Meta-learning requires diverse task distributions at training time, limiting applicability in narrow or single-task settings. The end-to-end RL+ML training is likely unstable and sample-inefficient, and evaluation is limited to four datasets without real-world open-ended planning benchmarks.",
+    "interview_questions": [
+      "How does InstructRAG construct and update the instruction graph during training, and what defines a node vs an edge?",
+      "What specific reinforcement learning algorithm does the RL-Agent use, and what is the reward signal for expanding the graph?",
+      "How does the ML-Agent perform meta-learning — is it MAML, Prototypical Networks, or something else — and what constitutes a 'task' in the meta-learning setup?",
+      "How are the RL-Agent and ML-Agent trained end-to-end jointly given they have different optimization objectives?",
+      "How does InstructRAG handle retrieval at inference time — what is the query representation and similarity metric used to retrieve paths from the graph?"
+    ],
+    "interview_answers": [
+      "The instruction graph organizes past planning trajectories where nodes likely represent environment states or sub-goals and directed edges represent actions with associated instructions. The graph is seeded from existing correct demonstrations and expanded by the RL-Agent discovering new valid paths during exploration.",
+      "The RL-Agent likely uses a policy gradient method (e.g., PPO or REINFORCE) where the reward signal is task completion success — the agent is rewarded for finding new correct action sequences not already in the graph, incentivizing coverage expansion rather than just exploitation of known paths.",
+      "The ML-Agent uses a meta-learning approach (likely MAML or a variant) where each 'task' corresponds to a distinct planning scenario or domain. The meta-objective is to find an initialization that can quickly adapt to new tasks with few gradient steps, trained across a distribution of task types.",
+      "End-to-end training likely alternates or jointly optimizes both agents through a shared planning performance objective — the RL-Agent's expanded graph improves the retrieval quality for the ML-Agent, while the ML-Agent's generalization provides better base policies for the RL-Agent to explore from, creating a mutually beneficial training loop.",
+      "At inference, the current task context or partial state is encoded as a query (likely using the LLM's embedding), and nearest-neighbor search over instruction path embeddings in the graph retrieves the most relevant action sequences, which are then prepended as context to guide the LLM's next action prediction."
+    ],
+    "generated_at": "2026-03-23T02:02:38Z"
+  }
+}

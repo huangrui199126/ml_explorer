@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DiTASK is a multi-task fine-tuning method for Vision Transformers that preserves pre-trained weight matrix singular vectors while adapting singular values via neural diffeomorphic transformations, enabling both shared and task-specific feature modulations. It achieves state-of-the-art performance on dense prediction benchmarks using 75% fewer parameters than competing methods.",
+    "key_idea": "Instead of low-rank weight updates that force tasks to compete in constrained subspaces, DiTASK applies learnable diffeomorphic (smooth, invertible) transformations only to the singular values of weight matrices, achieving full-rank updates while preserving the geometric structure of pre-trained features.",
+    "why_it_matters": "Practitioners deploying a single vision backbone across multiple tasks (e.g., depth estimation, segmentation, surface normals) can fine-tune far more parameter-efficiently without the inter-task interference that plagues LoRA-style adapters, getting better accuracy at a fraction of the added parameter cost.",
+    "possible_use_cases": [
+      "Multi-task dense prediction on robotics perception systems requiring simultaneous depth, segmentation, and surface normal estimation",
+      "Efficient adaptation of a shared ViT backbone for multiple medical imaging tasks (e.g., lesion segmentation, organ detection, anomaly scoring) under memory constraints",
+      "Multi-task autonomous driving perception where a single model must handle lane detection, object detection, and drivable area segmentation without task interference"
+    ],
+    "generated_at": "2026-03-23T02:03:33Z"
+  },
+  "deep": {
+    "method_breakdown": "DiTASK decomposes pretrained weight matrices via SVD and freezes the singular vectors (U, V) while applying task-specific neural diffeomorphic transformations to the singular values (Σ). These diffeomorphisms are invertible, smooth mappings that modulate singular values without collapsing the rank of the weight matrix. A shared component captures common features across tasks while task-specific heads adapt the singular value spectrum independently, enabling interference-free multi-task learning.",
+    "key_innovation": "Unlike LoRA and its variants that add low-rank perturbations forcing tasks to compete in constrained subspaces, DiTASK operates on the singular value spectrum while preserving singular vectors entirely. This guarantees full-rank updates (no rank collapse) and preserves the geometric structure of pretrained feature spaces, which prior PEFT methods sacrifice. The use of diffeomorphisms — rather than linear or low-rank transforms — ensures the singular value mapping is invertible and topology-preserving.",
+    "technical_insight": "The critical design choice is separating what to preserve (singular vectors encoding the geometric structure of pretrained representations) from what to adapt (singular values encoding feature magnitudes/importance). Since diffeomorphisms are bijective and smooth, the singular value transformations are expressive enough for task-specific adaptation yet cannot degenerate the rank or destroy the representational geometry. This inductive bias directly addresses the interference problem in multi-task learning.",
+    "limitations": "The approach assumes SVD decomposition is meaningful for task adaptation, which may not hold for all layer types or architectures. Diffeomorphic transformations add inference overhead per task head compared to a single LoRA merge. The method has only been validated on dense prediction benchmarks (PASCAL MTL, NYUD) and may not generalize straightforwardly to classification-heavy or NLP multi-task settings. Parameter savings claims (75% reduction) depend on the baseline choice and task count.",
+    "interview_questions": [
+      "Why does preserving singular vectors while adapting singular values prevent inter-task interference, compared to LoRA's additive low-rank updates?",
+      "What properties of diffeomorphisms make them specifically suitable for transforming singular values, and what would break if you used a non-invertible transformation instead?",
+      "How does DiTASK handle the trade-off between shared and task-specific adaptation — what controls how much is shared vs. specialized?",
+      "The paper claims full-rank updates during optimization. Can you walk through why this holds theoretically under diffeomorphic singular value transformations?",
+      "What are the computational costs of DiTASK at inference time when serving N tasks simultaneously, compared to a LoRA-based multi-task baseline?"
+    ],
+    "interview_answers": [
+      "LoRA adds ΔW = AB (low-rank) to W, meaning all tasks share and compete within the same low-dimensional subspace of weight updates — gradients from different tasks interfere directly. DiTASK keeps U and V fixed (the directions/geometry) and applies separate diffeomorphic maps to Σ per task, so each task modulates feature magnitudes independently along the same geometric axes, eliminating subspace competition.",
+      "Diffeomorphisms are smooth, bijective maps with smooth inverses, ensuring the transformed singular values remain positive, ordered, and non-degenerate — preserving matrix rank. A non-invertible map (e.g., a generic MLP) could map multiple singular values to the same output (collapsing rank) or to zero, destroying the representational capacity of the adapted layer.",
+      "DiTASK uses a shared diffeomorphic transformation applied to all tasks plus task-specific residual transformations on the singular values. The balance is implicitly controlled by training: the shared component learns common feature modulations, while task heads specialize on top. The parameter budget split between shared and task-specific networks governs this trade-off explicitly.",
+      "Since the diffeomorphism f: Σ → Σ' is bijective and the singular vectors U, V are unchanged, the adapted weight W' = U·diag(f(σ_i))·V^T has the same rank as W — none of the singular values are zeroed or merged. Full-rank is preserved by construction because f is a bijection on positive reals, so no singular value can collapse to zero unless f maps to zero, which smoothness and invertibility preclude.",
+      "At inference, DiTASK requires running the task-specific diffeomorphic head (a small MLP over singular values) to reconstruct the adapted weight matrix per task, then executing the forward pass. This is more expensive than a merged LoRA (which can be folded into W at zero cost), but the adapted weights could be precomputed and cached per task, reducing inference to standard forward-pass cost at the expense of storing N full weight matrices."
+    ],
+    "generated_at": "2026-03-23T02:04:01Z"
+  }
+}
