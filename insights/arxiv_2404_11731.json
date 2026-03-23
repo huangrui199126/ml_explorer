@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper reframes the routing step in clustering-based approximate nearest neighbor search as a learning-to-rank problem, where the goal is to rank clusters by their likelihood of containing the true top-k results. By learning a simple linear routing function using freely available ground-truth labels, the method consistently improves search accuracy on Maximum Inner Product Search benchmarks.",
+    "key_idea": "Cluster routing in ANN search is inherently a ranking problem, so learning-to-rank techniques with free ground-truth supervision can directly optimize which clusters to probe.",
+    "why_it_matters": "Better cluster routing means higher recall at the same computational budget — practitioners building vector search systems (RAG pipelines, recommendation engines, semantic search) get improved accuracy without changing their index structure or query-time cost.",
+    "possible_use_cases": [
+      "Improving recall in dense retrieval pipelines for RAG systems where embedding indexes use IVF-style clustering (e.g., FAISS IVFFlat)",
+      "Boosting recommendation system quality by more accurately routing MIPS queries over item embedding indexes",
+      "Optimizing semantic search in large-scale document corpora where approximate nearest neighbor accuracy directly impacts relevance"
+    ],
+    "generated_at": "2026-03-23T02:42:03Z"
+  },
+  "deep": {
+    "method_breakdown": "The method reframes the cluster routing step in clustering-based ANN search as a learning-to-rank problem, where the goal is to rank clusters by their likelihood of containing exact top-k nearest neighbors. A simple linear transformation is learned over cluster representations (centroids) so that the routing score better predicts cluster relevance. Ground-truth labels are derived automatically from the query distribution: a cluster is 'relevant' if it contains any of the exact top-k vectors for a given query.",
+    "key_innovation": "Prior work treats routing as a fixed nearest-neighbor lookup over centroids (e.g., inner product with centroid), which is suboptimal because centroids are geometric summaries, not retrieval-optimized representations. This work is the first to cast routing explicitly as a ranking problem and apply learning-to-rank supervision to it, using freely available ground-truth (exact top-k membership per cluster) rather than requiring manual annotation.",
+    "technical_insight": "The critical design choice is learning a linear projection of the query and/or cluster representations before computing routing scores. This is powerful because a linear layer can re-weight dimensions of the embedding space to prioritize directions that predict cluster relevance rather than centroid proximity, and it does so with negligible inference overhead. The linear form also keeps the method interpretable and avoids overfitting with limited supervision.",
+    "limitations": "The approach is evaluated only on MIPS and may not generalize straightforwardly to L2-based ANN without adaptation. The learned routing is only as good as the underlying clustering; if clusters are poorly formed, better routing yields diminishing returns. The method requires a representative query distribution at training time, which may be unavailable or shift at deployment. It also adds an offline training phase and does not address the recall-latency trade-off beyond routing improvements.",
+    "interview_questions": [
+      "Why is centroid-based routing suboptimal, and what does learning-to-rank add?",
+      "How is ground-truth for cluster relevance constructed without manual labeling?",
+      "Why does a linear function suffice — wouldn't a more expressive model do better?",
+      "How does this interact with the number of clusters probed (nprobe) at query time?",
+      "What are the failure modes if the query distribution at training time differs from production?"
+    ],
+    "interview_answers": [
+      "Centroid routing computes the inner product between a query and each cluster centroid, treating the centroid as a proxy for all vectors in the cluster. This is suboptimal because the centroid minimizes average distance but does not necessarily maximize the probability that the top-k vectors lie within the cluster. Learning-to-rank directly optimizes a ranking objective over clusters, teaching the scoring function to surface clusters that actually contain top-k neighbors rather than those geometrically closest to the query.",
+      "Given a query and the dataset, one can compute the exact top-k nearest neighbors exhaustively (offline). The clusters containing those exact top-k vectors are labeled as relevant for that query. This supervision is freely available as long as you can afford exact search offline — which is a one-time indexing cost — and requires no human annotation.",
+      "A linear model is sufficient because the base embeddings (query and centroid) are already semantically rich; the routing error is largely due to a mismatch in which dimensions are emphasized for proximity vs. relevance prediction. A linear projection can correct this mismatch. More expressive models risk overfitting to the query distribution and add inference latency that undermines the ANN speed advantage.",
+      "The learned routing directly determines which clusters are probed, so it improves recall at a fixed nprobe budget. Equivalently, for a target recall level, the method can achieve it with fewer clusters probed, reducing latency. The improvement is orthogonal to nprobe scaling — you still get gains whether probing few or many clusters, but gains are most pronounced in the low-nprobe (high-speed) regime where routing errors are most costly.",
+      "If the training query distribution does not match production queries, the learned projection may be tuned to irrelevant dimensions, degrading routing quality below even the baseline centroid method in the worst case. This is a standard covariate shift problem. Mitigations include periodic retraining, using a diverse query sample, or regularizing the linear model heavily to stay close to the identity transformation."
+    ],
+    "generated_at": "2026-03-23T02:42:31Z"
+  }
+}

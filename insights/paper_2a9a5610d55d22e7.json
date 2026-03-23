@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HDNR proposes a news recommendation system that uses hyperbolic space instead of Euclidean space to better represent power-law distributed user-news interaction data, while also addressing conformity bias through a re-weighting aggregation module. Experiments on MIND-Large and MIND-Small datasets show improved recommendation quality.",
+    "key_idea": "Embedding user and news representations in hyperbolic (hyperboloid) space naturally accommodates the hierarchical, power-law structure of news interaction data with exponentially less distortion than Euclidean embeddings.",
+    "why_it_matters": "Most recommendation systems suffer from popularity bias and representation distortion when user-item interactions follow a long-tail distribution; hyperbolic embeddings offer a principled geometric solution that can improve personalization quality without simply amplifying popular content.",
+    "possible_use_cases": [
+      "Personalized news feed ranking in media platforms like Google News or Apple News",
+      "Debiased content recommendation for long-tail items in e-commerce or streaming services",
+      "Hierarchical knowledge graph embedding where entities follow power-law connectivity patterns"
+    ],
+    "generated_at": "2026-03-23T02:32:34Z"
+  },
+  "deep": {
+    "method_breakdown": "HDNR maps user and news representations into hyperbolic space using the hyperboloid model, which has exponential growth capacity matching the power-law distribution of user-news interaction data. A re-weighting aggregation module computes relevance scores by combining local importance of each clicked news item within a user's history context with global popularity signals to downweight conformity-biased interactions. Final recommendation scores are computed as hyperbolic distances or inner products between user and candidate news representations.",
+    "key_innovation": "The combination of hyperbolic geometry for news recommendation with an explicit conformity bias mitigation module is novel. Prior work (NRMS, NAML, etc.) uses Euclidean embeddings that distort hierarchical/power-law structured data; HDNR is among the first to apply hyperboloid models specifically to news recommendation while simultaneously addressing the root cause of power-law distribution (conformity bias) through a dual local-global re-weighting scheme.",
+    "technical_insight": "Using the hyperboloid model (rather than Poincaré ball or other hyperbolic representations) is the critical design choice — it provides numerically stable operations and naturally encodes hierarchical relationships with exponential capacity growth, meaning exponentially more points can be embedded at increasing distances from the origin. This directly addresses the distortion problem where popular news items dominate Euclidean embedding space and collapse representations of tail items.",
+    "limitations": "The hyperboloid model introduces non-trivial computational overhead (Riemannian gradient updates, exponential/logarithmic maps) making training slower and harder to scale. The re-weighting module relies on global popularity statistics that may be stale or require full dataset statistics, limiting online/streaming applicability. Evaluation is limited to MIND datasets which are English-language and may not generalize to other languages or news domains. The conformity bias correction assumes popularity correlates with bias, which may not hold when popular articles are genuinely relevant.",
+    "interview_questions": [
+      "Why does hyperbolic space better accommodate power-law distributed data compared to Euclidean space?",
+      "How does the re-weighting aggregation module distinguish between a genuinely relevant popular article and one clicked due to conformity bias?",
+      "What specific operations differ when computing gradients in the hyperboloid model versus standard Euclidean neural networks?",
+      "How would you handle the cold-start problem for new users or news items in this hyperbolic framework?",
+      "What are the trade-offs between using the hyperboloid model versus the Poincaré ball model for this task?"
+    ],
+    "interview_answers": [
+      "Hyperbolic space has exponential volume growth with respect to radius, meaning the number of embeddable points grows exponentially with distance from the origin — mirroring how power-law graphs have exponentially more nodes at lower degree levels. Euclidean space only grows polynomially, forcing high-degree nodes to crowd the embedding space and distort low-degree node representations.",
+      "The module computes a local importance score based on attention over the user's clicked history context (capturing personal relevance) and a global popularity score inversely weighting highly popular items. Items with high global popularity but low personal contextual relevance receive reduced weight, operationalizing the hypothesis that high-popularity clicks are more likely conformity-driven rather than preference-driven.",
+      "Operations must respect the Riemannian manifold structure: standard gradients are projected onto the tangent space at the current point using the Riemannian gradient, and parameter updates use the exponential map to move along the manifold rather than straight-line Euclidean steps. Aggregation operations like weighted sums require mapping to tangent space (log map), computing in Euclidean tangent space, then mapping back (exp map).",
+      "Cold-start for new users could leverage content-based initialization by encoding news article embeddings via the pre-trained text encoder and initializing user representations at the hyperbolic origin (representing maximum uncertainty/generality). For new news items, the text encoder alone provides an embedding without interaction history. However, the re-weighting module would be unreliable without history, defaulting to uniform attention weights.",
+      "The Poincaré ball is bounded (unit disk/ball) and intuitive but suffers numerical instability near the boundary where distances blow up. The hyperboloid model (embedded in Minkowski space) avoids boundary effects and offers more stable gradient computations. However, the hyperboloid requires working in one higher dimension and the Minkowski inner product is less intuitive. For large-scale recommendation, the hyperboloid's numerical stability typically outweighs the extra dimensionality cost."
+    ],
+    "generated_at": "2026-03-23T02:33:01Z"
+  }
+}
