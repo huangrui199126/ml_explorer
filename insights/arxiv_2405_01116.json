@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper reframes in-context learning (ICL) as an information retrieval problem, arguing that selecting few-shot examples for LLM prompts is analogous to document retrieval for a query. It proposes using supervised neural rankers (bi-encoders, cross-encoders) trained with a task-specific relevance signal to optimally select few-shot examples.",
+    "key_idea": "Few-shot example selection for ICL can be treated as a supervised ranking problem where 'relevance' is defined by whether including an example in the prompt leads to a correct prediction.",
+    "why_it_matters": "Practitioners can directly leverage mature IR techniques and neural ranking models to improve LLM performance on downstream tasks without any fine-tuning, making ICL more reliable and effective across diverse NLP tasks.",
+    "possible_use_cases": [
+      "Using bi-encoder retrievers to dynamically select the most task-relevant few-shot examples at inference time for classification or generation tasks",
+      "Training cross-encoder rerankers with task-specific feedback signals to improve example selection for low-resource NLP tasks",
+      "Applying learned dense retrieval models to curate prompt libraries for enterprise LLM deployments where consistent output quality is critical"
+    ],
+    "generated_at": "2026-03-23T18:24:18Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper reframes in-context learning (ICL) as an information retrieval problem, where a test instance is treated as a query and few-shot examples are treated as retrieved documents. Instead of using unsupervised ranking (e.g., BM25, dense retrieval by embedding similarity) to select few-shot examples, the paper proposes training supervised neural rankers (bi-encoders or cross-encoders) with a task-specific relevance signal: an example is 'relevant' if its inclusion in the prompt leads to a correct prediction. This allows the retrieval component to be optimized end-to-end for downstream task performance rather than surface-level similarity.",
+    "key_innovation": "The core novelty is redefining 'relevance' in the retrieval step from semantic/embedding similarity to task-utility — i.e., whether a retrieved example actually improves the LLM's prediction. This bridges the IR and ICL communities by framing example selection as a supervised ranking problem with a novel relevance label derived from downstream task correctness, enabling application of the full neural ranking toolkit (bi-encoders, cross-encoders, learning-to-rank) to ICL example selection.",
+    "technical_insight": "The most critical design choice is the use of a task-specific relevance signal to supervise the retriever, rather than relying on input-space similarity. This works because semantically similar examples are not always the most informative for a given prediction — a model may need examples that cover decision boundaries relevant to the test instance rather than just surface-similar ones, analogous to how relevance feedback in IR improves over pure query-document similarity.",
+    "limitations": "The approach requires constructing labeled training data for the ranker, which itself depends on running the LLM to assess whether each candidate example leads to correct predictions — making data collection expensive and LLM-dependent. The method assumes a fixed LLM backbone, so the trained ranker may not generalize across different LLMs or prompt formats. Cross-encoder approaches are also computationally expensive at inference time when the candidate pool is large. The paper is largely a position/perspective piece without extensive empirical validation of the proposed framework.",
+    "interview_questions": [
+      "How does reframing ICL as IR change the way you would construct training data for the example selector?",
+      "What are the trade-offs between using a bi-encoder versus a cross-encoder for few-shot example retrieval in ICL?",
+      "Why might semantically similar examples not always be the best few-shot examples, and what does that imply for the retrieval objective?",
+      "How would you handle distribution shift between the training set used to train the ranker and the actual test queries at inference time?",
+      "What metrics would you use to evaluate the quality of a few-shot example retriever, and how do they relate to downstream task performance?"
+    ],
+    "interview_answers": [
+      "Training data is constructed by treating each training instance as a query, retrieving candidate examples from the remaining training set, prompting the LLM with each candidate, and assigning a binary or graded relevance label based on whether the prediction was correct. This creates a ranking dataset where the supervision signal comes from LLM outputs rather than human annotations.",
+      "Bi-encoders encode the query and candidates independently, enabling efficient pre-computation of example embeddings and fast nearest-neighbor retrieval at scale, but they miss fine-grained query-example interactions. Cross-encoders attend jointly over query-example pairs, capturing richer interactions and typically yielding higher ranking quality, but require scoring each candidate at inference time, making them impractical for large candidate pools without a prior retrieval stage.",
+      "Semantic similarity captures surface-level lexical or embedding proximity, but task-relevant examples are those that help the model learn the correct input-output mapping for the specific test instance — they may need to cover the relevant decision boundary, demonstrate edge cases, or provide contrastive evidence. This implies the retrieval objective should be defined over task performance, not input-space geometry.",
+      "Distribution shift is a significant risk: rankers trained on task-specific relevance labels from one data distribution may learn spurious correlations that don't transfer. Mitigations include domain-adaptive pre-training of the ranker, using diverse training sets, applying the ranker only as a re-ranker on top of a robust first-stage retriever, or periodically updating relevance labels using the deployed LLM on incoming queries.",
+      "Primary metrics should reflect downstream task performance — accuracy, F1, or ROUGE on the end task — averaged over different test queries and example selections. Secondary metrics can include ranking-level measures like NDCG or MRR using task-utility relevance labels. The key challenge is that these metrics are LLM-coupled, meaning evaluation results may not transfer if the underlying LLM changes."
+    ],
+    "generated_at": "2026-03-23T18:24:46Z"
+  }
+}

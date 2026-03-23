@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "KD-GAFIM is a lightweight CTR prediction model that combines graph attention networks with knowledge distillation to capture feature dependencies while keeping model size small enough for edge deployment. It also introduces a model-interpretability-guided feature compression strategy to further reduce inference cost on resource-constrained devices.",
+    "key_idea": "Use a graph attention network to encode feature interactions into compact embeddings, then distill this into a small student model via shared embedding layers, so edge devices get rich feature representations without full model complexity.",
+    "why_it_matters": "Deploying CTR models on edge devices enables low-latency, privacy-preserving recommendations on IoT and mobile hardware without relying on cloud round-trips, which is increasingly important as edge AI adoption grows.",
+    "possible_use_cases": [
+      "On-device ad ranking on mobile phones where latency and battery constraints prohibit cloud inference",
+      "Edge-side personalized recommendations on smart retail or IoT devices with limited compute",
+      "Privacy-sensitive CTR prediction where user behavioral data must stay on-device rather than being sent to a central server"
+    ],
+    "generated_at": "2026-03-23T18:25:39Z"
+  },
+  "deep": {
+    "method_breakdown": "KD-GAFIM uses a graph attention network (GAT) to capture pairwise feature interaction dependencies, augmenting sparse feature embeddings with relational context while keeping the student model compact. A teacher-student knowledge distillation framework is employed where the student shares the teacher's embedding layer, transferring soft label knowledge to improve generalization without full model complexity. Additionally, a model-interpretability-guided feature compression strategy (e.g., using SHAP or attention scores) prunes low-contributing input features before inference, reducing input dimensionality for edge deployment.",
+    "key_innovation": "The combination of shared embedding KD with GAT-based feature interaction learning is the primary novelty — prior KD approaches for CTR typically distill from MLP-based teachers without structured feature interaction modeling. The interpretability-guided feature selection as a compression strategy (rather than learned pruning) is also relatively novel in the CTR-for-edge setting, though feature selection itself is well-studied.",
+    "technical_insight": "Sharing the embedding layer between teacher and student is the critical design choice: embedding tables dominate parameter counts in CTR models due to large categorical vocabularies, so reusing teacher embeddings gives the student high-quality dense representations without the cost of independent embedding training, effectively decoupling representational capacity from model depth and enabling meaningful compression.",
+    "limitations": "Sharing the teacher embedding layer means the student cannot be deployed independently without the full embedding table, which may not actually reduce memory footprint for the largest component of CTR models. The interpretability-guided feature compression relies on post-hoc attribution methods that may be unstable across datasets or distribution shifts. Experiments appear limited to offline benchmark datasets (e.g., Criteo, Avazu) without real edge hardware latency/throughput measurements, making edge deployment claims hard to verify. The GAT component adds graph construction overhead that may hurt real-time latency.",
+    "interview_questions": [
+      "Why does sharing the teacher's embedding layer help the student model, and what is the trade-off in terms of actual model size reduction?",
+      "How does the graph attention network construct the feature interaction graph — is it fully connected, and how are edge weights learned?",
+      "What interpretability method is used to rank feature contributions, and how sensitive is the feature compression to the choice of attribution method?",
+      "How does KD-GAFIM handle the cold-start problem for new features or users not seen during teacher training?",
+      "What are the actual latency and memory benchmarks on edge hardware, and how does the model compare to lightweight baselines like DeepFM or xDeepFM on those metrics?"
+    ],
+    "interview_answers": [
+      "Sharing the teacher embedding provides a warm, semantically rich initialization for the student's feature representations, reducing training time and improving generalization — but since embedding tables are the dominant memory cost in CTR models (often 90%+ of parameters), sharing rather than distilling them means the full embedding table must still reside in memory, limiting true on-device footprint reduction.",
+      "The GAT typically constructs a fully connected field-level interaction graph where each feature field is a node; attention coefficients are learned via a small MLP or dot-product mechanism over concatenated node features, allowing the model to assign higher weight to more informative cross-field interactions while suppressing noisy ones.",
+      "The paper likely uses attention weights or SHAP-style attribution to rank features; the compression is sensitive to distribution shift because feature importance rankings computed on training data may not generalize to production traffic, and threshold selection for pruning requires careful tuning to avoid dropping conditionally important features.",
+      "KD-GAFIM inherits the standard CTR cold-start vulnerability — new features not in the teacher's embedding table require either retraining or fallback to zero/average embeddings, and the GAT cannot model interactions for unseen nodes without recomputing the graph structure.",
+      "The paper demonstrates AUC and Logloss improvements on standard benchmarks, but concrete edge hardware metrics (inference latency on ARM Cortex or mobile NPU, RAM usage) are typically absent in such works; comparisons against truly lightweight models optimized for edge (e.g., MobileRec, quantized DeepFM) would be needed to substantiate edge deployment claims."
+    ],
+    "generated_at": "2026-03-23T18:26:07Z"
+  }
+}
