@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces a new benchmark dataset of 2.7 million arXiv paper abstracts with transformer-based embeddings and 11 real-world attributes, then evaluates 11 filtered approximate nearest neighbor search (FANNS) methods on it across diverse filter conditions and query types.",
+    "key_idea": "Filtered ANN search requires finding embedding-space neighbors that also satisfy attribute constraints, and choosing the right algorithm depends heavily on filter type, selectivity, and dataset scale.",
+    "why_it_matters": "Practitioners building RAG pipelines, recommendation systems, or semantic search with metadata filters need guidance on which FANNS algorithm performs best under real-world conditions — this benchmark provides that evidence on realistic transformer embeddings rather than synthetic data.",
+    "possible_use_cases": [
+      "Selecting the best vector database or ANN index for a RAG system that filters by metadata such as date, category, or author",
+      "Optimizing semantic search in document retrieval systems where results must satisfy attribute constraints",
+      "Benchmarking and comparing vector search backends for recommendation systems that combine embedding similarity with business rule filters"
+    ],
+    "generated_at": "2026-03-23T18:33:48Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper introduces arxiv-for-fanns, a benchmark dataset of transformer-based embedding vectors for 2.7M arXiv paper abstracts enriched with 11 real-world attributes (authors, categories, dates, etc.). It benchmarks eleven FANNS algorithms that retrieve approximate nearest neighbors subject to metadata filter constraints, evaluating them across filter types, query selectivities, dataset scales, and k values. The study synthesizes results into eight empirical observations to guide practitioners in algorithm selection.",
+    "key_innovation": "The core novelty is the dataset itself: prior FANNS benchmarks used synthetic or shallow embeddings, lacking real transformer-based vectors paired with diverse, real-world attribute distributions. arxiv-for-fanns fills this gap by combining state-of-the-art text embeddings with heterogeneous attribute types (categorical, multi-valued, numeric, temporal), enabling realistic evaluation of filter selectivity effects that synthetic benchmarks cannot capture.",
+    "technical_insight": "The most critical design choice is including attributes with a broad spectrum of value distributions and selectivities (e.g., rare authors vs. common categories). FANNS algorithm performance is highly sensitive to filter selectivity — high selectivity filters drastically reduce the candidate pool, making graph-based methods degrade while post-filtering or partition-based methods become relatively more competitive. Capturing this variance requires real-world, not synthetic, attribute distributions.",
+    "limitations": "The dataset is text-only (arXiv abstracts), so findings may not generalize to multimodal embeddings (image, audio, video). The benchmark covers eleven methods but cannot be exhaustive as new FANNS algorithms emerge rapidly. Evaluation is offline and static — dynamic index updates, insertion/deletion under load, and distributed settings are not addressed. The arXiv domain may have attribute distributions unrepresentative of industrial-scale recommendation or RAG workloads.",
+    "interview_questions": [
+      "What is filtered approximate nearest neighbor search and why is it harder than standard ANN?",
+      "How does query selectivity affect the performance of graph-based FANNS methods like HNSW?",
+      "What are the main categories of FANNS algorithms and what are the trade-offs between them?",
+      "Why is it insufficient to benchmark FANNS using synthetic datasets or non-transformer embeddings?",
+      "What practical guidance does the paper offer for choosing a FANNS algorithm in a RAG pipeline?"
+    ],
+    "interview_answers": [
+      "FANNS retrieves the k approximate nearest neighbors in embedding space that also satisfy a boolean predicate on item metadata. It is harder than standard ANN because the filter reduces the valid candidate set unpredictably, forcing the index to balance geometric proximity search with arbitrary attribute constraints simultaneously rather than over the full dataset.",
+      "High selectivity filters (few items match) cause graph-based methods like HNSW to fail because their traversal graph is built over all items — when most neighbors at each hop are filtered out, the traversal degenerates, requiring many more hops or returning inaccurate results. Low selectivity filters (many items match) are closer to the unfiltered case and graph methods handle them well.",
+      "Main categories are: (1) post-filtering — run ANN then filter results, fast index but poor recall at high selectivity; (2) pre-filtering — filter the dataset first then run exact NN on the subset, good recall but expensive at low selectivity; (3) in-filtering (e.g., attribute-aware graph or partition methods) — integrate filter awareness into index construction or traversal, best general-purpose performance but higher build complexity and memory cost.",
+      "Synthetic datasets impose uniform or simple attribute distributions that do not reflect the long-tail distributions, multi-valued attributes, and correlated selectivities found in practice. Non-transformer embeddings (e.g., GloVe) have different geometric properties and clustering structure than modern transformer embeddings, so recall and latency curves measured on them do not predict real-world behavior for RAG or semantic search systems.",
+      "The paper recommends in-filtering methods (e.g., ACORN, NHQ) for general use cases with mixed selectivities. For predominantly high-selectivity queries, pre-filtering with exact search on the filtered subset is competitive. Post-filtering is only viable when filters are very loose. For RAG pipelines specifically, where metadata filters like date ranges or document categories are common and selectivity varies widely, an in-filtering graph-based method with attribute-aware construction provides the best recall-latency trade-off."
+    ],
+    "generated_at": "2026-03-23T18:34:16Z"
+  }
+}

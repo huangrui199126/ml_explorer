@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes using a small, efficient query encoder paired with a large passage encoder for dense retrieval, exploiting the fact that queries are much shorter and simpler than passages. They demonstrate up to 38x latency reduction using an incremental RNN-based query encoder with only minor quality loss on MS MARCO.",
+    "key_idea": "Queries and passages have asymmetric complexity, so using a smaller dedicated query encoder instead of the same large model for both can drastically cut online latency while preserving most retrieval quality.",
+    "why_it_matters": "Query encoding is on the critical path of user-facing search latency; a 12–38x speedup makes high-quality dense retrieval practical for real-time applications without expensive hardware.",
+    "possible_use_cases": [
+      "Low-latency semantic search in production search engines",
+      "Real-time question answering systems with strict SLA requirements",
+      "On-device or edge deployment where compute is constrained"
+    ],
+    "generated_at": "2026-03-23T18:40:30Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper decouples the query and passage encoders in dense retrieval, replacing the standard large transformer query encoder with either a small transformer or an efficient RNN. The small transformer reduces query encoding latency by ~12x with minimal quality loss, while the RNN processes query tokens incrementally as they are typed, only needing to encode the final token at query-issue time, achieving ~38x latency reduction.",
+    "key_innovation": "Prior dense retrieval systems (e.g., DPR, ANCE) use identical architectures for both query and passage encoding despite queries being far shorter and simpler. This work is the first to systematically exploit the asymmetry between query and passage complexity by training a lightweight query-specific encoder distilled from the large passage encoder, and introducing an incremental RNN encoder that amortizes query encoding cost across keystroke time.",
+    "technical_insight": "The most important design choice is the incremental RNN encoder: since users type queries character-by-character, the RNN can process each prefix token as it arrives, deferring only the final token's inference to query-issue time. This effectively hides the bulk of encoding latency behind user think/type time, making the perceived latency near-zero for all but the last token — a classic latency-hiding trick applied to retrieval.",
+    "limitations": "Quality degrades measurably (38.2 → 35.5 MRR@10 for the RNN variant), which may be unacceptable for high-precision applications. The RNN approach assumes streaming/incremental input availability, which may not hold in all deployment scenarios (e.g., voice queries or copy-paste). The approach is evaluated only on MS MARCO and may not generalize to domain-specific or multilingual retrieval. Additionally, the distillation training pipeline adds complexity and requires the large passage encoder to remain fixed.",
+    "interview_questions": [
+      "Why is query encoding latency more critical than passage encoding latency in dense retrieval systems?",
+      "How does the incremental RNN encoder hide encoding latency, and what assumptions does this require about the query input pipeline?",
+      "What training objective is used to distill the large encoder's query representations into the small encoder?",
+      "What are the trade-offs between the small transformer and RNN query encoder variants in terms of latency vs. quality?",
+      "How would you extend this approach to handle multi-vector dense retrieval models like ColBERT?"
+    ],
+    "interview_answers": [
+      "Passage encoding is done offline and results are indexed; query encoding happens at inference time on the critical path of each user request, directly adding to response latency. Even a 50ms overhead per query is significant at scale.",
+      "The RNN processes tokens left-to-right incrementally, so it can encode tokens t1...t_{n-1} while the user is still typing. When the user submits the query, only the final token t_n needs to be processed, reducing online latency to roughly a single-step RNN forward pass. This requires that queries arrive as token streams, not as a single batch.",
+      "The small encoder is trained via knowledge distillation — minimizing the distance (e.g., MSE or cosine loss) between the small encoder's query embeddings and those produced by the large encoder, optionally combined with the retrieval ranking loss on labeled data.",
+      "The small transformer achieves ~12x latency reduction with MRR@10 dropping 2 points (38.2→36.2), offering a better quality/latency trade-off for moderate latency budgets. The RNN achieves ~38x reduction but drops 2.7 points (38.2→35.5), suitable when extreme latency constraints dominate quality requirements.",
+      "ColBERT produces multiple token-level query vectors; an incremental RNN could still be applied by outputting a sequence of hidden states (one per token) instead of a single CLS vector, though aligning multi-vector representations via distillation would require matching all token embeddings, increasing distillation complexity."
+    ],
+    "generated_at": "2026-03-23T18:40:54Z"
+  }
+}

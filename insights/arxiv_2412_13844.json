@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CRM enhances two-tower retrieval models by incorporating regression targets (e.g., watch-time) as conditional features, bridging the gap between retrieval and ranking stages in recommendation systems. It was validated via A/B testing and deployed at Kuaishou serving 400M+ users.",
+    "key_idea": "Inject regression-based signals as conditional features into the two-tower retrieval paradigm so the retrieval stage can optimize beyond simple classification targets like CTR.",
+    "why_it_matters": "Industrial retrieval models are typically blind to regression targets, causing a quality gap versus ranking models; CRM closes this gap without sacrificing retrieval-stage latency constraints, directly improving candidate quality at scale.",
+    "possible_use_cases": [
+      "Short-video recommendation where watch-time is a key engagement signal beyond click-through rate",
+      "E-commerce retrieval that needs to balance click probability with predicted purchase value or dwell time",
+      "Content platforms optimizing retrieval for composite goals like session length or satisfaction scores alongside relevance"
+    ],
+    "generated_at": "2026-03-23T18:35:09Z"
+  },
+  "deep": {
+    "method_breakdown": "CRM extends the standard two-tower retrieval model by incorporating regression targets (e.g., expected watch-time) as conditional features into the user tower at training and inference time. During training, ground-truth regression values are used as conditions; during inference, target condition values (e.g., desired watch-time threshold) are injected, allowing the retrieval stage to search for candidates that satisfy both interest alignment and business-defined regression constraints. The user embedding is thus conditioned on these regression signals, steering the nearest-neighbor search toward items matching the specified conditions.",
+    "key_innovation": "Prior retrieval models in two-tower architectures are limited to classification targets (CTR) because regression targets depend on item-side features unavailable at retrieval inference time. CRM's innovation is treating regression targets as controllable input conditions rather than output predictions, decoupling the regression signal from item-side dependency and injecting it into the user tower — bridging the target gap between retrieval and ranking stages without violating the two-tower inference constraint.",
+    "technical_insight": "The critical design choice is conditioning the user tower on regression targets rather than predicting them, which sidesteps the fundamental bottleneck that regression labels require item features. By treating the desired regression value as a query-side control signal, the dot-product structure of two-tower retrieval is preserved for ANN search while simultaneously enabling multi-objective retrieval — this works because the condition shifts the user embedding in latent space toward item clusters that historically satisfy the regression criterion.",
+    "limitations": "The approach requires specifying condition values at inference time, which demands careful tuning or heuristics to set meaningful regression targets per request — poorly chosen conditions may degrade recall. The model is validated only on short-video watch-time at Kuaishou, so generalizability to other regression targets (revenue, dwell-time) or domains is unproven. Additionally, conditioning solely on the user tower means the model cannot adapt conditions per candidate item, and the paper lacks ablations on sensitivity to condition value choices or out-of-distribution condition inputs.",
+    "interview_questions": [
+      "Why can't standard two-tower retrieval models incorporate regression targets like watch-time, and how does CRM address this?",
+      "How does CRM preserve compatibility with approximate nearest neighbor (ANN) search while adding conditional features?",
+      "What is the 'target gap' between retrieval and ranking, and why does it matter for system performance?",
+      "How would you choose the condition values to inject at inference time in a production deployment?",
+      "What are the risks of conditioning retrieval on regression targets, and how might you mitigate them?"
+    ],
+    "interview_answers": [
+      "Regression targets like watch-time require knowing the item to compute a meaningful label, but in two-tower retrieval the user and item encoders are independent — there is no item information available in the user tower at inference. CRM reframes regression values not as prediction targets but as input conditions to the user tower, so they become query-side features that steer embedding space without needing item features.",
+      "CRM only modifies the user tower by appending the condition as an additional input feature, leaving the item tower unchanged. Since ANN search operates on the dot product of user and item embeddings, and the item embeddings remain static, the index can be precomputed normally. Only the user embedding changes based on the injected condition, so standard FAISS/HNSW indexes remain fully compatible.",
+      "The target gap refers to the fact that ranking models optimize for multiple objectives (CTR, watch-time, etc.) but retrieval models only optimize for CTR-like classification targets, causing the retrieved candidate set to be suboptimal for downstream ranking. Items highly valued by the ranker on regression metrics may never enter the candidate pool, creating a systematic ceiling on overall system quality.",
+      "Condition values can be set as global constants (e.g., median or 75th percentile watch-time from recent logs), personalized per user based on their historical engagement distribution, or tuned via online experiments by sweeping condition values and measuring downstream ranking metrics. In Kuaishou's case, business teams likely define target engagement thresholds aligned with platform goals.",
+      "Key risks include condition miscalibration (setting unrealistic targets narrows retrieval to a poor subspace), reduced diversity if all requests use the same condition (homogenizing the candidate pool), and train-inference skew if ground-truth conditions at training differ from injected values at inference. Mitigations include condition dropout during training for robustness, diversity-aware re-ranking post-retrieval, and continuous monitoring of candidate set statistics."
+    ],
+    "generated_at": "2026-03-23T18:35:39Z"
+  }
+}
