@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Ada-Ranker introduces a training and inference paradigm where a ranking model dynamically adjusts its parameters based on the distribution of the current candidate item set, rather than using fixed frozen parameters for all requests. It extracts distribution patterns from candidate items at inference time to modulate the ranker, effectively turning a global model into a locally-adapted one.",
+    "key_idea": "Instead of a one-size-fits-all frozen model, Ada-Ranker conditions the ranker's parameters on the statistical distribution of each candidate batch, enabling on-the-fly adaptation to varying item compositions (category mix, popularity, novelty).",
+    "why_it_matters": "Real-world recommendation candidate sets vary wildly in composition across users and contexts; a model that adapts to each candidate set's distribution can capture these dynamics without expensive retraining or multiple specialized models.",
+    "possible_use_cases": [
+      "E-commerce ranking where candidate items shift in category distribution across seasonal events or promotions",
+      "News or content recommendation where the freshness/popularity mix of candidates changes throughout the day",
+      "Sequential recommendation systems that need to handle cold-start items or niche categories alongside popular items without degrading on either"
+    ],
+    "generated_at": "2026-03-23T18:10:52Z"
+  },
+  "deep": {
+    "method_breakdown": "Ada-Ranker extracts distribution patterns from a candidate item list (e.g., category proportions, popularity/novelty ratios) and uses these patterns to dynamically modulate the parameters of a base sequential ranker via learned transformation functions. The modulated ranker is then used to score that specific candidate list, effectively converting a global frozen model into a locally adapted model per inference request. This is applied on top of existing sequential recommendation models without changing their architectures.",
+    "key_innovation": "The core novelty is treating each candidate list as a distinct distribution shift problem at inference time — rather than training one universal frozen model, Ada-Ranker conditions model parameters on the input distribution dynamically. Prior work on recommendation adaptation focuses on user/domain adaptation during training; Ada-Ranker performs instance-level parameter modulation at serving time without retraining.",
+    "technical_insight": "The critical design choice is extracting lightweight distributional statistics from the candidate set and using them to generate parameter offsets (via hypernetwork-style modulation) rather than retraining or fine-tuning. This works because candidate sets in production are determined by upstream recall modules and carry strong distributional signals (category skew, popularity bias) that a static model cannot account for — modulating parameters lets the ranker re-weight its learned representations to match the local context.",
+    "limitations": "The approach assumes the candidate list is large enough to yield meaningful distributional statistics, which may fail for users with sparse histories or cold-start recall results. The modulation adds inference latency, which could be problematic in strict real-time serving SLAs. It also does not address temporal distribution shift (concept drift over time) — only within-request distribution variability. Evaluation is limited to three datasets in sequential recommendation, leaving generality to other ranking scenarios unverified.",
+    "interview_questions": [
+      "How does Ada-Ranker extract distribution patterns from the candidate item list, and what features are used?",
+      "What is the mechanism for parameter modulation — how are the distribution patterns translated into changes to the ranker's weights?",
+      "How does Ada-Ranker differ from meta-learning approaches like MAML that also aim to produce adaptable models?",
+      "What are the computational overhead implications of dynamic parameter modulation at inference time in a production system?",
+      "Could Ada-Ranker's distribution modulation be applied to the recall stage, and what challenges would that introduce?"
+    ],
+    "interview_answers": [
+      "Ada-Ranker computes statistics over the candidate item embeddings and metadata — such as the proportion of items per category, ratio of popular vs. long-tail items, and novelty scores — to form a distribution descriptor vector that summarizes the compositional characteristics of the current candidate set.",
+      "The distribution descriptor is fed into a lightweight modulation network (analogous to a hypernetwork or FiLM conditioning) that outputs scale and shift parameters applied to the intermediate layers of the base ranker, effectively re-calibrating its feature transformations for the current distribution without updating stored weights.",
+      "MAML-style meta-learning adapts parameters via gradient steps on support sets at test time, requiring backpropagation during inference. Ada-Ranker instead uses a feedforward modulation network conditioned on distributional statistics — no gradient computation at inference, making it far more practical for low-latency serving while sacrificing the fine-grained per-user adaptability MAML provides.",
+      "The overhead is bounded by the cost of computing distributional statistics (O(n) over candidate list size n) and a single forward pass through the modulation network. For typical candidate list sizes (hundreds of items) this is modest, but the parameter modulation adds memory bandwidth and potential cache-miss costs; the paper should profile this carefully for production viability.",
+      "Applying it to recall (e.g., ANN retrieval) is non-trivial because recall operates before candidates are known — there is no candidate list to extract a distribution from. One could condition on the user's historical item distribution as a proxy, but this is a weaker signal and fundamentally changes the problem from list-conditional to user-conditional adaptation."
+    ],
+    "generated_at": "2026-03-23T18:11:16Z"
+  }
+}

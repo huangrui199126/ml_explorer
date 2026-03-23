@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PAG introduces a dual-identifier scheme (set-based lexical + sequential quantized) for generative retrieval, using simultaneous decoding to guide autoregressive document ID generation. It achieves 15.6% MRR improvement over state-of-the-art on MS MARCO while being 22x faster.",
+    "key_idea": "By decoding both a bag-of-words identifier and a quantized relevance-based identifier simultaneously, PAG constrains and guides the autoregressive search process to be both more accurate and dramatically faster.",
+    "why_it_matters": "Generative retrieval is a promising alternative to dense/sparse retrieval but has lagged in accuracy and speed; PAG closes both gaps simultaneously, making it viable for production search systems.",
+    "possible_use_cases": [
+      "Large-scale document retrieval and search engines replacing traditional index-based systems",
+      "Real-time question answering and open-domain QA pipelines requiring low-latency document lookup",
+      "Enterprise semantic search where both retrieval quality and query throughput are critical constraints"
+    ],
+    "generated_at": "2026-03-23T18:08:06Z"
+  },
+  "deep": {
+    "method_breakdown": "PAG constructs dual identifiers for each document: a set-based lexical identifier (bag-of-words tokens) and a sequential identifier from quantized relevance-based representations. During decoding, these two identifier streams are decoded simultaneously, with the set-based stream guiding/constraining the autoregressive generation of the sequential stream to avoid locally-optimal but globally-suboptimal token choices. This simultaneous decoding acts as a lookahead mechanism, effectively planning ahead rather than greedily committing to each token.",
+    "key_innovation": "Prior generative retrieval models (DSI, NCI, GENRE) decode document identifiers purely autoregressively left-to-right, suffering from exposure bias and myopic token selection. PAG is the first to use a parallel set-based identifier as a real-time decoding signal to steer sequential generation, combining the structured search properties of lexical bag-of-words with learned dense representations — rather than treating them as two separate retrieval paradigms.",
+    "technical_insight": "The bag-of-words assumption is the critical design choice: because relevant documents share key lexical tokens regardless of order, the set-based identifier provides a permutation-invariant relevance signal that can correct the sequential decoder when it would otherwise commit to a suboptimal token path. This works because lexical overlap is a strong but order-agnostic relevance proxy, so it serves as a computationally cheap oracle to bias beam search without requiring a full reranker.",
+    "limitations": "The dual-identifier approach increases indexing complexity and requires storing/training two identifier types per document. The quantization of relevance-based sequential identifiers may lose fine-grained relevance distinctions, and the bag-of-words assumption degrades for queries requiring semantic understanding beyond lexical overlap (e.g., paraphrase, negation). Scalability to very large corpora (beyond MS MARCO's ~8.8M passages) is not demonstrated, and the 22x speedup claim may not generalize across hardware configurations or beam sizes.",
+    "interview_questions": [
+      "How does PAG's simultaneous decoding mechanism prevent the autoregressive model from making locally optimal but globally suboptimal token choices?",
+      "Why is a bag-of-words assumption a reasonable foundation for the set-based identifier, and where does this assumption break down?",
+      "How does PAG compare architecturally to DSI and NCI, and what specific component enables the 22x latency improvement?",
+      "What is the role of quantization in generating the sequential identifier, and what information might be lost in this step?",
+      "How would you extend PAG to handle multilingual retrieval or domain-specific corpora where lexical overlap is less reliable?"
+    ],
+    "interview_answers": [
+      "The set-based lexical identifier is decoded in parallel with the sequential identifier, and its token probabilities act as a guidance signal during beam search. At each decoding step, the model checks consistency between the candidate sequential token and the set-based posterior — candidates that are inconsistent with the lexical signal are penalized or filtered, preventing the decoder from locking into a token path that is locally high-probability but leads to a document far from the query's lexical relevance space.",
+      "Bag-of-words is reasonable because classical IR (BM25, TF-IDF) demonstrates that term overlap is a strong retrieval signal, and relevance is often compositional across key terms regardless of their order. It breaks down for semantic paraphrase queries (where synonyms replace exact terms), negation (where presence of a term indicates irrelevance), and highly technical domains where surface form diverges from meaning — all cases where dense retrieval typically outperforms sparse methods.",
+      "DSI uses integer document IDs with no semantic structure; NCI uses prefix-aware numeric IDs with hierarchical clustering. PAG replaces both with structured lexical+dense identifiers and decodes them jointly. The speedup likely comes from the set-based decoder pruning the beam search space early — fewer beam candidates need full sequential scoring — reducing the effective decoding depth and candidate explosion that makes standard autoregressive retrieval slow.",
+      "Quantization (e.g., via product quantization or residual vector quantization) maps continuous dense embeddings of documents into discrete codebook indices that form the sequential identifier. This enables autoregressive generation over a finite vocabulary of codes. The information lost includes fine-grained geometric relationships in embedding space — two documents that are close in dense space may get different codes, and the quantization error accumulates across the multi-step code sequence, potentially misranking near-duplicate relevant documents.",
+      "For multilingual retrieval, the lexical set-based identifier could be replaced with subword units (BPE tokens) that generalize across scripts, or augmented with cross-lingual dense representations aligned via multilingual encoders like mBERT or LaBSE. For domain-specific corpora with low lexical overlap, the set-based identifier could incorporate domain terminology via a specialized vocabulary, or the guidance signal could shift weight toward the sequential dense identifier while using lexical tokens only as soft constraints rather than hard filters."
+    ],
+    "generated_at": "2026-03-23T18:08:37Z"
+  }
+}

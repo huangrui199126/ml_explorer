@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Istella22 is a new benchmark dataset that bridges traditional feature-based Learning-to-Rank (LtR) and neural ranking evaluation by providing both 220 hand-crafted query-document features and raw text for 8.4M web documents with 2,198 queries. Experiments reveal that neural re-rankers currently lag behind feature-based LtR models, but their scores serve as strong signals when combined with LtR.",
+    "key_idea": "By providing both structured feature vectors and raw text in a single industrial-scale dataset, Istella22 enables apples-to-apples comparison between feature-based LtR and pre-trained transformer rankers for the first time.",
+    "why_it_matters": "Practitioners building production search systems need to know whether investing in expensive neural re-rankers is justified over well-tuned LtR pipelines; Istella22 provides the missing benchmark to make that decision empirically rather than anecdotally.",
+    "possible_use_cases": [
+      "Benchmarking hybrid ranking pipelines that combine LtR features with neural model scores",
+      "Evaluating transfer learning effectiveness of pre-trained language models on web search tasks",
+      "Researching feature importance and signal quality of neural scores as inputs to gradient-boosted LtR models"
+    ],
+    "generated_at": "2026-03-23T18:17:30Z"
+  },
+  "deep": {
+    "method_breakdown": "Istella22 is a benchmark dataset containing 8.4M web documents, 2,198 queries, 220 hand-crafted query-document features from an industrial search engine, and 5-graded relevance judgments — providing both raw text and feature vectors in a single corpus. This dual representation allows direct apples-to-apples comparison between feature-based LtR models (LambdaMART, etc.) and neural re-rankers (BERT-based). Preliminary experiments show LtR models outperform neural re-rankers, but neural scores serve as strong LtR features.",
+    "key_innovation": "Prior datasets were bifurcated: LtR benchmarks (Istella, MSLR, Yahoo) had feature vectors but no text; neural benchmarks (MS MARCO, TREC) had text but no features. Istella22 is the first large-scale industrial dataset providing both simultaneously, enabling controlled comparisons without confounding dataset differences.",
+    "technical_insight": "The most important design choice is including 220 industrial-grade hand-crafted features alongside raw text. This reveals that the gap between LtR and neural models is not merely a data artifact — on the same documents and queries, LtR still wins, but neural scores (BM25-calibrated transformer outputs) are informative enough to boost LtR when added as features, suggesting complementarity rather than substitution.",
+    "limitations": "The dataset is test-only (2,198 queries) with no public training split of labeled data, limiting supervised neural fine-tuning experiments and forcing reliance on zero-shot or transfer settings for neural models. The corpus is a web snapshot that may not reflect current web distributions. Relevance judgments are pooled and may have low recall for neural-retrieved documents not surfaced by the original engine, biasing evaluations against neural models.",
+    "interview_questions": [
+      "Why do LtR models outperform neural re-rankers on Istella22, and what does this tell us about the state of neural ranking?",
+      "What are the key design decisions that make Istella22 a fairer benchmark than MS MARCO for comparing LtR and neural methods?",
+      "How does using neural model scores as LtR features change the performance, and why does this hybrid approach work?",
+      "What are the evaluation biases introduced by relevance judgment pooling when comparing retrieval paradigms?",
+      "How do the 220 hand-crafted features differ from what a neural model learns, and why does that gap exist?"
+    ],
+    "interview_answers": [
+      "Neural re-rankers here operate in a transfer/zero-shot regime — they are not fine-tuned on Istella22 training labels (none are public), while LtR models are trained on industrial feature vectors optimized for this exact search engine's document distribution. The gap likely reflects domain mismatch and lack of in-domain supervision for neural models, not a fundamental ceiling on neural ranking capability.",
+      "Istella22 uses the same corpus, queries, and relevance judgments for both paradigms, eliminating three major confounders present in cross-benchmark comparisons: corpus size differences, query distribution shifts, and annotation scheme inconsistencies. The inclusion of industrial features also sets a strong baseline that reflects years of feature engineering, making it a meaningful stress test.",
+      "Neural scores capture semantic similarity signals orthogonal to lexical and structural features in the hand-crafted set. When added as a feature, LambdaMART can learn when to trust the neural signal (e.g., paraphrase-heavy queries) versus when to trust lexical features (e.g., exact-match navigational queries), yielding consistent gains. This mirrors ensemble dynamics in practice.",
+      "Judgment pools are constructed from documents retrieved by the industrial engine using its own ranking features. Neural models may retrieve semantically relevant documents not in the pool, which are then judged as not relevant by default, deflating neural NDCG scores unfairly. This is a known issue in IR evaluation and particularly acute when comparing retrieval paradigms with different recall profiles.",
+      "Hand-crafted features encode domain knowledge like PageRank, BM25 variants, URL structure, click statistics, and query-field matches — signals derived from the full web graph and user behavior logs that a neural model cannot access from text alone. The feature engineering also benefits from years of iterative refinement against real user satisfaction signals, while neural models must infer all relevance cues from token co-occurrence patterns in pre-training corpora."
+    ],
+    "generated_at": "2026-03-23T18:17:56Z"
+  }
+}

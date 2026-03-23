@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LARMOR is an unsupervised method that uses LLMs to generate pseudo-relevant queries and labels from a target corpus, enabling selection of the best dense retriever without any labeled data or access to training corpora.",
+    "key_idea": "By prompting an LLM to synthesize pseudo-queries and relevance signals from unlabeled target documents, dense retrievers can be ranked by their effectiveness on those synthetic signals as a proxy for real performance.",
+    "why_it_matters": "In production IR systems, practitioners often need to pick a pre-trained retriever for a new private domain with no ground-truth labels; LARMOR automates this selection purely from the target corpus, reducing guesswork and costly manual evaluation.",
+    "possible_use_cases": [
+      "Selecting the best off-the-shelf dense retriever for a new enterprise search corpus without any labeled queries",
+      "Zero-shot domain adaptation benchmarking when deploying retrieval systems in legal, medical, or scientific domains",
+      "Automated retrieval pipeline configuration in RAG systems where the document corpus changes frequently"
+    ],
+    "generated_at": "2026-03-23T18:06:47Z"
+  },
+  "deep": {
+    "method_breakdown": "LARMOR samples documents from an unlabeled target corpus and uses an LLM to generate pseudo-relevant queries, relevance labels, and ranked reference lists for those documents. Dense retrievers are then evaluated on these synthetic signals — how well they retrieve the source documents given the generated queries — producing a ranking score. The retriever with the highest score on these pseudo-labels is selected for deployment on the target corpus.",
+    "key_innovation": "Prior dense retriever selection methods require access to training corpora metadata or some labeled examples from the target domain. LARMOR is the first method that operates solely on the unlabeled target corpus, using LLM-generated pseudo-relevance signals as a proxy for true retrieval quality, enabling fully unsupervised, zero-shot retriever selection under domain shift.",
+    "technical_insight": "The critical design choice is using the LLM to generate not just queries but also reference ranked lists (pseudo-ground-truth orderings), which allows computing rank-based metrics like NDCG without any human labels. This works because modern LLMs have sufficient world knowledge and instruction-following ability to produce plausible relevance judgments for arbitrary documents, providing a reliable enough signal to discriminate between retriever qualities even when no target-domain supervision exists.",
+    "limitations": "LLM-generated pseudo-queries and labels may be biased toward documents that are linguistically similar to LLM pretraining data, potentially disadvantaging specialized or low-resource domain retrievers. The method's quality is tightly coupled to LLM capability and prompt design, making it expensive and sensitive to LLM choice. Sampling a subset of target documents introduces variance, and the approach may fail when the target corpus is very small. It also cannot account for retriever efficiency or latency trade-offs.",
+    "interview_questions": [
+      "How does LARMOR generate pseudo-relevant signals, and what specific LLM outputs does it use to rank retrievers?",
+      "Why is dense retriever selection specifically difficult under domain shift, and how does LARMOR address this without labeled data?",
+      "What are the risks of using LLM-generated pseudo-labels as a proxy for true retrieval quality, and how might they introduce systematic bias?",
+      "How does LARMOR's reliance solely on the target corpus differ from prior retriever selection baselines, and what practical deployments does this enable?",
+      "If the LLM generating pseudo-queries is itself domain-unaware, what strategies could mitigate degraded signal quality for highly specialized corpora?"
+    ],
+    "interview_answers": [
+      "LARMOR prompts an LLM with sampled target documents to generate: (1) pseudo-queries that a document would be relevant to, (2) relevance labels for query-document pairs, and (3) reference ranked lists. Each dense retriever is then scored by how well its retrieval results match these LLM-generated reference rankings, using standard IR metrics like NDCG over the pseudo-labels.",
+      "Domain shift causes a retriever trained on one corpus (e.g., MS MARCO) to underperform on a target corpus with different vocabulary, style, or topic distribution. Without labeled target data, you cannot run standard evaluation. LARMOR sidesteps this by substituting LLM judgment for human labels, generating a synthetic evaluation benchmark on-the-fly from the target corpus itself.",
+      "LLM-generated labels may reflect surface-level lexical patterns rather than true semantic relevance, favoring retrievers that also rely on lexical overlap. The LLM may hallucinate plausible but incorrect relevance judgments, introducing noise. Systematic bias arises if the LLM consistently generates queries easier for certain retriever architectures (e.g., those with similar pretraining), leading to selection that reflects LLM artifacts rather than true retriever quality.",
+      "Prior methods require knowledge of retriever training corpora distributions or some target-domain labels to estimate transferability. LARMOR needs neither, making it applicable in true zero-shot private-corpus scenarios — e.g., an enterprise deploying retrieval over internal documents where no labels exist and training data provenance is unknown. This dramatically broadens the practical applicability of retriever selection.",
+      "Strategies include: using domain-adaptive prompting (providing the LLM a description of the domain before generating queries), selecting a larger and more diverse sample of target documents to increase coverage, applying filtering heuristics to discard low-confidence LLM outputs, or fine-tuning a smaller LLM on domain-adjacent data before pseudo-label generation. One could also ensemble multiple LLM generators to reduce variance from any single model's blind spots."
+    ],
+    "generated_at": "2026-03-23T18:07:13Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GastroBot is a Chinese-language chatbot for gastrointestinal diseases built on a fine-tuned embedding model and RAG framework, achieving strong retrieval and answer quality metrics on clinical gastroenterology guidelines.",
+    "key_idea": "Fine-tuning a domain-specific embedding model on medical guidelines and combining it with RAG significantly reduces LLM hallucinations while grounding responses in authoritative clinical sources.",
+    "why_it_matters": "Demonstrates a practical, reproducible blueprint for deploying reliable medical chatbots in specialized clinical domains where accuracy and source traceability are critical.",
+    "possible_use_cases": [
+      "Clinical decision support tools for gastroenterologists needing quick guideline lookups",
+      "Patient-facing chatbots that answer GI disease questions with cited, trustworthy sources",
+      "Training and onboarding aids for medical residents learning gastrointestinal disease management"
+    ],
+    "generated_at": "2026-03-23T18:09:29Z"
+  },
+  "deep": {
+    "method_breakdown": "GastroBot fine-tunes a Chinese embedding model (gte-base-zh) on a domain-specific corpus of 25 gastrointestinal disease guidelines to improve retrieval quality, then deploys a RAG pipeline using llama-index where queries retrieve relevant guideline passages that are fed as context to an LLM for answer generation. The fine-tuned embeddings map clinical queries and guideline text into a shared semantic space optimized for gastroenterology terminology, reducing the semantic gap between patient/clinician queries and formal medical documentation. Evaluation uses the RAGAS framework measuring context recall, faithfulness, and answer relevance as distinct quality dimensions.",
+    "key_innovation": "The key novelty is domain-adaptive fine-tuning of the embedding model on medical guidelines rather than using off-the-shelf embeddings, achieving 18% better hit rate than the base gte-base-zh and 20% better than OpenAI embeddings — demonstrating that embedding fine-tuning on even a small domain corpus (25 documents) provides substantial retrieval gains over general-purpose embeddings for specialized clinical RAG.",
+    "technical_insight": "Fine-tuning the retriever rather than only the generator is the critical design choice: a generalist LLM can reason well given correct context, so the bottleneck in clinical RAG is retrieval precision — if the wrong passages are retrieved, even a powerful LLM produces hallucinated or irrelevant answers. By optimizing the embedding space for gastroenterology semantics, the system ensures high-quality context is consistently surfaced, which cascades into the 95% context recall and 93.73% faithfulness scores.",
+    "limitations": "The knowledge base is limited to 25 guidelines, creating coverage gaps for rare conditions or recent evidence not in those documents. The evaluation corpus likely overlaps with the fine-tuning corpus, potentially inflating RAGAS metrics. The system is Chinese-only, limiting generalizability. With only 25 source documents, the model may produce confidently wrong answers when a query falls outside guideline coverage rather than abstaining. No clinical validation against actual physician judgments or patient outcomes is reported.",
+    "interview_questions": [
+      "Why does fine-tuning the embedding model on domain-specific data improve retrieval hit rate, and what training signal is typically used?",
+      "What are the three RAGAS metrics used to evaluate GastroBot, and what does each measure independently?",
+      "What is the key failure mode of RAG systems when the retriever underperforms, and how does GastroBot's approach mitigate it?",
+      "How would you extend GastroBot to handle queries that fall outside the 25-guideline knowledge base without hallucinating?",
+      "What are the tradeoffs between fine-tuning only the embedding model versus fine-tuning the full LLM generator for a clinical RAG system?"
+    ],
+    "interview_answers": [
+      "Fine-tuning uses contrastive learning where (query, relevant passage) positive pairs from the domain corpus are used to train the encoder so that clinically similar query-document pairs have high cosine similarity in embedding space. Domain-specific terminology (e.g., Chinese medical abbreviations, drug names) is underrepresented in general pre-training data, so the fine-tuned model learns a better semantic space for that vocabulary.",
+      "Context recall measures whether all relevant ground-truth information was retrieved; faithfulness measures whether the generated answer is factually grounded in the retrieved context (no hallucination); answer relevance measures whether the response actually addresses the question asked. They are orthogonal: a system can retrieve correctly but still hallucinate (low faithfulness) or retrieve and faithfully summarize irrelevant passages (low answer relevance).",
+      "The key failure mode is retrieval miss — when the correct passage is not in the top-k retrieved chunks, the LLM lacks the necessary context and either hallucinates a plausible-sounding answer or fails to answer. GastroBot mitigates this by fine-tuning the embedding model to maximize hit rate on domain queries, ensuring the right guideline sections appear in the retrieved context window.",
+      "You would add a retrieval confidence threshold or a 'no relevant document found' classifier: if the top retrieved passages have similarity scores below a threshold, the system should respond with an explicit out-of-scope message rather than generating from weak context. Additionally, the knowledge base should be expanded with broader medical literature and updated guidelines, and query routing could distinguish in-scope versus out-of-scope questions before retrieval.",
+      "Fine-tuning only the embedding model is cheaper, preserves the LLM's broad reasoning ability, and directly targets the retrieval bottleneck — it is the right choice when the LLM already understands the domain language given correct context. Fine-tuning the LLM generator is better when the output style, clinical tone, or reasoning patterns need adjustment, but risks catastrophic forgetting and requires much more data and compute. For RAG specifically, embedding fine-tuning typically yields higher ROI per compute dollar."
+    ],
+    "generated_at": "2026-03-23T18:09:58Z"
+  }
+}
