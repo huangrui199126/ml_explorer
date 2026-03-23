@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a model-agnostic framework that uses LLMs to generate document-level embeddings and improve retrieval model training via better negative sampling and loss functions. It boosts existing retrievers like Contriever, DRAGON, and ColBERTv2 to achieve state-of-the-art results on LoTTE and BEIR benchmarks.",
+    "key_idea": "Augmenting document embeddings with LLM-generated representations and improved training components (negative sampling, loss) can plug into any existing dense retrieval model to improve its performance without architectural changes.",
+    "why_it_matters": "Practitioners can drop this framework on top of their existing retrieval pipelines to get meaningful accuracy gains without redesigning their retriever architecture, making it a low-cost upgrade path for search and RAG systems.",
+    "possible_use_cases": [
+      "Improving enterprise search systems that use dense retrievers like Contriever or ColBERT",
+      "Enhancing retrieval quality in RAG pipelines for LLM-based question answering",
+      "Boosting open-domain question answering and fact-checking systems that rely on passage retrieval"
+    ],
+    "generated_at": "2026-03-23T21:47:01Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework augments retrieval models by generating doc-level embeddings through LLM-produced synthetic queries and summaries, which are concatenated or fused with original document representations to enrich the embedding space. It also improves training via hard negative mining (using BM25 and dense retrieval mined negatives) and a refined loss function combining in-batch negatives with hard negatives. The approach is model-agnostic, applied on top of existing retrievers like Contriever, DRAGON, and ColBERTv2 without architectural changes.",
+    "key_innovation": "The core novelty is doc-level embedding augmentation using LLMs: rather than relying solely on the raw document text, an LLM generates hypothetical queries and abstractive summaries for each document, and these synthetic texts are encoded and pooled with the original doc embedding to produce a richer representation. Prior work (e.g., HyDE) used LLMs to expand queries at inference time; this paper instead uses LLMs to expand documents at indexing time in a model-agnostic way.",
+    "technical_insight": "The most important design choice is augmenting the document side rather than the query side at inference time. Documents are long and often poorly aligned with short queries; by generating synthetic queries and summaries via LLM, the document embedding is pulled closer to the query manifold in the embedding space. This works because LLM-generated synthetic queries bridge the lexical and semantic gap between how users phrase questions and how authors write documents.",
+    "limitations": "The framework incurs significant offline cost: LLM inference must be run over every document in the corpus to generate synthetic queries/summaries, making it expensive to scale to very large corpora or to keep indexes fresh. The quality of augmentation is tightly coupled to the LLM's ability to generate relevant synthetic queries, meaning noisy or hallucinated generations could degrade retrieval. The paper also does not extensively analyze out-of-domain generalization beyond BEIR/LoTTE benchmarks, and gains may be smaller when LLM and retriever are mismatched in domain.",
+    "interview_questions": [
+      "How does doc-level LLM augmentation differ from query-side augmentation methods like HyDE, and what are the trade-offs?",
+      "Why does generating synthetic queries for documents improve retrieval, and what assumptions does this rely on?",
+      "How does the hard negative mining strategy work, and why is it important for training dense retrievers?",
+      "What are the computational costs of this framework at indexing time vs. query time, and how would you mitigate them?",
+      "How would you evaluate whether the LLM-generated augmentations are actually improving the document representations or introducing noise?"
+    ],
+    "interview_answers": [
+      "HyDE expands queries at inference time by having an LLM generate a hypothetical document, then retrieving based on that document's embedding — this adds latency per query. Doc-level augmentation is done offline at indexing time, adding no query-time overhead but requiring LLM inference over the full corpus. HyDE is easier to deploy on existing indexes; doc augmentation requires re-indexing but is cheaper at scale once built.",
+      "Dense retrievers learn to match query embeddings to document embeddings in a shared space, but documents are verbose and use different vocabulary than queries. Synthetic queries simulate how users would ask about a document's content, making the document embedding more 'query-like.' The key assumption is that the LLM can reliably predict the kinds of questions a document answers — this holds well for factual/informational text but may break for highly technical or ambiguous content.",
+      "Hard negatives are documents that are superficially similar to the query (e.g., returned by BM25 or a dense retriever) but are not relevant. They force the model to learn fine-grained distinctions rather than trivially separating random negatives. The paper combines BM25-mined negatives (lexically similar but non-relevant) with dense-retrieval-mined negatives (semantically similar but non-relevant), providing a diverse and challenging negative set that improves the sharpness of the learned embedding space.",
+      "The main cost is LLM inference over every document: for a corpus of millions of docs, this requires substantial GPU compute. Mitigations include batching generation, using smaller distilled LLMs for augmentation, caching augmented embeddings, and only regenerating embeddings for updated documents. At query time there is zero additional cost since augmented embeddings are precomputed, which is a key advantage over query-expansion methods.",
+      "One approach is ablation: compare retrieval metrics (NDCG, Recall@k) on held-out benchmarks with and without augmentation per document type. You could also measure embedding space alignment by computing average cosine similarity between real user queries and augmented doc embeddings vs. original doc embeddings — augmentation should increase alignment. Qualitative inspection of generated synthetic queries for coherence and relevance, and tracking cases where augmentation hurts (e.g., ambiguous or multi-topic documents), would help identify failure modes."
+    ],
+    "generated_at": "2026-03-23T21:47:30Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "NISE addresses the false negative sample problem in CVR prediction by treating non-click samples as unlabeled rather than negative, using semi-supervised learning to generate pseudo-labels for potential conversions. It combines this with multi-task learning (CTR auxiliary task) to improve embedding representations across the entire exposure space.",
+    "key_idea": "Non-click samples should be treated as unlabeled data with estimated conversion probabilities rather than hard negatives, since some users would have converted had they clicked.",
+    "why_it_matters": "CVR models in production recommender systems are systematically biased by treating non-click impressions as non-converting; fixing this directly improves purchase/conversion prediction accuracy and revenue outcomes.",
+    "possible_use_cases": [
+      "E-commerce platforms improving purchase conversion prediction from ad impressions",
+      "Streaming services predicting content engagement beyond just clicks",
+      "Mobile app install prediction where non-click impressions carry implicit signal"
+    ],
+    "generated_at": "2026-03-23T21:48:21Z"
+  },
+  "deep": {
+    "method_breakdown": "NISE treats non-click samples as unlabeled data rather than implicit negatives, using a semi-supervised learning framework to estimate their pseudo-CVR labels (probability of converting if clicked). These pseudo-labels are iteratively refined and used to train the CVR model across the entire exposure space, directly modeling P(conversion|click) without the CTCVR decomposition. An auxiliary CTR task is added via multi-task learning to improve shared embedding quality.",
+    "key_innovation": "Prior ESMM-style methods decompose CTCVR = CTR × CVR, which implicitly assigns CVR=0 to all non-click samples — the false negative sample (FNS) problem. NISE is the first to explicitly identify and address FNS by treating non-click samples as unlabeled rather than negative, using semi-supervised pseudo-labeling to recover signal from these samples instead of discarding or mislabeling them.",
+    "technical_insight": "The critical design choice is estimating P(CVR|non-click) via the current model and using confidence-thresholded pseudo-labels for retraining, rather than hard-coding them as 0. This works because user interest is partially observable from context/features even without a click signal — some high-intent users simply never got the chance to click — so leveraging model uncertainty rather than a deterministic negative label recovers a meaningful training signal that reduces bias in the learned CVR surface.",
+    "limitations": "Pseudo-label quality depends on early model accuracy, creating a chicken-and-egg bootstrapping problem where poor initialization propagates noise. The method adds a hyperparameter-sensitive confidence threshold for pseudo-label selection. It assumes stationarity in user behavior (a user who did not click might still have converted if shown differently), which may not hold in all domains. Computational overhead from iterative pseudo-label refresh is not deeply analyzed. The approach is validated primarily in e-commerce; generalization to other conversion definitions (e.g., long-session engagement) is unclear.",
+    "interview_questions": [
+      "What is the false negative sample problem in CVR prediction, and why does the CTCVR task make it worse?",
+      "How does NISE generate pseudo-labels for non-click samples, and what risk does this introduce during training?",
+      "Why is directly modeling CVR in the entire exposure space better than the ESMM-style CTCVR decomposition for addressing SSB and DS?",
+      "How does the auxiliary CTR task help CVR prediction in the NISE framework, and what shared components benefit from it?",
+      "What are the key differences between NISE and standard self-training or label propagation in semi-supervised learning?"
+    ],
+    "interview_answers": [
+      "Non-click samples have no observed CVR label, so CTCVR-based methods implicitly treat their CVR as 0. This is false negative because some users would have converted had they clicked — the label is missing, not genuinely negative. CTCVR worsens this because the entire training objective is built on P(click)×P(CVR|click), forcing the model to treat non-clicks as hard negatives in the CVR component.",
+      "NISE uses the current CVR model to score non-click samples and assigns pseudo-labels based on predicted conversion probability, filtered by a confidence threshold. The key risk is confirmation bias: if the initial model is miscalibrated, high-confidence pseudo-labels may be systematically wrong, and retraining on them reinforces the error in subsequent iterations.",
+      "ESMM-style decomposition restricts CVR supervision to clicked samples only (fixing SSB) but introduces FNS. Direct entire-space CVR modeling uses all exposure samples with appropriate labeling — true positives from click+convert, unlabeled from non-clicks — avoiding the constraint that CVR can only be observed post-click while still training on broader distributional coverage to reduce sparsity.",
+      "The CTR task and CVR task share an embedding layer over user and item features. Because CTR has far more positive signal (clicks >> conversions), the auxiliary CTR objective provides dense gradient updates to the shared embeddings, giving the CVR head richer feature representations than it could learn from sparse conversion labels alone.",
+      "Standard self-training iterates label assignment and retraining globally; NISE is domain-specific in that it only pseudo-labels non-click samples (not all unlabeled data) and anchors the CVR semantics to P(convert|clicked), making pseudo-label generation conditional on a counterfactual click event. This counterfactual framing — estimating what would happen under an intervention — is closer in spirit to causal inference than vanilla semi-supervised learning."
+    ],
+    "generated_at": "2026-03-23T21:48:50Z"
+  }
+}

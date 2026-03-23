@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ECAT is a cross-domain recommendation framework that tackles cold-start data sparsity in mini-apps by transferring both samples and representations from a large entire-space dataset to a target domain. It uses graph-guided coarse selection followed by domain-adaptive fine selection, plus continual adaptive knowledge distillation to avoid negative transfer.",
+    "key_idea": "Combine a two-stage coarse-to-fine sample transfer (graph filtering + domain adaptation) with adaptive knowledge distillation from an entire-space model to maximally leverage auxiliary data while staying aligned to the target task.",
+    "why_it_matters": "Mini-apps and new product verticals routinely suffer from sparse interaction data; ECAT provides a principled, production-validated approach to bootstrap recommendations without negative transfer, yielding measurable CVR and order lifts at Taobao scale.",
+    "possible_use_cases": [
+      "Bootstrapping recommendations for newly launched e-commerce mini-apps or micro-storefronts with limited interaction history",
+      "Cross-category product recommendation where a large general catalog can inform a niche vertical",
+      "Cold-start user personalization in super-app ecosystems where user behavior in one sub-app can be leveraged for another"
+    ],
+    "generated_at": "2026-03-23T21:43:10Z"
+  },
+  "deep": {
+    "method_breakdown": "ECAT uses a two-stage coarse-to-fine sample transfer: first a graph-guided method selects broadly relevant samples from the entire space, then domain adaptation refines selection to filter out negative transfers. Separately, an adaptive knowledge distillation component continuously transfers learned representations from a model trained on the full space dataset to the target mini-app model, guided by target task supervision.",
+    "key_innovation": "The simultaneous handling of both sample-level and representation-level transfer in a continual learning setting is novel — prior cross-domain recommendation work typically addresses only one axis. The coarse-to-fine graph+domain-adaptation pipeline for sample selection, combined with adaptive (not static) distillation that avoids negative transfer, is the differentiating contribution.",
+    "technical_insight": "The adaptive knowledge distillation is the most critical design choice: rather than blindly distilling all knowledge from the source model, it conditions transfer on target task relevance, preventing the well-known negative transfer problem that plagues naive cross-domain approaches. This allows the system to exploit the data-rich entire space without being hurt by irrelevant or conflicting distribution signals.",
+    "limitations": "The framework is validated only on Taobao's ecosystem, where mini-apps share a common user base and platform infrastructure — generalizability to truly disjoint domains or different platforms is untested. The two-stage sample selection adds pipeline complexity and likely has sensitive hyperparameters (graph construction, domain adaptation thresholds). Continual transfer assumes the source entire-space model is stable and high-quality, which may not hold during rapid distribution shifts.",
+    "interview_questions": [
+      "How does the graph-guided coarse selection work, and what graph structure is used?",
+      "What specific domain adaptation technique is used for fine-grained sample selection, and how is negative transfer detected?",
+      "How is the adaptive knowledge distillation loss formulated — what makes it 'adaptive' vs standard KD?",
+      "How does ECAT handle continual learning — does it use rehearsal, regularization, or architectural approaches?",
+      "Why is the 'entire space' framing important, and how does it differ from standard source-domain transfer?"
+    ],
+    "interview_answers": [
+      "The graph likely encodes user-item interactions or item co-occurrence across domains, allowing items/users in the target mini-app to retrieve structurally similar samples from the broader platform space based on graph proximity or embedding similarity.",
+      "The fine-grained stage likely applies distribution matching (e.g., MMD or adversarial alignment) to filter out samples whose feature distributions diverge too far from the target domain, discarding those likely to cause negative transfer.",
+      "Adaptive KD weights the distillation loss per-sample or per-layer based on a relevance score derived from the target task signal — e.g., higher weight for distillation when the teacher's prediction aligns with target labels, lower weight otherwise, making transfer contingent on utility.",
+      "The paper likely uses a continual transfer approach where the target model is updated incrementally as new target data arrives, with the distillation loss acting as a regularizer to prevent forgetting the transferred knowledge — analogous to EWC-style regularization but guided by the teacher model.",
+      "The 'entire space' refers to all user interactions across the full platform (not just within a single app), which is orders of magnitude larger than any mini-app's sample space. This framing reframes the cold-start problem as a transfer problem where the source is the platform-wide model rather than a related but separate domain."
+    ],
+    "generated_at": "2026-03-23T21:43:31Z"
+  }
+}
