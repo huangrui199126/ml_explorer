@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "AMM is a news recommendation framework that matches each individual browsed article against candidate articles using BERT, rather than compressing browsing history into a single vector. It uses within-field and cross-field matching across title, abstract, and body to capture richer semantic signals.",
+    "key_idea": "Instead of aggregating browsing history into one user vector, compute pairwise semantic matching between each browsed article and the candidate, then attention-weight those matches for the final ranking signal.",
+    "why_it_matters": "Single-vector user representations lose fine-grained textual matching signals; this approach preserves them, leading to more precise interest matching especially when user interests are diverse or context-dependent.",
+    "possible_use_cases": [
+      "Personalized news feed ranking in media platforms",
+      "Content recommendation engines that need to explain why an article was recommended based on past reads",
+      "Multi-document retrieval systems where query-document matching benefits from field-level (title vs. body) granularity"
+    ],
+    "generated_at": "2026-03-23T05:59:44Z"
+  },
+  "deep": {
+    "method_breakdown": "AMM computes pairwise semantic matching representations between each browsed news article and the candidate news using BERT, rather than aggregating a single user interest vector first. It operates across multiple fields (title, abstract, body) using both within-field matching (same field across articles) and cross-field matching (different fields between articles). An attention mechanism then weights each browsed-candidate pair's matching score to produce the final user-news relevance signal.",
+    "key_innovation": "The key departure from prior work (e.g., NRMS, NAML) is late interaction: instead of encoding user history into a single fixed vector and doing dot-product matching, AMM preserves fine-grained semantic matching signals by comparing each browsed article directly against the candidate at the token/field level. The multi-field cross-matching (e.g., candidate title vs. browsed abstract) further distinguishes it from single-field BERT-based approaches.",
+    "technical_insight": "The most important design choice is computing browsed-candidate pairwise matching rather than aggregating a user vector first. Compressing all browsed articles into one vector inevitably loses specificity — a user who read diverse articles will have a diluted representation. By retaining individual matching signals and using attention to weight which browsed article is most relevant to the candidate, the model preserves the discriminative semantic structure needed for precise matching.",
+    "limitations": "Pairwise BERT encoding of every (browsed article, candidate) combination is computationally expensive at inference time — O(N×M) BERT forward passes for N browsed articles and M candidates, making real-time serving impractical without heavy approximation or caching. The approach also struggles with cold-start users with sparse history and may not scale to users with hundreds of browsed articles. Cross-field matching increases parameter count and complexity without clear ablation showing each cross-field pair's individual contribution.",
+    "interview_questions": [
+      "Why does AMM use pairwise matching between each browsed article and the candidate instead of aggregating a user vector first, and what is the tradeoff?",
+      "How does the within-field vs. cross-field matching mechanism work, and what does each capture?",
+      "What is the role of the attention mechanism in AMM's aggregation step, and how does it differ from simple average pooling?",
+      "What are the scalability challenges of this approach for production news recommendation systems, and how might you address them?",
+      "How does using BERT for pairwise matching differ from using it for independent encoding, and why does it matter for semantic matching?"
+    ],
+    "interview_answers": [
+      "Aggregating a user vector first compresses diverse browsing history into a single point in embedding space, losing which specific past articles are semantically related to the current candidate. Pairwise matching preserves these fine-grained signals but costs O(N) BERT forward passes per candidate at inference, creating a latency-throughput tradeoff that requires offline precomputation or approximate retrieval strategies in production.",
+      "Within-field matching compares the same field type between browsed and candidate articles (e.g., title-to-title), capturing direct topical alignment. Cross-field matching compares different fields (e.g., candidate title against browsed body), capturing cases where the candidate's headline relates to details discussed in previously read articles. Together they exploit complementary information density across fields — titles are concise signals, bodies carry detailed context.",
+      "The attention mechanism assigns higher weight to browsed articles whose matching representation with the candidate is most salient, effectively identifying which past reads make the current candidate relevant for this user. Unlike average pooling which treats all past articles equally, attention focuses the final signal on the most predictive browsed-candidate pairs, reducing noise from unrelated history items.",
+      "The main challenge is quadratic inference cost: for a user with 50 browsed articles and 1000 candidates, that's 50,000 BERT forward passes per request. Practical mitigations include precomputing and caching field embeddings, using lighter interaction models (e.g., bi-encoder with late interaction like ColBERT), approximate nearest neighbor retrieval to pre-filter candidates, or distilling the cross-encoder into a faster bi-encoder via knowledge distillation.",
+      "Independent BERT encoding (bi-encoder) encodes each article in isolation, so the representations cannot attend to each other — similarity is just a dot product of fixed vectors. Pairwise BERT encoding (cross-encoder) feeds both articles as a single input sequence, allowing full cross-attention between their tokens. This lets the model identify which specific phrases and sentences in the browsed article correspond to content in the candidate, yielding richer matching signals at the cost of not being able to precompute article representations independently."
+    ],
+    "generated_at": "2026-03-23T06:00:09Z"
+  }
+}

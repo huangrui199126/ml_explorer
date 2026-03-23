@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a two-step retrieval and ranking RAG framework for medical QA that combines embedding search with Elasticsearch and ColBERTv2 reranking, built on a dynamically updated medical knowledge base. It achieves 10% accuracy improvement over standalone LLMs and single-search RAG on complex medical queries.",
+    "key_idea": "Combining dense embedding retrieval with BM25-style Elasticsearch search, then reranking results with ColBERTv2 contextual scoring, gives more accurate and relevant context for medical LLM generation than either method alone.",
+    "why_it_matters": "Medical AI systems demand high factual accuracy and up-to-date knowledge; this hybrid retrieval-reranking pipeline offers a practical path to deploying LLMs in clinical settings with improved reliability without sacrificing the ability to keep the knowledge base current.",
+    "possible_use_cases": [
+      "Clinical decision support tools that answer physician queries about diagnoses, drug interactions, or treatment protocols",
+      "Medical chatbots for patient triage that need to surface accurate, institution-vetted health information",
+      "Hospital knowledge management systems that index and retrieve expert-reviewed guidelines in real time"
+    ],
+    "generated_at": "2026-03-23T06:08:07Z"
+  },
+  "deep": {
+    "method_breakdown": "The system implements a two-step retrieval pipeline: first using Elasticsearch for broad candidate retrieval via keyword/BM25-style search, then re-ranking those candidates with ColBERTv2's late-interaction embeddings for context-aware scoring. The final ranked context is fed into an LLM via RAG to generate grounded medical responses. The underlying knowledge base is dynamically updated with expert-reviewed documents from healthcare institutions to maintain freshness.",
+    "key_innovation": "The hybrid combination of sparse retrieval (Elasticsearch) with neural re-ranking (ColBERTv2) applied specifically to a dynamically updated medical knowledge base is the primary contribution. Prior medical RAG systems typically use single-stage dense retrieval; the two-stage retrieve-then-rerank architecture improves precision on complex queries without sacrificing the recall benefits of broad initial retrieval.",
+    "technical_insight": "Using ColBERTv2 as a re-ranker rather than a first-stage retriever is the critical design choice — ColBERTv2's late-interaction mechanism computes token-level similarity between query and document, enabling fine-grained relevance matching for complex medical queries, while offloading the expensive full-corpus search to Elasticsearch's efficient inverted index. This decomposition balances recall and precision while keeping latency manageable.",
+    "limitations": "Latency remains a fundamental bottleneck for emergency clinical use cases requiring sub-second responses — the two-stage pipeline inherently adds overhead. The 10% accuracy improvement is measured in an experimental setting whose benchmark composition is unspecified, making generalizability unclear. Dynamic knowledge base updates introduce risk of inconsistency if expert review lags behind new medical evidence. ColBERTv2 re-ranking quality depends heavily on the quality and coverage of the initial Elasticsearch recall stage.",
+    "interview_questions": [
+      "Why use a two-stage retrieve-then-rerank architecture instead of a single dense retrieval step with a large embedding model?",
+      "How does ColBERTv2's late-interaction mechanism differ from bi-encoder dense retrieval, and why does it matter for medical queries?",
+      "What are the risks of using a dynamically updated knowledge base in a safety-critical medical setting, and how would you mitigate them?",
+      "How would you evaluate this system beyond accuracy — what metrics matter most for a real clinical deployment?",
+      "Given the latency bottleneck in emergency scenarios, what architectural changes would you explore to meet sub-second SLA requirements?"
+    ],
+    "interview_answers": [
+      "Single-stage dense retrieval trades recall for precision — a large embedding model may miss lexically specific medical terms (drug names, ICD codes) that BM25 handles well. The two-stage design uses Elasticsearch's inverted index for high-recall candidate generation, then applies ColBERTv2's expensive but precise token-level matching only on the smaller candidate set, achieving better recall-precision balance than either approach alone.",
+      "Bi-encoders independently encode query and document into single vectors and compare via dot product, losing token-level alignment. ColBERTv2 retains per-token embeddings for both query and document and computes a MaxSim aggregation across token pairs, capturing fine-grained term matching. For medical queries this matters because clinical language is highly precise — symptom co-occurrence patterns and medication interactions require token-level sensitivity that a compressed single vector often loses.",
+      "Dynamic updates risk introducing unvetted or conflicting information into a system used for clinical decisions. Mitigations include: versioned knowledge snapshots with rollback capability, mandatory expert review gates before any document enters the live index, automated consistency checks against established clinical guidelines (e.g., UpToDate, WHO), and audit logging of which knowledge base version generated each response for post-hoc review.",
+      "Beyond accuracy: calibration (does the model know when it doesn't know), hallucination rate on out-of-distribution queries, citation faithfulness (does the answer actually follow from retrieved documents), latency at P99, and clinician trust/acceptance in user studies. Safety-critical systems also need false negative rate on dangerous recommendations — accuracy as a scalar metric masks asymmetric costs of different error types.",
+      "Options include: caching ColBERTv2 document embeddings offline to eliminate re-encoding at query time, using a lighter re-ranker (e.g., cross-encoder distilled to a smaller model) for latency-sensitive paths with full ColBERTv2 as a fallback, pre-computing top-k Elasticsearch results for common query patterns, or routing emergency queries to a faster single-stage dense retrieval path while reserving the two-stage pipeline for non-urgent consultations."
+    ],
+    "generated_at": "2026-03-23T06:08:36Z"
+  }
+}

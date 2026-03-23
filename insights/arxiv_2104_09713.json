@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HM3 improves e-commerce conversion rate prediction by jointly modeling fine-grained micro behaviors (interactions within a product page) and coarse-grained macro behaviors (clicks, purchases) using a hierarchical graph and multi-task learning. This addresses sample selection bias and data sparsity that plague standard CVR models.",
+    "key_idea": "Represent the full user behavior sequence as a graph where micro and macro behaviors are one-hop and two-hop post-click nodes, then decompose CVR into conditional probabilities over explicit sub-paths trained jointly via multi-task learning.",
+    "why_it_matters": "Standard CVR models suffer from sparse training signal and biased samples; HM3 unlocks richer supervision from page-level interaction logs (scrolling, add-to-cart, etc.) that are abundant and directly predictive of purchase intent, boosting revenue without requiring new data collection.",
+    "possible_use_cases": [
+      "E-commerce ranking systems that need accurate purchase probability estimates to optimize product ordering and bidding",
+      "Multi-stage recommendation pipelines where CVR is used alongside CTR for final score blending",
+      "Ad auction platforms that need unbiased CVR calibration to price conversion-based campaigns fairly"
+    ],
+    "generated_at": "2026-03-23T05:58:16Z"
+  },
+  "deep": {
+    "method_breakdown": "HM3 constructs a hierarchical user sequential behavior graph where micro behaviors (interactions with item detail page components like image zoom, reviews) are one-hop post-click nodes and macro behaviors (add-to-cart, wishlist, purchase) are two-hop nodes. A multi-head DNN predicts six probability variables corresponding to explicit sub-paths in this graph, which are then combined via conditional probability rules to yield four auxiliary task targets plus the final CVR. The whole system is trained end-to-end with multi-task learning, using abundant micro/macro behavior labels to mitigate sample selection bias and data sparsity.",
+    "key_innovation": "Prior work (ESMM, ESCM²) only leverages macro post-click behaviors as auxiliary signals; HM3 is the first to incorporate fine-grained micro behaviors (within-page interactions on the item detail page) into CVR modeling by representing them as an intermediate graph level between click and purchase, enabling a richer conditional probability decomposition of the conversion path.",
+    "technical_insight": "Decomposing CVR into a product of conditional probabilities over sub-paths in the behavior graph is the critical design choice — it forces the model to explicitly learn each behavioral transition (e.g., P(micro_behavior | click), P(purchase | micro_behavior)), which both provides structured inductive bias aligned with real purchase funnels and maximally reuses the dense supervision from micro behaviors that occur far more frequently than purchases.",
+    "limitations": "Micro behavior signals are only available post-click on the item detail page, so the method still cannot address SSB at the impression level and relies on the platform instrumenting fine-grained page interaction tracking, which many platforms lack. The conditional probability decomposition assumes a fixed hierarchical path structure that may not capture all conversion paths (e.g., direct purchase without engaging micro behaviors). Computational cost of the multi-head DNN with six output heads and four auxiliary losses may be non-trivial at industrial scale.",
+    "interview_questions": [
+      "Why does sample selection bias (SSB) occur in CVR prediction, and how does HM3 address it differently from ESMM?",
+      "How are the six probability variables derived from the behavior graph, and how are they combined to compute the final CVR estimate?",
+      "What are micro behaviors in this context, and why are they useful signals for conversion prediction despite being noisier than macro behaviors?",
+      "What is the data sparsity problem in CVR modeling, and how does multi-task learning with auxiliary tasks help alleviate it?",
+      "What are the key failure modes or assumptions of the conditional probability decomposition used in HM3?"
+    ],
+    "interview_answers": [
+      "SSB arises because CVR models are trained only on clicked items but must score all impressed items at inference — the training distribution (post-click) differs from the serving distribution (all impressions). ESMM addresses this by modeling CTR×CVR jointly over the full impression space. HM3 similarly expands the training signal space by adding micro behavior supervision, providing more labels within the clicked space and reducing data sparsity, though it does not fully eliminate SSB at the impression level.",
+      "The behavior graph has click as root, micro behavior nodes as one-hop children, and macro behavior nodes (cart, wishlist, purchase) as two-hop children. Six sub-path probabilities correspond to transitions along explicit edges (e.g., P(micro|click), P(cart|micro), P(purchase|cart)). CVR is computed as the marginal probability of purchase given click by summing over all paths through the graph using the chain rule of conditional probability, while the four auxiliary tasks target intermediate transitions to provide dense gradient signal.",
+      "Micro behaviors are fine-grained user interactions on the item detail page — such as browsing product images, reading reviews, zooming in, or checking size charts — occurring between a click and a potential purchase. They are valuable because they reveal purchase intent at higher granularity than a single click event: a user who reads reviews and zooms into product images is more likely to convert than one who immediately bounces. Their higher frequency compared to purchases also makes them useful for reducing data sparsity.",
+      "Data sparsity in CVR occurs because purchase events are rare (low conversion rates), giving the model few positive training examples to learn from, leading to poorly calibrated estimates. Multi-task learning with auxiliary tasks on more frequent intermediate events (micro behaviors, add-to-cart) provides abundant gradient signal that updates shared model parameters more frequently, effectively transferring knowledge from dense auxiliary labels to improve the sparse CVR prediction task.",
+      "The decomposition assumes all conversion paths pass through the defined micro and macro behavior nodes in a fixed order, which may not hold — users can purchase directly without triggering tracked micro behaviors, or follow non-linear paths. If micro behavior instrumentation is incomplete or inconsistent across device types, the conditional probability estimates will be biased. The model also assumes conditional independence between certain path variables given their parent nodes, which is a simplification of real user behavior."
+    ],
+    "generated_at": "2026-03-23T05:58:46Z"
+  }
+}
