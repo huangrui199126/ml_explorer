@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Cross-Batch Negative Sampling (CBNS) improves two-tower recommender training by reusing encoded item embeddings from recent mini-batches as negatives, bypassing the need for large batch sizes. This leverages the observed stability of neural encoder outputs after warmup to effectively simulate large-batch negative sampling at low memory cost.",
+    "key_idea": "After warmup, neural encoders produce stable embeddings for the same input, so cached embeddings from recent batches can serve as high-quality negatives without re-encoding.",
+    "why_it_matters": "Large-scale retrieval systems using two-tower models can achieve better negative sampling coverage without the prohibitive memory and compute costs of large batch training, making it practical to scale recommendation quality efficiently.",
+    "possible_use_cases": [
+      "Large-scale product search and recommendation (e.g., e-commerce, streaming platforms) where two-tower retrieval must balance quality and training efficiency",
+      "Fine-tuning dense retrieval models for information retrieval when GPU memory is a bottleneck",
+      "Training user/item embedding models for real-time personalization pipelines where fast iteration is needed"
+    ],
+    "generated_at": "2026-03-23T03:26:24Z"
+  },
+  "deep": {
+    "method_breakdown": "CBNS maintains a queue of item embeddings encoded from recent mini-batches and uses these cached embeddings as additional negatives during training, augmenting the standard in-batch negatives without requiring larger batch sizes. The key observation is that after a warm-up phase, neural encoders produce stable embeddings for the same input across consecutive iterations, making cached embeddings from recent batches reliable approximates of current encoder outputs. This allows the effective negative sample pool to be multiplied by the number of cached batches, decoupling negative sample count from batch size.",
+    "key_innovation": "Prior work either required large batch sizes to get sufficient in-batch negatives (expensive) or used static hard-negative mining (separate pipeline). CBNS borrows the momentum queue idea from self-supervised learning (MoCo) and adapts it specifically to two-tower recommendation, leveraging the empirical observation that item encoders stabilize early in training — making stale embeddings from recent batches still valid negatives without needing a momentum encoder or EMA update.",
+    "technical_insight": "The critical design choice is reusing the item tower's own past outputs rather than maintaining a separate momentum encoder. This works because the two-tower item encoder converges to stable representations quickly after warm-up, so embeddings from K steps ago are close enough to current embeddings that the gradient signal remains accurate. This avoids the computational overhead of a momentum network while still getting the benefit of a large, diverse negative pool.",
+    "limitations": "The method relies on encoder stability post-warm-up, which may not hold for rapidly changing models, very high learning rates, or early training stages — requiring careful warm-up scheduling. The cached embeddings introduce a staleness bias that is theoretically bounded but not eliminated, potentially hurting performance in domains with very non-stationary item distributions. The approach only caches item embeddings, so it does not help if the bottleneck is user-side diversity. It also inherits the popularity bias of in-batch negatives from the cached batches.",
+    "interview_questions": [
+      "Why is in-batch negative sampling problematic for large-scale two-tower models, and what fundamental trade-off does CBNS resolve?",
+      "What empirical property of neural encoders does CBNS rely on, and how did the authors verify this assumption holds during training?",
+      "How does CBNS relate to MoCo (Momentum Contrast) from self-supervised learning, and what is the key architectural difference?",
+      "What is the theoretical bias introduced by using stale cached embeddings as negatives, and under what conditions does this bias become negligible?",
+      "How would you adapt CBNS if the item catalog changes rapidly (e.g., news recommendation with fresh articles), where encoder stability may not hold?"
+    ],
+    "interview_answers": [
+      "In-batch negatives require large batches for sufficient negatives, but large batches are expensive because both towers must encode full feature content for every sample in the batch — quadratic memory and compute cost. CBNS decouples negative pool size from batch size by caching past item embeddings, allowing small batches with a large effective negative pool.",
+      "The authors observed that after a warm-up period, the cosine similarity between a item's current embedding and its embedding from K steps prior remains very high (close to 1), indicating the encoder output is stable. They likely verified this empirically by tracking embedding drift across training steps and showing it drops sharply after warm-up.",
+      "Both use a queue of past embeddings as negatives to avoid large batch requirements. The key difference is MoCo uses a separate momentum encoder (EMA of the main encoder) to produce consistent queue embeddings, while CBNS uses the main item encoder's own past outputs directly — simpler and cheaper, justified because the supervised recommendation encoder stabilizes faster than self-supervised encoders.",
+      "Using stale embeddings introduces a bias because the negative scores are computed with slightly outdated item representations. Theoretically this bias is bounded by the embedding drift rate, which decreases as training progresses. The bias is negligible when the learning rate is small and the encoder is near convergence, which is precisely when CBNS is most beneficial (after warm-up).",
+      "For rapidly changing item catalogs, encoder stability breaks down because new items have no cached embeddings and item representations shift as new content is ingested. Mitigations include: (1) using a very short cache window (small K) to reduce staleness, (2) applying CBNS only to stable item subsets while using in-batch negatives for fresh items, (3) combining with a lightweight momentum encoder for fresh items, or (4) hybrid sampling that weights cached negatives by recency."
+    ],
+    "generated_at": "2026-03-23T03:26:52Z"
+  }
+}
