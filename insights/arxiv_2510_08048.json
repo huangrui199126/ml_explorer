@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "TaoSR-AGRL is a reinforcement learning framework for LLM-based e-commerce search relevance prediction that addresses sparse reward problems in GRPO through rule-aware reward shaping and adaptive guided replay. It was deployed on Taobao Search serving hundreds of millions of users, outperforming DPO and standard GRPO baselines.",
+    "key_idea": "Decompose sparse terminal relevance rewards into dense, structured intermediate rewards aligned with domain rules, and inject ground-truth guidance for low-accuracy rollouts to prevent policy stagnation.",
+    "why_it_matters": "Practitioners building LLM-based ranking or relevance systems can use these techniques to dramatically improve training stability and reasoning quality in complex, rule-heavy domains without relying on sparse end-rewards that slow convergence.",
+    "possible_use_cases": [
+      "E-commerce product search relevance scoring and ranking",
+      "Training LLMs for multi-step reasoning tasks with complex business rules",
+      "Improving reinforcement learning convergence in any NLP task with sparse rewards and structured evaluation criteria"
+    ],
+    "generated_at": "2026-03-23T18:51:18Z"
+  },
+  "deep": {
+    "method_breakdown": "TaoSR-AGRL builds on GRPO by replacing sparse terminal rewards with Rule-aware Reward Shaping, which decomposes the final relevance label into dense intermediate rewards aligned with domain-specific criteria (e.g., attribute matching, semantic coherence). During training, Adaptive Guided Replay monitors rollout accuracy and, when a rollout falls below a threshold, injects ground-truth reasoning trajectories to pull the policy away from stagnant or rule-violating patterns. Together these two mechanisms provide richer gradient signal and active correction, enabling stable multi-step reasoning convergence on long-tail e-commerce queries.",
+    "key_innovation": "Prior RL-for-LLM work (GRPO, RLHF) relies on sparse end-of-sequence rewards that offer little signal for intermediate reasoning steps; TaoSR-AGRL is the first to combine structured dense reward decomposition grounded in explicit business rules with an online replay mechanism that selectively injects expert trajectories only for failing rollouts — avoiding the mode-collapse risk of pure imitation learning while still rescuing stagnant training runs.",
+    "technical_insight": "The most critical design choice is the conditional ground-truth injection in Adaptive Guided Replay: by triggering guidance only on low-accuracy rollouts rather than uniformly, the method avoids over-reliance on demonstrations (which would degrade to SFT) while ensuring the policy never gets permanently stuck in reward deserts. This asymmetric intervention preserves exploration for easy cases and provides dense supervision exactly where the reward signal is too sparse to self-correct.",
+    "limitations": "The rule-aware reward decomposition requires hand-crafted, domain-specific relevance criteria, making generalization to new categories or marketplaces expensive; the accuracy threshold for guided replay is a sensitive hyperparameter that likely needs tuning per dataset distribution. The approach is also evaluated only on Taobao's closed proprietary data, so external reproducibility and cross-platform validity are unverified. Finally, injecting ground-truth trajectories assumes high-quality, dense human annotations exist for hard cases, which may not hold for truly novel query types.",
+    "interview_questions": [
+      "How does Rule-aware Reward Shaping decompose a single relevance label into dense rewards, and how do you prevent reward hacking on the intermediate signals?",
+      "What threshold or criterion triggers guided replay, and how sensitive is model performance to that hyperparameter?",
+      "How does Adaptive Guided Replay differ from standard expert iteration or DAgger, and why is the selective injection important?",
+      "GRPO uses group-relative baselines to reduce variance — how does adding dense rewards interact with that baseline estimation?",
+      "How would you extend TaoSR-AGRL to a marketplace without rich annotated business rules, e.g., a cold-start category?"
+    ],
+    "interview_answers": [
+      "Each rule (e.g., brand match, category alignment, semantic overlap) becomes a separate reward component summed into the total signal. Reward hacking is mitigated by grounding each component in verifiable attributes from structured product catalogs rather than learned proxies, and by end-to-end evaluation on held-out human judgments that catch cases where intermediate rewards diverge from actual relevance.",
+      "The paper uses a rollout-level accuracy threshold (fraction of correct relevance labels in a sampled group); when accuracy falls below this threshold, guided replay activates. Performance is likely sensitive — too high a threshold causes over-injection resembling SFT, too low leaves hard cases unsupported. Ablations on threshold values would be needed; the paper reports that the chosen value improved stability without collapsing to imitation.",
+      "DAgger injects expert actions at every step under the current policy's state distribution; expert iteration retrains on filtered rollouts offline. Adaptive Guided Replay is online, triggered only for failing rollouts, and injects full ground-truth trajectories rather than per-step actions. The selectivity is key: it preserves the policy's own reasoning on cases it handles correctly, maintaining diversity and avoiding the averaging effect that full imitation causes.",
+      "GRPO computes advantages relative to the mean reward of a group of rollouts for the same query. Adding dense intermediate rewards increases the absolute scale and variance of rewards within a group, but since GRPO normalizes by group statistics, the relative advantage signal remains stable. The dense rewards primarily help by providing non-zero gradient signal at intermediate steps rather than by changing the baseline computation.",
+      "Without explicit business rules, one could use a learned reward model trained on human preference pairs as a proxy for rule-based decomposition, or leverage LLM self-critique to generate pseudo-rules from annotation guidelines. The guided replay component could use GPT-4-generated reasoning chains as surrogate ground truth for cold-start categories, at the cost of introducing label noise that would need calibration."
+    ],
+    "generated_at": "2026-03-23T18:51:50Z"
+  }
+}
