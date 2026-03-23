@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "TayFCS is a lightweight method for selecting useful high-order feature combinations in deep recommender systems by approximating combination importance via Taylor expansion on gradients, avoiding the exponential cost of exhaustive evaluation. It also introduces a Logistic Regression Elimination step to reduce redundancy between selected combinations and their sub-components.",
+    "key_idea": "Instead of repeatedly running experiments to evaluate each feature combination's importance, use a single backward pass with Taylor expansion to approximate importance scores from sub-component gradients, then prune redundant combinations via information gain estimation.",
+    "why_it_matters": "Most feature combinations in recommendation models are noisy and wasteful; this method lets practitioners automatically identify and keep only the truly informative ones with minimal compute overhead, improving both model accuracy and memory efficiency in production systems.",
+    "possible_use_cases": [
+      "Pruning feature interaction graphs in large-scale e-commerce recommendation engines to reduce latency and memory footprint",
+      "Automating feature engineering pipelines by identifying high-value cross-feature combinations without manual trial-and-error",
+      "Improving click-through rate (CTR) prediction models by eliminating noisy feature interactions that hurt generalization"
+    ],
+    "generated_at": "2026-03-23T02:56:58Z"
+  },
+  "deep": {
+    "method_breakdown": "TayFCS uses Taylor expansion to approximate the importance of high-order feature combinations by decomposing them into gradients of their sub-components, avoiding the exponential cost of evaluating each combination independently. A single backward pass on a trained base model suffices to score all combinations. Logistic Regression Elimination (LRE) then filters out combinations whose information is already captured by lower-order sub-components, reducing redundancy before the final feature set is fixed.",
+    "key_innovation": "Prior feature selection methods evaluate individual features and cannot scale to high-order combinations due to exponential complexity. TayFCS's TayScorer approximates combination importance via Taylor expansion over sub-component gradients, collapsing what would require exponential re-training experiments into a single backward pass — a fundamentally different computational strategy.",
+    "technical_insight": "The critical design choice is using Taylor expansion to link a combination's importance to the gradients of its constituent lower-order terms, which are already available after one backward pass. This works because the Taylor approximation gives a local linear/quadratic estimate of how much a feature combination shifts the loss, and since the model is already trained, the gradient signal is informative and stable. LRE further sharpens this by measuring marginal information gain over sub-components rather than absolute importance, preventing the selection of combinations that are redundant with already-selected lower-order features.",
+    "limitations": "The Taylor approximation is a local estimate around the trained model's parameters, so it may be inaccurate if the model is poorly trained or if the loss landscape is highly non-linear. The method is evaluated post-hoc on a trained base model, meaning the selected feature combinations may not be globally optimal — only locally optimal near that training checkpoint. The LRE step relies on logistic regression as a proxy for information gain, which may not generalize well across all recommendation domains. Scalability beyond three benchmark datasets and performance under distribution shift are not addressed.",
+    "interview_questions": [
+      "How does TayScorer use Taylor expansion to estimate feature combination importance, and what order of Taylor approximation is used?",
+      "Why is a single backward pass sufficient to score all feature combinations, and what are the assumptions that make this valid?",
+      "How does Logistic Regression Elimination differ from simply thresholding combination importance scores?",
+      "What are the computational complexity savings of TayFCS compared to exhaustive combination evaluation, and how does this scale with feature order?",
+      "What would happen if the base model is underfitted or overfitted — how would that affect the reliability of the Taylor-based importance scores?"
+    ],
+    "interview_answers": [
+      "TayScorer performs a field-wise Taylor expansion of the model's output with respect to the presence/absence of a feature combination. By expanding around the trained model's parameters, it expresses the importance of a combination as a function of the gradients (and possibly Hessians) of its sub-components, which can be read off from a single backward pass rather than requiring separate forward passes per combination.",
+      "A single backward pass computes gradients for all parameters and activations simultaneously via backpropagation. Since the Taylor approximation decomposes combination importance into these already-computed gradient terms, no additional forward or backward passes are needed. The key assumption is that the gradient signal at the trained model's parameters provides a good local approximation of how much each combination contributes to the loss.",
+      "LRE explicitly measures the marginal information gain of a combination over its sub-components rather than its absolute score. A combination might have a high absolute importance score but add little beyond what its lower-order sub-features already capture. LRE uses logistic regression to quantify this conditional contribution, pruning combinations that are redundant given the sub-components already selected.",
+      "Exhaustive evaluation of k-th order combinations over n features is O(n^k) experiments. TayFCS reduces this to O(1) backward passes for scoring, making the selection step effectively constant in the number of combinations. At higher orders (k=3,4), this represents orders-of-magnitude savings in compute and avoids the need for any retraining during the selection phase.",
+      "If the base model is underfitted, gradients will be large and noisy, making the Taylor approximation unreliable as a proxy for combination importance. If overfitted, gradients may be near-zero for training-set patterns and the scores will not generalize to the test distribution. Both cases undermine the core assumption that the trained model's gradient landscape faithfully reflects each combination's contribution, potentially leading to poor combination selection."
+    ],
+    "generated_at": "2026-03-23T02:57:24Z"
+  }
+}

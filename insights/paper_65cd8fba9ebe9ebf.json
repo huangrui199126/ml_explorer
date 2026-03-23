@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DFSN addresses the delayed feedback problem in CVR prediction by combining a main model trained on data with long waiting windows (to reduce fake negatives) with lightweight satellite models trained on fresh data, using online transfer learning to bridge the gap.",
+    "key_idea": "Use satellite models trained on recent but label-noisy data to continuously update a main model trained on older but more reliable labels, enabling adaptive waiting windows without sacrificing data freshness.",
+    "why_it_matters": "Delayed conversion signals are a fundamental challenge in cost-per-conversion advertising; better CVR prediction directly improves bidding efficiency and ad revenue without requiring longer data collection delays.",
+    "possible_use_cases": [
+      "Real-time CVR prediction in programmatic advertising platforms",
+      "Improving bid optimization in cost-per-conversion (CPA) campaigns",
+      "Online learning systems where label delays create training data bias"
+    ],
+    "generated_at": "2026-03-23T02:50:08Z"
+  },
+  "deep": {
+    "method_breakdown": "DFSN uses a main model trained on data with a long waiting window (to reduce fake negatives) alongside two satellite models that learn from fresh, recent data without waiting. Online transfer learning is used to distill knowledge from the satellite models into the main model, allowing it to benefit from up-to-date distribution information. This adaptive architecture decouples the trade-off between data freshness and label quality.",
+    "key_innovation": "Prior work either waits a fixed window (sacrificing freshness) or uses importance weighting/generative models to handle fake negatives (sacrificing simplicity and stability). DFSN's novelty is the dual-satellite architecture that separates freshness concerns from label-quality concerns, using transfer learning to bridge them — enabling adaptive waiting windows rather than a static fixed delay.",
+    "technical_insight": "The most important design choice is training satellite models on the latest data (accepting noisy labels) while the main model trains on high-quality delayed data, then using online transfer learning to inject the satellites' temporal knowledge into the main model. This works because the satellites capture recent distribution shifts while the main model maintains reliable conversion signal, and transfer learning lets the main model adapt without being directly corrupted by fake negatives.",
+    "limitations": "The approach adds complexity with multiple models that must be maintained and synchronized in real time, increasing infrastructure cost. The transfer learning mechanism may struggle when the distribution shift is severe or abrupt, as satellite models trained on very recent but label-noisy data could transfer misleading gradients. The method's effectiveness likely depends heavily on the tuning of waiting window length and transfer learning hyperparameters, which may vary across different advertising verticals.",
+    "interview_questions": [
+      "What is the delayed feedback problem in CVR prediction and why does it matter?",
+      "How do the satellite models differ from the main model in DFSN, and what role does each play?",
+      "Why is online transfer learning used instead of simply training a single model on all available data?",
+      "How does DFSN choose or adapt the waiting window, and what are the trade-offs?",
+      "What are the key differences between DFSN and prior approaches like FSIW or ES-DFM?"
+    ],
+    "interview_answers": [
+      "In cost-per-conversion advertising, a user click may convert hours or days later. If a model is trained before conversion is observed, those samples appear as negatives (fake negatives), biasing the model toward underestimating CVR. This directly harms bid optimization and revenue.",
+      "The main model is trained on data with a long waiting window — most conversions are observed, so labels are reliable but data is stale. The satellite models are trained on the freshest data (short or no window), accepting noisy labels, and are designed to capture recent distribution patterns. The main model absorbs satellite knowledge via transfer learning to regain freshness.",
+      "A single model on all data would be directly corrupted by fake negatives in fresh samples. Separating the two concerns allows the main model to maintain label quality while still benefiting from temporal signals the satellites capture. Transfer learning acts as a soft bridge, not a hard label override.",
+      "DFSN assigns a long fixed window to the main model for label reliability, while satellites use short windows to stay fresh. The 'adaptive' element comes from the transfer learning weights dynamically adjusting how much satellite influence is applied, rather than changing the window itself — the system adapts to distribution shift without manual retuning.",
+      "Prior methods like FSIW use importance weighting to correct fake negative bias but still rely on a single model without addressing freshness. ES-DFM uses an elapsed-time model but also lacks a mechanism for real-time adaptation. DFSN explicitly separates freshness from label quality via the satellite architecture, which is a structural solution rather than a statistical correction applied post-hoc."
+    ],
+    "generated_at": "2026-03-23T02:50:29Z"
+  }
+}

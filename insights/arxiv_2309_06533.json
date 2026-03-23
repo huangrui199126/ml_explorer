@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HierSRec applies a hierarchical multi-task learning framework to session-based recommendation, where next-category prediction (auxiliary task) feeds into next-item prediction (main task) using a metadata-aware Transformer. This hierarchy improves accuracy, interpretability, and inference efficiency by reducing candidate items to ~4% of the catalog.",
+    "key_idea": "Predicting the category first and using that prediction as an enriched feature for item-level prediction creates a natural hierarchy that improves both accuracy and scalability.",
+    "why_it_matters": "Practitioners building session-based recommenders get a principled way to incorporate product taxonomy into multi-task learning, cutting inference cost dramatically while matching or exceeding full-catalog accuracy.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where items are organized in category hierarchies",
+      "Streaming service content recommendation using genre/type as an auxiliary signal",
+      "Search and discovery systems needing low-latency inference over large item catalogs"
+    ],
+    "generated_at": "2026-03-23T02:54:11Z"
+  },
+  "deep": {
+    "method_breakdown": "HierSRec uses a metadata-aware Transformer to encode a user session, then performs next-category prediction as an auxiliary task. The predicted category distribution is fed as an additional input feature into the main next-item prediction task, creating a hierarchical dependency where the auxiliary task output enriches the main task. At inference time, the category prediction restricts the candidate item pool to ~4% of total items, enabling scalable recommendation without accuracy loss.",
+    "key_innovation": "The first application of Hierarchical MTL (H-MTL) to session-based recommendation, where auxiliary task outputs (category predictions) are explicitly chained as inputs to the main task (item prediction), rather than the flat MTL approach of sharing only intermediate representations or jointly optimizing losses. This differs from prior SBRSs that use MTL with shared encoders but no structured output-level hierarchy.",
+    "technical_insight": "Feeding the category prediction result directly into item prediction is the critical design choice — it provides a coarse-grained semantic filter that constrains the item prediction space, improving both accuracy (richer contextual signal) and efficiency (candidate generation reduces search space by ~96%). This works because item-level decisions naturally decompose into category-then-item, mirroring the hierarchical structure of product catalogs.",
+    "limitations": "Performance is tightly coupled to category prediction accuracy — errors in the auxiliary task propagate and compound in the main task. The 4% candidate set assumes categories are well-defined and items cluster cleanly by category; flat or overlapping taxonomies would degrade both accuracy and candidate quality. Evaluation on only two datasets limits generalizability claims, and the framework assumes metadata availability which may not hold in cold-start or sparse settings.",
+    "interview_questions": [
+      "How does HierSRec's H-MTL differ from standard shared-encoder MTL in session-based recommendation?",
+      "What is the role of the metadata-aware Transformer, and what kinds of metadata does it incorporate?",
+      "How does the candidate generation scheme work, and why does the paper claim its accuracy aligns with full-item evaluation?",
+      "What are the failure modes when the auxiliary task (category prediction) performs poorly?",
+      "How would you extend HierSRec to handle multi-level hierarchies (e.g., department → category → item)?"
+    ],
+    "interview_answers": [
+      "Standard MTL shares a common encoder but computes task losses independently and in parallel. H-MTL introduces a directed dependency: the output of the auxiliary task (category logits or predictions) is passed as an explicit input feature to the main task, so the main task conditions on the auxiliary task's decision rather than only on shared latent representations.",
+      "The metadata-aware Transformer augments item embeddings with side information (e.g., price, brand, category labels) before attention computation, allowing the session encoder to capture attribute-level patterns alongside co-occurrence patterns. This enriches session representations for both category and item prediction tasks.",
+      "After predicting the top-k categories, HierSRec restricts the item candidate pool to items belonging to those categories, yielding ~4% of total items. Accuracy aligns with full-item evaluation because the ground-truth next item almost always falls within the predicted categories — validating that category prediction is accurate enough to serve as a reliable filter without recall loss.",
+      "If category prediction is wrong, the ground-truth item is excluded from the candidate set entirely, making recovery impossible. Additionally, errors propagate into the item prediction head since it conditions on incorrect category signals, potentially biasing the ranking even among the (wrong) candidates.",
+      "You could add intermediate prediction layers — e.g., predict department first, then condition category prediction on the department output, then condition item prediction on the category output — forming a three-level hierarchy. Each level's output would serve as an input feature to the next, and candidate pruning would happen at each stage, progressively narrowing the search space while compounding contextual signals."
+    ],
+    "generated_at": "2026-03-23T02:54:33Z"
+  }
+}
