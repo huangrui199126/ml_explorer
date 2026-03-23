@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Lattice is a recurrent neural network mechanism that compresses key-value memory into a fixed number of slots using low-rank structure, achieving sub-quadratic complexity as an alternative to standard attention. It uses an orthogonal update rule to store only novel information in each memory slot, minimizing interference with previously stored content.",
+    "key_idea": "Each memory slot is updated only with information orthogonal to its current state, ensuring non-redundant storage and enabling efficient fixed-size memory compression of attention's KV cache.",
+    "why_it_matters": "Practitioners working with long-context models can use Lattice to dramatically reduce memory footprint and computational cost compared to full attention, enabling longer effective context windows on constrained hardware.",
+    "possible_use_cases": [
+      "Long-context language modeling on memory-constrained devices (mobile, edge)",
+      "Streaming or real-time sequence processing where fixed memory budgets are required",
+      "Drop-in attention replacement for efficient inference in production LLM deployments"
+    ],
+    "generated_at": "2026-03-23T03:41:28Z"
+  },
+  "deep": {
+    "method_breakdown": "Lattice reformulates KV-cache compression as an online optimization problem where a fixed set of memory slots must approximate the full attention matrix. It derives a memory update rule via a single gradient descent step on this objective, yielding a recurrent mechanism with state- and input-dependent gating. The key computation is an orthogonal update that decomposes new information into components parallel and perpendicular to existing slot content, only writing the perpendicular (novel) component.",
+    "key_innovation": "The orthogonal update rule is the core novelty: unlike prior linear RNNs (Mamba, RWKV, GLA) that overwrite or blend memory indiscriminately, Lattice explicitly projects new information onto the null space of each memory slot's current state, ensuring only non-redundant information is stored. This is distinct from low-rank attention approximations (Linformer, Performer) which are static; Lattice learns dynamic slot assignments driven by gradient-based optimization.",
+    "technical_insight": "The orthogonal projection prevents catastrophic interference — the most fundamental failure mode of fixed-capacity memory systems. By construction, writing orthogonal components to a slot cannot degrade what is already stored (the update is in a subspace the slot has zero projection onto), which is why memory efficiency improves dramatically without accuracy collapse even at very small memory sizes.",
+    "limitations": "The orthogonal update assumes slot content is well-conditioned and nearly orthogonal across slots; degenerate cases where slots collapse toward the same subspace break the interference argument. Chunk-wise parallelization introduces an approximation gap versus the true sequential recurrence, and the impact on tasks requiring precise long-range recall (vs. statistical language modeling) is underexplored. The single gradient step derivation may not find a globally good compression, especially early in training before the gating mechanism is well-calibrated.",
+    "interview_questions": [
+      "How does Lattice derive its memory update rule, and what optimization objective drives it?",
+      "What is the orthogonal update and why does it reduce memory interference compared to standard gating?",
+      "How does Lattice achieve training scalability given that the recurrence is inherently sequential?",
+      "How does Lattice compare to other sub-quadratic attention alternatives like Mamba or GLA in terms of memory update mechanics?",
+      "What are the theoretical conditions under which the orthogonal update guarantee holds, and when might it break down?"
+    ],
+    "interview_answers": [
+      "Lattice frames KV compression as minimizing reconstruction error of the full attention output using a fixed number of memory slots. Taking a single online gradient descent step on this per-timestep objective yields a closed-form update rule that resembles a gated RNN but is derived rather than hand-designed.",
+      "The orthogonal update decomposes the new input vector into a component aligned with the current slot content and a residual perpendicular to it; only the perpendicular residual is written to the slot. Because the written component lies in the null space of the existing content, it cannot alter the slot's projection along its current direction — mathematically guaranteeing zero interference with previously stored information.",
+      "Lattice uses chunk-wise parallelization: within each chunk the recurrence is approximated as parallelizable (similar to the parallel scan used in S4/Mamba), accepting a small approximation error in exchange for GPU-friendly training. Across chunks the true hidden state is propagated sequentially.",
+      "Mamba uses input-dependent selective gating but does not explicitly enforce orthogonality, so new writes can overwrite old memories. GLA uses a gated linear attention formulation tied to dot-product structure. Lattice's distinguishing feature is the principled orthogonal projection step, making it the first RNN-style mechanism where memory interference is minimized by construction rather than hoped for via learned gating.",
+      "The guarantee holds when individual memory slots are well-conditioned (non-zero norm) and the input is not already fully contained in the slot's span. It breaks down if slots become rank-deficient or collapse to the same direction (slot collapse), if the single-step gradient approximation is too coarse, or if the chunk approximation accumulates error over very long sequences — all of which are more likely in early training or at very small memory sizes."
+    ],
+    "generated_at": "2026-03-23T03:41:55Z"
+  }
+}
