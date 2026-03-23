@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MetaCVR addresses conversion rate prediction in small-scale e-commerce scenarios where limited data and promotions cause severe distribution shifts between training and serving time. It combines a pre-trained Feature Representation Network with prototype-based meta learning to adapt quickly to recent data distributions.",
+    "key_idea": "Treat different time periods as different meta-learning tasks, compute distance metrics between samples and time-period prototypes, then ensemble with a frozen base model trained on historical data to balance long-term learning with short-term distribution adaptation.",
+    "why_it_matters": "Most CVR research targets large platforms with abundant data; this work specifically tackles small-scale scenarios where distribution drift from promotions and sparse data makes standard models fail, directly impacting GMV for the long tail of e-commerce businesses.",
+    "possible_use_cases": [
+      "CVR prediction for small or mid-size e-commerce platforms with limited transaction history",
+      "Adapting recommendation models during flash sales or seasonal promotions without full retraining",
+      "Transfer learning pipelines where a shared feature extractor is frozen and only lightweight adaptation layers are retrained on recent data"
+    ],
+    "generated_at": "2026-03-23T21:35:21Z"
+  },
+  "deep": {
+    "method_breakdown": "MetaCVR trains a base CVR model (Feature Representation Network + output layers) on multi-month data, then extracts positive/negative prototypes per time period to capture distribution shifts. A Distance Metric Network computes distances between incoming samples and these prototypes, and an Ensemble Prediction Network fuses FRN outputs with DMN distances for final prediction. During fine-tuning, FRN is frozen while DMN and EPN are updated on recent data, decoupling long-term feature learning from short-term distribution adaptation.",
+    "key_innovation": "First CVR work explicitly targeting Data Distribution Fluctuation in small-scale scenarios. The prototype-based meta-learning approach handles both temporal distribution discrepancy (training vs. serving gap) and distribution uncertainty from promotions, without requiring large data volumes — prior work (ESMM, HM3) assumes stable, large-scale data distributions.",
+    "technical_insight": "Freezing FRN during fine-tuning is the critical design choice: it prevents catastrophic forgetting of general feature representations learned from months of data while allowing DMN/EPN to rapidly adapt to recent distribution shifts. This two-stage training mimics meta-learning's inner/outer loop separation, enabling few-shot adaptation to new time periods.",
+    "limitations": "Prototype quality depends heavily on having representative samples per time period, which may be unreliable during extremely sparse promotion windows. The approach assumes distribution shifts are captured by prototype distances, which may not generalize to novel promotion types unseen during training. The method adds inference latency from prototype distance computation, and the two-stage training pipeline increases deployment complexity.",
+    "interview_questions": [
+      "How does MetaCVR define 'positive' and 'negative' prototypes, and why is this distinction useful for handling distribution shifts?",
+      "Why is freezing the FRN during DMN/EPN fine-tuning preferable to end-to-end fine-tuning on recent data?",
+      "How does MetaCVR differ from ESMM in addressing the CVR sample selection bias problem, and does it fully solve it?",
+      "What happens when a new promotion type emerges that is structurally different from all historical promotions — how does the prototype mechanism fail?",
+      "How would you extend MetaCVR to handle multiple simultaneous distribution shifts (e.g., seasonality + promotion + new user cohort at the same time)?"
+    ],
+    "interview_answers": [
+      "Positive prototypes represent samples that converted (purchase) within a time period, while negative prototypes represent non-conversions. This separation allows DMN to measure not just 'which distribution does this sample belong to' but also 'given the current distribution, how similar is this sample to converting users' — effectively conditioning CVR prediction on distributional context.",
+      "Full fine-tuning on recent (sparse) data risks overfitting and catastrophic forgetting of general cross-feature interactions learned from months of training. By freezing FRN, the model retains robust feature representations while DMN/EPN learn a lightweight distribution-aware correction, analogous to adapter-style transfer learning.",
+      "ESMM addresses sample selection bias by jointly training CTR and CVR on all impressed samples, using CTR as an auxiliary task. MetaCVR does not explicitly address selection bias — it focuses on distribution shift over time. In principle, both problems coexist in small-scale scenarios, and MetaCVR would benefit from combining with ESMM's multi-task framework.",
+      "The prototype mechanism interpolates between known distribution patterns; a truly novel promotion type has no historical prototypes to match against, so DMN distances will be unreliable. The model would likely fall back to FRN's generic prediction without useful distribution correction, degrading to baseline performance rather than catastrophically failing.",
+      "One approach is hierarchical prototypes: decompose distributions into independent factors (time-of-year, promotion flag, user segment) and learn separate prototype banks per factor, then aggregate distances via a learned attention mechanism. Alternatively, treat each combination as a task in a proper meta-learning framework (MAML-style) to learn a more general initialization that can adapt to arbitrary combinations."
+    ],
+    "generated_at": "2026-03-23T21:35:44Z"
+  }
+}

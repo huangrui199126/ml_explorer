@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes two fine-tuning methods to improve CLIP's image-to-image retrieval performance without degrading its text-to-image and zero-shot classification capabilities. The methods involve either sequentially re-aligning the text encoder after image encoder optimization, or using pseudo-captions during fine-tuning to maintain joint embedding alignment.",
+    "key_idea": "Fine-tuning CLIP's image encoder for visual similarity while re-anchoring the text encoder to the updated image embeddings preserves cross-modal alignment without sacrificing image retrieval precision.",
+    "why_it_matters": "Practitioners building multi-modal search systems can use a single embedding per image for both visual and text queries, reducing infrastructure complexity while achieving better image similarity search results.",
+    "possible_use_cases": [
+      "Large-scale reverse image search engines requiring both visual and text query support",
+      "E-commerce product search where visually similar items must be retrieved from text or image queries",
+      "Medical imaging archives needing image-similarity retrieval alongside text-based diagnostic queries"
+    ],
+    "generated_at": "2026-03-23T21:30:04Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes two fine-tuning strategies for CLIP. The first is sequential: fine-tune the image encoder alone for image-to-image retrieval (e.g., using contrastive loss on image pairs), then realign the text encoder to the updated image embedding space. The second integrates pseudo-captions (generated or augmented text descriptions) during the image retrieval fine-tuning phase so that text-image alignment is preserved throughout rather than restored afterward.",
+    "key_innovation": "Prior work either fine-tunes CLIP for image retrieval and breaks text-image alignment, or preserves alignment at the cost of retrieval quality. This paper is the first to explicitly address the alignment-retrieval tradeoff with targeted two-stage and pseudo-caption strategies that recover or maintain joint embedding utility, enabling a single embedding per image to serve both image retrieval and zero-shot text tasks simultaneously.",
+    "technical_insight": "The critical design choice is decoupling the optimization of the image encoder from text alignment and then re-anchoring the text encoder. This works because the image encoder can be freely optimized on visual similarity objectives without immediately destroying cross-modal alignment — the text encoder can subsequently be cheaply realigned to the new image embedding geometry, treating it as a fixed target rather than a moving one during joint training.",
+    "limitations": "Pseudo-caption quality is a hard dependency — noisy or generic captions may not provide sufficient alignment signal. Sequential fine-tuning requires two training stages, increasing computational cost. The approach is evaluated on standard benchmarks (ImageNet, MSCOCO-style) and may not generalize to highly domain-specific retrieval tasks where CLIP's pretraining is weak. The paper does not address multi-vector or late-interaction retrieval, which could outperform single-embedding approaches on hard retrieval cases.",
+    "interview_questions": [
+      "Why does standard CLIP underperform on image-to-image retrieval despite strong text-image alignment?",
+      "What is the core tradeoff being managed in this paper, and how does each proposed method address it differently?",
+      "How does the pseudo-caption approach maintain alignment without a sequential two-stage process?",
+      "What are the infrastructure advantages of maintaining a single embedding per image, and why does this paper's approach enable that?",
+      "What are the risks of fine-tuning only the image encoder in stage one of the sequential method?"
+    ],
+    "interview_answers": [
+      "CLIP is trained with image-text contrastive loss, so its embedding space is organized around semantic text concepts rather than fine-grained visual similarity. Two visually distinct images sharing a similar caption (e.g., 'a dog on a couch') will cluster together, making image-to-image retrieval coarse and insensitive to visual detail.",
+      "The tradeoff is between visual discriminability and cross-modal alignment. The sequential method resolves this temporally: optimize image space first, then re-anchor text to it. The pseudo-caption method resolves it spatially: inject text supervision directly during image retrieval training so the optimization pressure is balanced throughout, avoiding the need for a separate re-alignment phase.",
+      "By including pseudo-captions (synthetic or augmented text descriptions for each image) in the retrieval fine-tuning loss, the model simultaneously receives image-image similarity gradients and image-text alignment gradients. This prevents the image embedding space from drifting away from text-compatible geometry during retrieval optimization.",
+      "Single-embedding systems require only one vector store and one index per image, avoiding the complexity of maintaining separate image-retrieval and text-retrieval indices or multi-representation schemes. Since this paper's fine-tuned models preserve text-image alignment while improving visual retrieval, a single embedding can serve both use cases without architectural changes to the serving infrastructure.",
+      "Fine-tuning only the image encoder risks creating a representation gap: the image embeddings move into a new geometry that the frozen text encoder was not trained to align with. If the shift is large, subsequent text-encoder realignment may be insufficient or require extensive training, potentially still degrading zero-shot classification or text-to-image retrieval quality."
+    ],
+    "generated_at": "2026-03-23T21:30:27Z"
+  }
+}
