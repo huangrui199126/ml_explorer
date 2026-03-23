@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a search ranking system for e-commerce that predicts a customer's preferred fulfillment method (e.g., in-store pickup, same-day delivery, standard shipping) from their query and behavior, then boosts products matching that preference in search results. Offline and online experiments confirm the approach improves relevance in omnichannel retail settings.",
+    "key_idea": "Predict per-query fulfillment intent from user context and inject a fulfillment-match signal directly into the ranking model to surface products that satisfy both product relevance and delivery preference simultaneously.",
+    "why_it_matters": "Omnichannel retailers lose conversions when search returns the right product but the wrong fulfillment option; making fulfillment a first-class ranking signal reduces friction and aligns results with what customers actually need at that moment.",
+    "possible_use_cases": [
+      "Prioritizing same-day or curbside-pickup listings for users whose query and location history signals urgency",
+      "Suppressing marketplace/shipped items for loyalty customers who habitually use in-store pickup, reducing irrelevant results",
+      "Personalizing search ranking during high-demand periods (e.g., holidays) when specific fulfillment channels are constrained, steering users toward available options"
+    ],
+    "generated_at": "2026-03-23T05:29:12Z"
+  },
+  "deep": {
+    "method_breakdown": "The system predicts a customer's fulfillment intent (e.g., in-store pickup vs. same-day delivery vs. standard shipping) using a model conditioned on the search query, user interaction history, and contextual signals like location and time. A fulfillment match signal is then computed to quantify alignment between the predicted intent distribution and the fulfillment methods available for each candidate product. This match signal is injected into the ranking model (likely as a feature in a learning-to-rank framework) to re-prioritize results toward products satisfying the inferred fulfillment preference.",
+    "key_innovation": "Prior search ranking systems treat fulfillment type as a hard filter or ignore it entirely; this work introduces soft, probabilistic fulfillment intent prediction that produces a continuous match signal usable within gradient-based ranking models. The novelty is the explicit modeling of fulfillment as a first-class ranking dimension rather than a post-processing constraint, enabling the ranker to trade off relevance and fulfillment fit jointly.",
+    "technical_insight": "Using a predicted intent distribution rather than a deterministic fulfillment label is the critical design choice — it allows the model to handle ambiguous queries (e.g., 'flowers' could be same-day or pickup) by weighting match scores proportionally to intent confidence, which prevents over-committing to a single fulfillment channel and improves robustness when behavioral signals are sparse.",
+    "limitations": "The intent model is trained on historical interaction data which may encode fulfillment availability bias (users can only interact with what was surfaced), creating a feedback loop. Cold-start users with no interaction history will have poor intent estimation, likely falling back to population priors. The approach also assumes fulfillment metadata per product is complete and accurate, which may degrade in marketplace settings with many third-party sellers.",
+    "interview_questions": [
+      "How do you handle the position bias in training data when the historical interactions used to learn fulfillment intent were themselves shaped by the ranking system you're trying to improve?",
+      "What architecture and training objective did you use for the fulfillment intent prediction model, and how did you represent the query and user history?",
+      "How is the fulfillment match signal computed — is it a dot product between predicted intent probabilities and a one-hot fulfillment availability vector, or something more complex?",
+      "How did you validate that gains in online metrics (e.g., conversion, click-through) are attributable to fulfillment intent matching rather than correlated behavioral signals like time-of-day or geography?",
+      "How does the system degrade gracefully for new users or rare queries where the intent model has low confidence, and did you observe any segments where the model hurt performance?"
+    ],
+    "interview_answers": [
+      "Position bias is a real threat — the intent model learns from clicks which are conditioned on what was shown, so if shipping items were historically ranked higher, the model may underestimate pickup intent. Counterfactual debiasing techniques (inverse propensity scoring) or randomized exposure experiments would be needed to get unbiased intent signal; the paper likely doesn't fully address this.",
+      "The intent model is likely a multi-class or multi-label classifier (one fulfillment type per output node) using a transformer or BERT-style encoder for the query and an aggregated embedding for user history (e.g., mean pooling of recent interactions). Training objective is probably cross-entropy with soft labels derived from the fulfillment types of products the user engaged with.",
+      "Most naturally it would be a weighted sum: for each product, compute sum over fulfillment types of (predicted intent probability × indicator that product supports that type), giving a scalar match score in [0,1]. This is differentiable and can be used directly as a ranking feature or as a re-ranking multiplier.",
+      "Causal attribution is hard here since geography, time, and fulfillment availability are correlated. A clean online A/B test with the intent signal ablated (but all other features held constant) would be necessary; the paper references offline and online experiments but the degree of isolation of the fulfillment signal effect is uncertain without reading the full experimental setup.",
+      "Low-confidence intent likely falls back to a prior distribution (e.g., population-level fulfillment preference by region or query category). Segments that may hurt include power users with diverse fulfillment history (noisy intent estimation) and cases where inventory scarcity forces the model to surface low-match products, making the intent signal misleading."
+    ],
+    "generated_at": "2026-03-23T05:29:37Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PRP is a recommendation model that uses prototype learning to disentangle shared and domain/task-specific representations in multi-domain, multi-task settings. It combines a shared MoE for common representations, orthogonal task-specific expert spaces, and Optimal Transport to guide projection onto learned prototypes.",
+    "key_idea": "Project sample representations into shared and task-specific prototype spaces—kept orthogonal via a loss term—then reconstruct samples as linear combinations of prototypes guided by Optimal Transport.",
+    "why_it_matters": "Industrial recommenders often serve multiple domains (e.g., search, feeds, ads) and tasks (CTR, CVR) simultaneously; disentangling shared vs. specific signals reduces negative transfer and improves both efficiency and accuracy without separate models per domain/task.",
+    "possible_use_cases": [
+      "E-commerce platforms unifying click-through and conversion prediction across product categories",
+      "Short-video apps jointly modeling watch-time and like/share across content verticals",
+      "Ad systems sharing representations across display, search, and native ad channels while maintaining task-specific scoring heads"
+    ],
+    "generated_at": "2026-03-23T05:26:23Z"
+  },
+  "deep": {
+    "method_breakdown": "PRP uses a shared Mixture of Experts (MoE) to encode sample representations and project them into a common prototype space, capturing cross-domain/task commonality via linear combinations of prototypes as new sample representations. For specificity, domain/task-specific expert networks project representations into orthogonal prototype spaces (enforced via orthogonal loss), ensuring independence between domain-specific features. Optimal Transport (OT) is used to guide the alignment between sample representations and prototypes within each space, replacing raw embeddings with prototype-weighted combinations.",
+    "key_innovation": "The core novelty is applying prototype learning as a representational disentanglement mechanism in multi-domain/multi-task recommendation — prior work (MMoE, PLE, STAR, etc.) shares or gates expert outputs but does not explicitly decompose representations into orthogonal common/specific prototype spaces. Using OT to govern projection assignment within prototype spaces (rather than soft attention or gating) is also novel, providing a principled transportation-based alignment that is more globally consistent than local similarity scores.",
+    "technical_insight": "The orthogonal loss constraining domain/task-specific prototype spaces is the most critical design choice: by enforcing geometric orthogonality between spaces, the model guarantees that specific representations carry no redundant common information and vice versa, solving the representation entanglement problem structurally rather than through learned soft masks. This hard geometric constraint is more reliable than learned gates which can collapse or co-adapt.",
+    "limitations": "OT computation adds significant inference cost (Sinkhorn iterations), which may be prohibitive at industrial scale without approximations. The number of prototypes per space is a sensitive hyperparameter with unclear guidance. Orthogonal loss may be too rigid when domains/tasks share substantial specific structure (e.g., two closely related verticals). The method's benefit on truly sparse domains with few samples is unverified, and prototype initialization strategy is not discussed, risking poor local minima.",
+    "interview_questions": [
+      "Why is representation entanglement a problem in multi-domain/multi-task recommendation, and how does PRP specifically address it?",
+      "How does Optimal Transport guide representation projection in PRP, and what advantage does it have over simple attention-based prototype assignment?",
+      "What does the orthogonal loss enforce mathematically, and why is orthogonality the right inductive bias for separating common and specific representations?",
+      "How does PRP differ from PLE (Progressive Layered Extraction) in how it handles task-specific vs. shared information?",
+      "What are the computational trade-offs of using OT in the projection step, and how might you approximate it for low-latency production serving?"
+    ],
+    "interview_answers": [
+      "Entanglement means shared representations mix domain-common and domain-specific signals, so a model cannot cleanly leverage commonality without contaminating specificity. PRP projects representations into explicitly separate prototype spaces — one shared common space and per-domain/task-specific orthogonal spaces — so gradients and features from different concerns cannot interfere with each other.",
+      "OT finds the globally optimal probabilistic transport plan between a sample representation and the prototype set by minimizing total transportation cost, producing a soft assignment that is more globally consistent than attention (which computes local pairwise similarities independently). OT respects the geometry of the entire prototype distribution, preventing degenerate assignments where all mass collapses onto one prototype.",
+      "Orthogonal loss penalizes non-zero inner products between prototype basis vectors of different specific spaces (and between specific and common spaces), enforcing that the subspaces are geometrically perpendicular. This is the right bias because orthogonal subspaces have zero mutual information in the linear sense — any feature expressible in one space is unexpressible in another, guaranteeing clean disentanglement without relying on the optimizer to discover it.",
+      "PLE uses gating networks to dynamically route activations between shared and task-specific expert towers, but the experts still operate in the same embedding space and their outputs can be entangled. PRP instead constructs separate prototype spaces with orthogonality constraints, so the representational separation is enforced geometrically and explicitly rather than learned implicitly through gating weights.",
+      "Exact OT via Sinkhorn requires O(n²) memory and multiple iterations over prototype-sample pairs, which is costly at inference. Approximations include: (1) using a smaller fixed prototype set to reduce n, (2) replacing Sinkhorn with a single-step greedy assignment during inference while training with full OT, (3) caching prototype bases and precomputing partial transport plans offline, or (4) using sliced Wasserstein distance as a faster surrogate during training."
+    ],
+    "generated_at": "2026-03-23T05:26:52Z"
+  }
+}

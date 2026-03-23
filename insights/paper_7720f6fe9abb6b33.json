@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PTMSN is a multi-task learning framework for predicting customer lifetime value (LTV) in app advertising that addresses label sparsity by chaining intermediate behavioral signals (installs, registrations, purchases) and decomposes overall LTV into multiple revenue sources modeled separately.",
+    "key_idea": "Instead of predicting LTV as a single target, PTMSN uses cascaded sub-tasks to propagate sparse labels through a behavior funnel and a divide-and-conquer module to model each revenue source's distinct distribution independently before aggregating.",
+    "why_it_matters": "LTV prediction directly drives ad bidding and user acquisition ROI; handling label sparsity and multi-source distributions more accurately means better budget allocation and measurable revenue gains (2.97% absolute ROI lift in production).",
+    "possible_use_cases": [
+      "Optimizing ad spend by bidding on users with high predicted LTV rather than just high CTR/CVR",
+      "Personalizing in-app promotion strategies based on predicted revenue contribution per user",
+      "Segmenting newly acquired users by predicted LTV to prioritize retention and upsell efforts"
+    ],
+    "generated_at": "2026-03-23T05:16:39Z"
+  },
+  "deep": {
+    "method_breakdown": "PTMSN addresses LTV prediction via two core modules: a Cascaded Sub-task Module (CSM) that chains progressively harder sub-tasks (e.g., install → first purchase → repeat purchase) to share supervision signal and mitigate label sparsity, and a Multi-source Integrating Module (MIM) that decomposes total LTV into per-source distributions (e.g., in-app purchases, subscriptions, ads revenue) modeled independently before aggregation. The cascaded design forces intermediate representations to capture monetization signals at each step, while MIM applies a divide-and-conquer strategy to prevent high-variance sources from dominating the joint distribution fit. Both modules feed into a unified network trained with multi-task objectives.",
+    "key_innovation": "The genuine novelty is the combination of (1) cascaded auxiliary tasks that explicitly model the sequential dependency between user behavioral milestones rather than just adding soft labels or auxiliary heads, and (2) source-disentangled LTV modeling where each revenue stream is treated as a separate distributional target rather than regressing a single aggregated LTV value — prior work (e.g., ZILN, ESMM-family) either handled sparsity or distribution heterogeneity but not both jointly.",
+    "technical_insight": "The most critical design choice is the cascaded sub-task ordering: by enforcing monotonic task difficulty (coarse behavioral signals → fine-grained monetization), each stage provides a curriculum-style dense gradient to the next, effectively acting as a learned prior that regularizes the sparse LTV head. This works because install/engagement events are orders of magnitude more frequent than revenue events, so earlier tasks inject meaningful gradient signal that would otherwise be absent due to label sparsity.",
+    "limitations": "The cascaded task graph must be manually designed per business domain and breaks if the assumed behavioral sequence does not hold (e.g., users who pay without prior engagement). MIM requires knowing the revenue source attribution at training time, which may not be available in all advertising ecosystems. The model complexity grows linearly with the number of sources and sub-tasks, raising serving latency concerns. Offline evaluation metrics (GINI, RMSE on LTV) are known to weakly correlate with online ROI, so the 2.97% ROI claim is hard to disentangle from confounds like traffic mix shifts.",
+    "interview_questions": [
+      "What is the label sparsity problem in LTV prediction and why do standard regression approaches fail?",
+      "How does the Cascaded Sub-task Module differ from standard multi-task learning with auxiliary losses?",
+      "Why is modeling LTV as a single aggregated target suboptimal when revenue comes from multiple sources?",
+      "How would you evaluate an LTV model offline given that most users have zero lifetime value?",
+      "What are the deployment trade-offs of PTMSN compared to a simpler ZILN baseline?"
+    ],
+    "interview_answers": [
+      "LTV is a long-tail, zero-inflated distribution where the vast majority of users generate no revenue; this means the gradient signal for the regression head is sparse and dominated by zero-value examples. Standard MSE regression underfits rare high-value users and cannot learn good representations without auxiliary supervision from denser behavioral signals.",
+      "Standard MTL adds parallel auxiliary heads that share a backbone but each head is trained independently on its own label. CSM instead chains sub-tasks so the output (or intermediate representation) of task k is an explicit input or conditioning signal for task k+1, enforcing a sequential dependency that mirrors real user journey causality — install must precede purchase, which must precede repeat purchase.",
+      "Different revenue sources (subscriptions, consumable purchases, ad impressions) have distinct user populations, price distributions, and temporal patterns. A single regression target mixes these heterogeneous distributions, causing the model to learn a blurred average that fits none well; MIM lets each source-specific head specialize on its own distribution before the outputs are summed to recover total LTV.",
+      "Standard metrics like RMSE are dominated by zero-value users and mask performance on high-value users who matter most for ROI. Better evaluation uses the Gini coefficient or normalized Gini (which measures ranking quality across the value spectrum), and AUC on the binary conversion sub-task; ideally, offline evaluation is complemented by A/B tests on downstream bidding or promotion allocation.",
+      "ZILN (Zero-Inflated LogNormal) is a single-head probabilistic model that handles zero-inflation and long tails efficiently with low serving cost and interpretable outputs, making it easy to integrate into bidding systems. PTMSN adds multiple heads, cascaded inference, and source routing, which increases model size, inference latency, and operational complexity; the trade-off is justified only if the multi-source attribution data is reliably available and the latency budget allows it in real-time serving."
+    ],
+    "generated_at": "2026-03-23T05:17:12Z"
+  }
+}
