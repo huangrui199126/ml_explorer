@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper develops a five-module LLM-assisted system (using GPT-4) to automate systematic literature reviews for health technology assessment, covering query setup, abstract screening, data extraction, and summarization with a human-in-the-loop design. The system achieves 90% sensitivity and 0.71 Cohen's κ for abstract screening and an F1 of 93 for data extraction across oncology evaluation sets.",
+    "key_idea": "GPT-4's in-context learning can replace manually annotated training data for systematic review tasks, while a human-in-the-loop feedback loop enables iterative refinement of inclusion/exclusion criteria (PICOs) in real time.",
+    "why_it_matters": "Systematic literature reviews are a bottleneck in evidence-based medicine and regulatory submissions — automating screening and extraction with near-human agreement dramatically cuts cost, time, and reviewer fatigue without sacrificing quality.",
+    "possible_use_cases": [
+      "Accelerating HTA submissions by automating abstract screening across thousands of PubMed records",
+      "Streamlining clinical evidence synthesis pipelines for pharmaceutical and biotech companies",
+      "Enabling smaller research teams to conduct rigorous meta-analyses without large teams of manual reviewers"
+    ],
+    "generated_at": "2026-03-23T20:57:29Z"
+  },
+  "deep": {
+    "method_breakdown": "The system is a five-module LLM-assisted pipeline built on GPT-4 that processes PubMed abstracts through sequential stages: query construction, PICO criteria setup, abstract screening, data extraction, and summarization. It uses in-context learning (no fine-tuning) by embedding PICO criteria directly into prompts, allowing GPT-4 to make inclusion/exclusion decisions with rationales. A human-in-the-loop layer captures disagreements between LLM and human reviewers, feeding that signal back to refine PICO prompts iteratively.",
+    "key_innovation": "The key novelty is the human-in-the-loop feedback loop that enables real-time PICO criteria refinement without retraining — disagreements between LLM and human reviewers are logged with rationales and used to adjust prompts, turning the system into an iterative, self-correcting pipeline. Prior LLM-for-SLR work treated the model as a static classifier; this system treats prompt engineering as a living process driven by reviewer disagreement signals.",
+    "technical_insight": "The most important design choice is using in-context learning rather than fine-tuning: PICO criteria are injected as structured prompts at inference time, which means domain experts can adjust system behavior by editing natural language criteria rather than retraining models. This works because GPT-4's instruction-following capability is strong enough to generalize PICO logic from a few structured examples, eliminating the annotation bottleneck that makes supervised SLR automation impractical.",
+    "limitations": "The system was evaluated on only two disease areas (RRMM and advanced melanoma), limiting generalizability to other therapeutic domains with more ambiguous eligibility criteria. Performance depends heavily on prompt quality and PICO formulation, introducing variability across subject matter experts. The pipeline operates only on abstracts, not full texts, which is insufficient for many HTA requirements. Cohen's κ of 0.71 still implies ~29% disagreement rate, which could be costly in high-stakes regulatory submissions. No latency or cost analysis is provided.",
+    "interview_questions": [
+      "How does the human-in-the-loop feedback mechanism translate reviewer disagreements into prompt updates — is this manual or automated?",
+      "Why was sensitivity prioritized over precision in the abstract screening evaluation, and what are the downstream cost implications?",
+      "How does the system handle ambiguous or incomplete abstracts where PICO criteria cannot be clearly matched?",
+      "What prevents prompt drift or degradation as PICO criteria are iteratively refined across many feedback cycles?",
+      "How would this system's performance compare against fine-tuned biomedical models like BioBERT or PubMedBERT on the same evaluation sets?"
+    ],
+    "interview_answers": [
+      "Disagreements are logged with LLM-generated rationales and surfaced to subject matter experts who then manually revise PICO prompt language — it is a human-guided, semi-manual loop rather than an automated gradient-based update.",
+      "Sensitivity is prioritized because false negatives (missing eligible studies) are more harmful than false positives in SLR contexts — missing a relevant study can invalidate an HTA submission, whereas over-inclusion is filtered at full-text review stage at manageable cost.",
+      "The system likely defaults to inclusion under uncertainty given the high-sensitivity objective, but the paper does not detail handling of genuinely ambiguous cases — this is a gap in the evaluation.",
+      "The paper does not address prompt versioning or drift prevention; iterative refinement without rollback mechanisms risks overfitting prompts to recent disagreements and degrading performance on previously handled cases.",
+      "The paper does not include this comparison, which is a notable omission — fine-tuned biomedical models trained on SLR datasets may outperform GPT-4 in-context learning on narrow domains, but would lack the flexibility of natural language PICO adjustment."
+    ],
+    "generated_at": "2026-03-23T20:57:52Z"
+  }
+}

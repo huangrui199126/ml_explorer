@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HoME addresses three failure modes in production Mixture-of-Experts multi-task learning systems — expert collapse, degradation, and underfitting — through normalization, hierarchical masking, and adaptive gating mechanisms. Deployed at Kuaishou serving 400M daily users, it achieved 0.52% GAUC offline and 0.954% play-time gains online.",
+    "key_idea": "Stabilizing MoE multi-task systems requires explicitly aligning expert output distributions, enforcing sharing boundaries via hierarchy masks, and using feature-aware gates so sparse-data tasks don't over-rely on shared experts.",
+    "why_it_matters": "Practitioners building recommendation or ranking systems with many prediction tasks (clicks, likes, shares, watch time) will recognize all three failure modes as common pain points; HoME provides concrete, drop-in fixes validated at massive scale.",
+    "possible_use_cases": [
+      "Multi-objective recommendation ranking (e.g. simultaneously predicting CTR, watch time, and shares in video feeds)",
+      "E-commerce platforms predicting multiple user behaviors (purchase, add-to-cart, browse) with highly imbalanced label density",
+      "Ad systems jointly optimizing for conversion, engagement, and quality signals across sparse and dense behavior tasks"
+    ],
+    "generated_at": "2026-03-23T20:53:28Z"
+  },
+  "deep": {
+    "method_breakdown": "HoME extends the Mixture-of-Experts (MoE) paradigm for multi-task learning by addressing three failure modes: expert collapse, expert degradation, and expert underfitting. It applies layer normalization plus Swish activation to align expert output distributions, a hierarchy mask mechanism to enforce sharing constraints between tasks, and dual gating (feature-gate and self-gate) to regulate gradient flow per expert. These three modifications are applied on top of existing shared/specific expert architectures like MMoE or PLE.",
+    "key_innovation": "Prior MoE multi-task work (MMoE, PLE, SNR) focused on architecture design for expert routing but largely ignored training stability pathologies. HoME is the first to systematically diagnose and fix three concrete MoE failure modes in production: output distribution misalignment causing unfair gate weighting, shared experts being hijacked by a single dominant task, and sparse-task specific experts underfitting due to insufficient gradient. The hierarchy mask enforcing structured sharing is particularly novel — it constrains which experts can be shared at which levels of the task hierarchy, preventing monopolization.",
+    "technical_insight": "The feature-gate and self-gate combination is the most critical design choice. Sparse-task experts receive far fewer gradient updates than shared experts that see gradients from all tasks; without compensation, sparse-task experts collapse into near-zero utility and the gate learns to ignore them, creating a self-reinforcing feedback loop. By introducing a self-gate that modulates each expert's own output as a function of its input features, each expert learns to be selectively activated and avoids gradient starvation — essentially giving each expert an autonomous 'on/off' signal independent of the global gate competition.",
+    "limitations": "The three proposed fixes (normalization, masking, dual gating) each add hyperparameters and architectural complexity that may require task-specific tuning, limiting out-of-the-box generalizability. The hierarchy mask requires a predefined task taxonomy or similarity structure, which may not exist or be well-defined in all applications. The paper only evaluates on Kuaishou's short-video recommendation domain, so generalization to other multi-task settings (e.g., NLP, vision) is unproven. The 0.52% GAUC improvement, while meaningful at scale, may not be statistically distinguishable in smaller deployments.",
+    "interview_questions": [
+      "What is expert collapse in MoE models and how does HoME address it?",
+      "Explain the difference between expert degradation and expert underfitting as defined in this paper.",
+      "How does the hierarchy mask mechanism prevent shared experts from being occupied by a single task?",
+      "Why is Swish preferred over ReLU in the expert normalization mechanism?",
+      "How would you adapt HoME to a setting where task relationships are unknown or change over time?"
+    ],
+    "interview_answers": [
+      "Expert collapse occurs when experts develop very different output magnitude distributions, causing gate softmax weights to be dominated by high-magnitude experts regardless of relevance — effectively collapsing the ensemble to one or few experts. HoME applies layer normalization to each expert's output before gating, followed by Swish activation instead of ReLU, so all experts operate in a comparable output range and the gate can assign weights based on content rather than scale.",
+      "Expert degradation refers to shared experts being monopolized by a single task's gradients, losing their cross-task generalization and functionally becoming task-specific. Expert underfitting is the inverse problem: for data-sparse tasks, the task-specific experts receive too few gradient updates to learn well, so the gate learns to route to shared experts instead, which further starves the specific experts of signal. Degradation is about shared experts losing breadth; underfitting is about specific experts failing to develop depth.",
+      "The hierarchy mask imposes a structured constraint on which experts can be accessed by which tasks based on a task similarity or hierarchy graph. Specifically, it masks out gate logits for expert-task pairs that should not share, forcing gradients from a dominant task to flow only to its designated experts and preventing it from overwriting the shared representation. This is enforced during both forward routing and backpropagation.",
+      "ReLU produces exactly-zero outputs for all negative pre-activations, which means up to 90% of expert neurons can be dead for sparse inputs — this makes expert outputs highly variable in scale and sparsity. Swish (x * sigmoid(βx)) is smooth, non-monotonic, and never exactly zero, producing more consistent activation statistics across experts and inputs, which makes the subsequent normalization more effective and gate weight comparison more meaningful.",
+      "If task relationships are unknown, one could learn the hierarchy mask end-to-end using a differentiable relaxation (e.g., Gumbel-softmax over mask entries) with a sparsity regularizer to encourage structure to emerge. If task relationships shift over time, the mask could be periodically re-estimated from gradient similarity between tasks (tasks whose gradients conflict on shared experts should not share them), or maintained as a soft, continuously updated similarity matrix rather than a hard binary mask."
+    ],
+    "generated_at": "2026-03-23T20:53:59Z"
+  }
+}

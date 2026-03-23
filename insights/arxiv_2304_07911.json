@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "M2GNN is a graph neural network framework for cross-domain recommendation that uses heterogeneous information networks with metapath schemas to model tag/keyword-based content, and a hierarchical aggregation mechanism to selectively transfer useful user interests across domains.",
+    "key_idea": "By constructing domain-specific metapaths over a user-item-tag heterogeneous graph and applying two-level GNN aggregation (intra-metapath to filter trivial tags, inter-metapath to filter harmful cross-domain interests), the model learns clean, transferable user representations for cold-start scenarios.",
+    "why_it_matters": "Most real-world recommender systems have sparse long-form descriptions but abundant lightweight tags; this work directly addresses that gap while also solving the negative transfer problem in CDR, with both offline and live A/B test validation at Dianping scale.",
+    "possible_use_cases": [
+      "Cold-start recommendation for new users or items with only tag metadata in e-commerce or content platforms",
+      "Cross-domain transfer in super-apps where users interact across disparate verticals (food, travel, shopping) sharing tag vocabularies",
+      "Interpretable recommendation systems where tag-level attention weights can explain why items were surfaced to users"
+    ],
+    "generated_at": "2026-03-23T21:00:09Z"
+  },
+  "deep": {
+    "method_breakdown": "M2GNN constructs a heterogeneous information network (HIN) linking users, items, and tags across domains, then uses predefined domain-specific metapaths to guide GNN-based user representation learning. A hierarchical aggregation framework first performs intra-metapath aggregation to filter trivial tags within each domain, then inter-metapath aggregation to distill cross-domain interests that are actually useful for the target domain. The resulting multi-interest user embeddings enable cross-domain transfer while suppressing domain-specific noise.",
+    "key_innovation": "The key novelty is the dual-level filtering via hierarchical metapath aggregation: unlike prior CDR methods that naively transfer all cross-domain signals or use dense text embeddings, M2GNN explicitly separates intra-domain tag relevance from inter-domain interest compatibility using domain-specific metapath schemas, allowing selective transfer of only beneficial cross-domain signals.",
+    "technical_insight": "The most critical design choice is using predefined domain-specific metapaths rather than learning them end-to-end. This injects structural inductive bias that encodes domain knowledge (e.g., User→Tag→Item paths mean different things in food vs. entertainment domains), enabling the model to distinguish which cross-domain user interests are transferable vs. domain-specific noise — a distinction that purely data-driven approaches conflate.",
+    "limitations": "Metapath schemas require manual domain-expert design, limiting scalability to new domains without significant engineering effort. The method assumes tag availability for items and users, which may not hold in domains with very sparse or noisy tagging. The approach is validated primarily on Dianping (Chinese O2O platform), so generalizability to Western or non-O2O recommendation settings is unconfirmed. Cold-start performance for items with no tags at all is not addressed.",
+    "interview_questions": [
+      "How does M2GNN handle the case where cross-domain interests are harmful rather than helpful for the target domain?",
+      "What is the role of metapaths in M2GNN, and why are they defined per-domain rather than shared across domains?",
+      "How does the hierarchical aggregation framework differ from standard GNN aggregation, and what problem does each level solve?",
+      "What are the tradeoffs of using tag-based content features compared to dense text embeddings (e.g., BERT) in cross-domain recommendation?",
+      "How would you extend M2GNN to handle a completely new domain with no predefined metapath schema?"
+    ],
+    "interview_answers": [
+      "The inter-metapath aggregation layer learns attention weights over interests derived from different domain metapaths, effectively down-weighting cross-domain interests whose signals conflict with target-domain preferences — this acts as a learned gating mechanism that suppresses negative transfer.",
+      "Metapaths encode semantic paths through the HIN (e.g., User→Tag→Item→Tag→User) that define what 'similarity' means contextually. Per-domain metapaths are necessary because the same tag type carries different semantic weight across domains (e.g., 'spicy' is highly predictive in food but irrelevant in electronics), so sharing a single metapath would conflate domain-specific semantics.",
+      "Standard GNN aggregation treats all neighbors equally or uses a single attention layer. M2GNN's intra-metapath aggregation first filters noise at the tag level (which tags are actually relevant for a given item-user interaction), then inter-metapath aggregation filters at the interest level (which domain-derived interests should influence the target domain prediction) — decomposing the problem into two interpretable stages.",
+      "Tags are sparse but structured and domain-interpretable, making them robust for cold-start and computationally lightweight. Dense embeddings capture richer semantics but require sufficient text, are harder to interpret, and may overfit to surface-level language patterns rather than behavioral intent. For O2O platforms with short product descriptions, tags are often more reliable signals than noisy short text fed to BERT.",
+      "One approach would be to use automated metapath discovery via reinforcement learning or meta-learning to propose candidate paths, then use a validation signal from the new domain to prune them. Alternatively, a domain-agnostic metapath (User→Tag→Item) could serve as a default while transfer learning from similar existing domains bootstraps the new domain's metapath weights."
+    ],
+    "generated_at": "2026-03-23T21:00:33Z"
+  }
+}
