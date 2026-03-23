@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FT-Mamba replaces Transformer layers with Mamba (State Space Model) layers in a Two-Tower recommendation architecture to handle tabular user-item data more efficiently. It achieves linear rather than quadratic computational complexity while matching or exceeding Transformer performance on music, fashion, and vaccine messaging recommendation datasets.",
+    "key_idea": "Substituting Transformer attention with Mamba's selective state space mechanism in the Feature Tokenizer architecture reduces sequence modeling complexity from O(n²) to O(n), enabling scalable personalized recommendations without sacrificing ranking quality.",
+    "why_it_matters": "Large-scale recommendation systems are bottlenecked by the quadratic cost of attention over long feature sequences; FT-Mamba offers a drop-in efficiency improvement that can reduce inference latency and training cost at industrial scale.",
+    "possible_use_cases": [
+      "E-commerce product recommendation at scale where low-latency retrieval over millions of items is required",
+      "Music or media streaming platforms needing real-time personalized candidate generation",
+      "Healthcare or public health messaging systems tailoring content recommendations to user profiles"
+    ],
+    "generated_at": "2026-03-23T22:33:51Z"
+  },
+  "deep": {
+    "method_breakdown": "FT-Mamba replaces Transformer attention layers with Mamba (Selective State Space Model) layers inside the Feature Tokenizer + Transformer (FT-Transformer) architecture, which first embeds tabular features as token sequences via learned linear projections. The Mamba layers process these token sequences using selective state-space dynamics with input-dependent gating, achieving O(n) instead of O(n²) complexity. The resulting encoder is plugged into a Two-Tower retrieval architecture where user and item towers independently encode their tabular features before dot-product similarity scoring.",
+    "key_innovation": "Replacing self-attention in FT-Transformer with Mamba layers for tabular recommendation data — prior work applied Mamba to sequential/text data, but this work adapts it to unordered tabular feature tokens, demonstrating that SSM-based mixing is viable even when the input lacks natural sequential order.",
+    "technical_insight": "The key design choice is treating tabular feature embeddings as a flat sequence fed into Mamba's recurrent scan. Because Mamba's selective mechanism learns which features to retain in its hidden state, it effectively learns feature importance dynamically — analogous to attention but without the quadratic cost — making it well-suited for high-cardinality recommendation features at scale.",
+    "limitations": "Mamba's sequential (causal) inductive bias is ill-suited for permutation-invariant tabular data, so feature ordering may artificially affect results and the model may not be truly order-agnostic. Evaluation is limited to 160K training samples which is small by industrial recommendation standards, leaving scalability claims unverified at real production scale. Only three datasets are tested and no ablation isolates the contribution of Mamba vs. other architectural choices. Comparison baselines are narrow (only FT-Transformer), omitting strong tabular baselines like DLRM or DCN-V2.",
+    "interview_questions": [
+      "Mamba was designed for sequential data with causal structure — tabular features have no natural order. How does FT-Mamba handle this mismatch, and does feature permutation order affect model performance?",
+      "The paper claims O(n) complexity vs O(n²) for Transformers, but n here is the number of features per sample, not the number of users. For typical recommendation tables with ~100 features, is the quadratic term even a bottleneck compared to embedding lookup costs?",
+      "In a Two-Tower architecture, user and item towers are independent at inference. How does replacing attention with Mamba change the offline indexing strategy for the item tower, if at all?",
+      "The training set is 160K user-action pairs across three datasets. Industrial recommendation systems train on billions of interactions. What architectural changes would be needed to validate FT-Mamba's scalability claims at that scale?",
+      "Selective SSMs like Mamba use an input-dependent transition matrix to filter the state. For tabular recommendation features (sparse IDs, dense numerics), how would you design the input projection to handle mixed feature types effectively?"
+    ],
+    "interview_answers": [
+      "The paper does not explicitly address permutation sensitivity. Features are tokenized and fed as a sequence, so Mamba processes them left-to-right with causal recurrence. In principle, different feature orderings could yield different representations — a critical gap. A robust fix would be to use bidirectional Mamba or add positional-invariant pooling, but neither is explored here.",
+      "This is a valid critique. For a fixed number of features per row (say 50–200), both O(n²) attention and O(n) SSM complete in microseconds — the dominant cost is embedding table lookups and batch I/O. The efficiency argument becomes meaningful only if n scales with sequence length (e.g., user history), which is a different use case than static tabular features.",
+      "In Two-Tower inference, item embeddings are precomputed and indexed (e.g., via FAISS). FT-Mamba does not change this; the item tower still produces a fixed-dimension vector offline. The practical difference is training throughput — faster forward passes allow more training iterations or larger batch sizes within the same compute budget.",
+      "Key changes needed: sparse embedding tables with hash tricks or embedding bags, gradient checkpointing for memory efficiency, asynchronous data pipelines for streaming logs, and distributed training across parameter servers. The model architecture itself is relatively minor — the infrastructure around it determines whether it scales.",
+      "A principled approach would use type-specific input projections: learned embeddings for categorical/ID features and layer normalization + linear projection for dense numerics, similar to FT-Transformer's tokenizer. The Mamba input gate (Δ parameter) would then learn to selectively integrate information from each feature type into the hidden state, acting as a learned feature selector."
+    ],
+    "generated_at": "2026-03-23T22:34:21Z"
+  }
+}
