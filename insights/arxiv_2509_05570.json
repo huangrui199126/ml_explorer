@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LESER fine-tunes an LLM for e-commerce query expansion using real-time search engine feedback as a reinforcement learning signal, replacing static supervision with live retrieval metrics. It applies Group Relative Policy Optimization to directly optimize for relevance and coverage, producing expansions that respect platform constraints and improve search outcomes.",
+    "key_idea": "Use actual search engine retrieval quality (relevance and coverage metrics) as the reward signal to train an LLM query expander via GRPO, closing the gap between expansion quality and downstream retrieval performance.",
+    "why_it_matters": "Query expansion in e-commerce is a high-leverage problem — better expansions mean more product matches for ambiguous queries, directly lifting user engagement and revenue, and LESER shows this can be done scalably with RL feedback instead of brittle hand-labeled data.",
+    "possible_use_cases": [
+      "Expanding short or vague user search queries on e-commerce platforms to retrieve more relevant products",
+      "Adapting query expansion policies to platform-specific catalog structures and business rules without manual labeling",
+      "Improving recall in semantic search systems where user intent is underspecified or multi-faceted"
+    ],
+    "generated_at": "2026-03-23T05:15:15Z"
+  },
+  "deep": {
+    "method_breakdown": "LESER fine-tunes a context-aware LLM for query expansion using real-time search engine feedback as a reward signal rather than static supervision. It formulates query expansion as a retrieval optimization problem and applies Group Relative Policy Optimization (GRPO) — a variant of PPO — to update the model based on relevance and coverage metrics returned by a live search engine. The LLM learns to reason over retrieved results and generate expansions that maximize retrieval quality while satisfying platform-specific constraints.",
+    "key_innovation": "The core novelty is closing the training-deployment loop by using the actual production search engine as the reward oracle, rather than proxy metrics or human-labeled expansion pairs. This means the model learns to optimize for the exact retrieval objective it will face at inference time. Additionally, GRPO is used instead of standard RLHF/PPO, which samples a group of candidate expansions per query and computes relative rewards, reducing variance without needing a separate value network.",
+    "technical_insight": "The most important design choice is using search engine feedback (relevance + coverage) as the reward signal rather than n-gram similarity or embedding cosine distance to reference expansions. This works because e-commerce retrieval quality cannot be adequately proxied by surface-level text similarity — what matters is whether the expanded query actually surfaces more relevant products, which only the live index can evaluate. This direct alignment between training signal and deployment objective is what makes LESER practical and scalable.",
+    "limitations": "The framework requires tight integration with a production search engine during training, making it difficult to apply in offline or resource-constrained settings. Reward sparsity and latency from live search calls can slow training and introduce instability. The approach may overfit to the current index and product catalog, requiring re-training as inventory changes. Platform-specific constraint satisfaction is enforced via reward shaping, which may not generalize across different e-commerce platforms without re-tuning. Finally, cold-start queries with no prior search signal may still be underserved.",
+    "interview_questions": [
+      "Why is GRPO preferred over standard PPO for this task, and what specific challenge does it address in the query expansion setting?",
+      "How does LESER handle the tension between exploration (generating diverse expansions) and exploitation (generating expansions known to retrieve relevant products)?",
+      "What exactly constitutes the reward signal — how are relevance and coverage operationalized, and how are they combined into a scalar reward?",
+      "How does LESER enforce platform-specific constraints (e.g., prohibited terms, length limits) — is it via reward penalties, constrained decoding, or something else?",
+      "How does LESER compare to a retrieval-augmented generation (RAG) baseline where the LLM reads top search results and rewrites the query, which also uses search feedback implicitly?"
+    ],
+    "interview_answers": [
+      "GRPO samples a group of K candidate expansions for each query and computes rewards relative to the group mean, which reduces the high variance typical of PPO's per-sample advantage estimation. In query expansion, individual rewards are noisy because the search engine's response to small lexical changes is non-smooth, so relative ranking within a group provides a more stable training signal than absolute reward differences from a value network baseline.",
+      "LESER implicitly balances this through the stochastic sampling of the LLM during GRPO rollouts — temperature-controlled sampling encourages diversity in the expansion candidates, while the reward signal from the search engine provides gradient pressure toward high-quality regions of the expansion space. However, explicit entropy regularization or diversity bonuses may be needed to prevent collapse to a narrow set of high-reward expansions over training.",
+      "Relevance is likely measured via a relevance model (e.g., NDCG or precision@k against judged or pseudo-labeled product relevance) and coverage is measured as the fraction of distinct relevant products retrieved by the expanded query relative to a reference set. These are combined as a weighted sum or product into a scalar reward, though the exact formulation is paper-specific and the weighting is a key hyperparameter.",
+      "Platform constraint satisfaction is most likely enforced via a penalty term in the reward — expansions that violate rules (e.g., contain banned keywords, exceed token limits) receive a large negative reward. This is simpler to implement than constrained decoding and lets the model learn to internalize constraints through experience rather than requiring a constraint oracle at every decoding step.",
+      "A RAG-style baseline also uses search results but applies them at inference time for a single forward pass, without iterative optimization of the expansion policy. LESER's advantage is that it has internalized thousands of search feedback signals during training, so it generalizes to unseen queries without needing a live search call at inference. LESER also explicitly optimizes retrieval metrics rather than relying on the LLM's implicit understanding of what makes a good query rewrite."
+    ],
+    "generated_at": "2026-03-23T05:15:44Z"
+  }
+}

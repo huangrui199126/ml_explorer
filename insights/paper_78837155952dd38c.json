@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a multi-task learning model for stance detection on Weibo that jointly trains stance detection and sentiment analysis, using RoBERTa for shared text encoding and BiLSTM layers for capturing temporal and stance-specific semantic features. Experiments on NLPCC2016-task4 show the approach outperforms existing methods.",
+    "key_idea": "Jointly learning sentiment polarity alongside stance detection via shared RoBERTa+BiLSTM representations improves stance classification by leveraging emotional signals as an auxiliary supervision signal.",
+    "why_it_matters": "Practitioners building content moderation, rumor detection, or recommendation systems on Chinese social media can achieve better stance classification accuracy by incorporating sentiment as a complementary task rather than treating stance in isolation.",
+    "possible_use_cases": [
+      "Rumor detection and fact-checking pipelines on social platforms like Weibo",
+      "Public opinion monitoring and topic-level sentiment analysis for brand or political discourse",
+      "Content moderation systems that flag potentially harmful or polarizing posts based on inferred user stance"
+    ],
+    "generated_at": "2026-03-23T05:05:47Z"
+  },
+  "deep": {
+    "method_breakdown": "The method uses RoBERTa as a shared encoder in a multi-task learning framework that jointly trains stance detection and sentiment analysis. For stance detection, a BiLSTM processes RoBERTa embeddings to capture sequential context, followed by three stance-specific modules that extract features for individual stance categories (favor, against, none). The sentiment module runs a parallel BiLSTM branch predicting emotional polarity, with gradients from both tasks updating the shared RoBERTa backbone.",
+    "key_innovation": "The primary novelty is the use of stance-specific independent modules (one per stance class) rather than a single classification head, combined with explicit sentiment supervision as an auxiliary task. Prior Weibo stance detection work typically used single-task models or generic multi-task setups without decomposing stance-class-specific feature extraction.",
+    "technical_insight": "The most important design choice is treating sentiment as a structured auxiliary task rather than just appending sentiment embeddings as features. By forcing the shared encoder to predict emotional polarity through gradient signals, the model learns emotionally-grounded representations that transfer to stance detection — this works because stance on Chinese social media is strongly correlated with emotional valence, making sentiment a natural inductive bias.",
+    "limitations": "The evaluation is limited to a single dataset (NLPCC2016-task4), making generalization claims weak. The three stance-specific modules add parameters proportional to the number of stance classes, limiting scalability to topics with many stances. The approach is Chinese/Weibo-specific and relies on RoBERTa pretraining data distribution; cross-domain or cross-lingual transfer is untested. The interaction between stance-specific modules is not modeled, potentially missing cross-stance dependencies.",
+    "interview_questions": [
+      "Why do you use three independent stance-specific modules instead of a single softmax classification head, and what is the computational trade-off?",
+      "How do you prevent the sentiment auxiliary task from dominating training and degrading stance detection performance — what loss weighting or scheduling strategy do you use?",
+      "BiLSTM is used after RoBERTa — given that RoBERTa already captures bidirectional context via self-attention, what additional information does the BiLSTM provide?",
+      "Your shared encoder is updated by gradients from both tasks — how do you handle conflicting gradient signals, and did you observe any task interference during training?",
+      "The NLPCC2016 dataset is from 2016 Weibo data — how do you expect your model to handle modern Weibo language including slang, memes, and evolved discourse patterns?"
+    ],
+    "interview_answers": [
+      "The stance-specific modules allow the model to learn discriminative feature subspaces tailored to each stance class, rather than forcing a single representation to be linearly separable across all classes. The trade-off is linear parameter growth with stance classes and potential overfitting on underrepresented stance labels, but for a 3-class problem this is manageable.",
+      "Typically a weighted sum of task losses is used (λ·L_stance + (1-λ)·L_sentiment), with λ tuned on validation. If not carefully tuned, sentiment — being an easier task — converges faster and the shared encoder may overfit to sentiment-relevant features at the expense of stance-specific signals.",
+      "RoBERTa's self-attention captures global context but treats position implicitly through embeddings. BiLSTM adds explicit sequential inductive bias and hidden-state propagation that can model local phrase-level temporal dependencies differently from attention, potentially capturing sentiment-carrying sequential patterns like negation scope more directly.",
+      "Gradient conflicts in multi-task learning are a known issue. Without explicit mechanisms like gradient surgery or task-specific learning rates, the model relies on the loss weighting to implicitly balance tasks. This is a limitation — the paper likely does not address gradient conflict explicitly, which is a gap in the approach.",
+      "The model would likely degrade on modern Weibo due to vocabulary drift, new internet slang, and evolved sarcasm patterns. RoBERTa's static pretraining vocabulary and the 2016-era training distribution would both contribute to reduced performance, and the sentiment-stance correlation patterns may have shifted with platform demographics."
+    ],
+    "generated_at": "2026-03-23T05:06:11Z"
+  }
+}

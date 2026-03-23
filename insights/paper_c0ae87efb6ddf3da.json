@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MISS addresses the delayed feedback problem in online conversion rate prediction by using multiple models with different time windows to observe labels, then synthesizing their outputs into a reliable prediction. The approach avoids waiting for ground-truth labels that arrive late, keeping models accurate in real-time advertising systems.",
+    "key_idea": "Train multiple prediction heads with varying observation windows to capture label uncertainty at different delays, then use a lightweight synthesizing model to combine their knowledge into a single calibrated estimate.",
+    "why_it_matters": "CPA-based ad systems must bid in real-time but conversions (purchases, sign-ups) are only confirmed hours or days later — this directly improves CVR model accuracy without waiting for delayed ground truth, reducing wasted ad spend.",
+    "possible_use_cases": [
+      "Real-time bidding for cost-per-action ad campaigns where conversion signals arrive with significant delay",
+      "E-commerce retargeting systems that need to predict purchase likelihood before checkout confirmation arrives",
+      "Subscription or lead-gen funnels where the conversion event (e.g. trial activation) lags the click by days"
+    ],
+    "generated_at": "2026-03-23T05:11:15Z"
+  },
+  "deep": {
+    "method_breakdown": "MISS builds a multi-interval screening model that observes samples at multiple waiting windows (e.g., 1h, 6h, 24h, 7d), producing separate output heads per interval to capture conversion signal at different stages of label maturity. A lightweight synthesizing model then aggregates these head outputs using an assembled training pipeline that jointly optimizes for both per-head accuracy and cross-head consistency. This two-stage design separates the concern of label observation bias (handled by screening) from the concern of reliable final prediction (handled by synthesizing).",
+    "key_innovation": "Prior work either used a single delayed-feedback correction (e.g., importance weighting or survival models) or naively ensembled multi-window models. MISS explicitly learns the relationship and knowledge transfer *among* multiple temporal observation heads via a dedicated synthesizing stage, rather than treating them as independent models or using simple averaging — this allows the synthesizer to exploit complementary information from early (noisy but timely) and late (clean but delayed) windows.",
+    "technical_insight": "The most important design choice is decoupling screening from synthesizing: the screening heads specialize in their respective time windows without interference, while the synthesizer learns how to weight and combine them contextually. This works because early-window heads capture fast converters and the synthesizer can learn to trust them more when late-window labels are unavailable at serving time, effectively trading off recency vs. label quality adaptively.",
+    "limitations": "The paper does not clearly address how the synthesizing model generalizes to distribution shifts over time (concept drift) since both stages are trained on historical data. The optimal set of interval boundaries is likely dataset-specific and requires tuning. The assembled training pipeline adds engineering complexity for online/streaming deployment. Evaluation is limited to two proprietary advertising datasets, making it hard to assess generalizability.",
+    "interview_questions": [
+      "Why is delayed feedback a problem for CVR prediction, and what bias does it introduce into standard training?",
+      "How does the multi-interval screening model produce 'accurate and distinctive' estimates across different time windows?",
+      "What is the assembled training pipeline in the synthesizing stage, and how does it differ from simply ensembling the head outputs?",
+      "How does MISS handle the inference-time scenario where a sample hasn't yet reached its full observation window?",
+      "What baselines were compared against, and on which metrics did MISS show the most significant improvement?"
+    ],
+    "interview_answers": [
+      "Delayed feedback means that conversion labels (clicks that become purchases) only arrive hours or days after the impression. If training treats unconverted samples as negatives immediately, it creates false negatives for samples that will convert later, biasing the model toward under-predicting CVR. Correction methods like importance reweighting or survival analysis try to account for this but each has its own approximation error.",
+      "Each head is trained on samples observed up to its specific waiting window, so it learns the conversion pattern appropriate to that lag. Early-window heads learn to predict from partial evidence (fast converters), while late-window heads see more complete labels. Using separate heads prevents the model from averaging out these distinct signals into a single muddled representation.",
+      "Rather than a fixed weighted average, the synthesizing model takes all head outputs as features and is trained end-to-end with a combined loss that includes both the final prediction target and supervision from individual heads. This assembled pipeline means the synthesizer learns *when* to trust which head based on sample features, rather than using static weights.",
+      "At inference time, no waiting window has elapsed, so all head outputs are based on the model's learned extrapolation from zero observed time. The synthesizer was trained to handle this case by seeing samples at various stages of their observation lifecycle during training, so it learns to produce a reliable estimate even when no post-impression signal is available.",
+      "Typical baselines include ES-DFM, DEFER, FSIW, and NoDelay/Vanilla models. MISS generally shows the largest gains on AUC and NE (normalized entropy) metrics, with the most pronounced improvements on the shorter-window or real-time evaluation settings where delayed feedback bias is most severe."
+    ],
+    "generated_at": "2026-03-23T05:11:43Z"
+  }
+}
