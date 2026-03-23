@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This study benchmarks two neural recommendation architectures — Two-Tower retrieval and Neural Collaborative Filtering (NCF) — against a popularity baseline on MovieLens 20M, testing under standard, cold-start, and ablation conditions. NCF achieves higher accuracy and generalization, while the Two-Tower model shows stable ranking performance suitable for large-scale retrieval.",
+    "key_idea": "NCF's interaction-focused architecture captures user-item relationships more precisely than the Two-Tower model, but Two-Tower's decoupled embedding approach offers scalability advantages for candidate retrieval at scale.",
+    "why_it_matters": "Practitioners choosing between retrieval architectures need concrete tradeoff data — this study provides head-to-head metrics including cold-start robustness, helping teams decide when to prioritize accuracy (NCF) versus scalability (Two-Tower) in production recommendation pipelines.",
+    "possible_use_cases": [
+      "Streaming platforms selecting a retrieval architecture for personalized content recommendations",
+      "E-commerce systems needing scalable candidate generation before a ranking stage",
+      "Research baselines for evaluating new recommendation models against established neural approaches on MovieLens"
+    ],
+    "generated_at": "2026-03-23T20:31:35Z"
+  },
+  "deep": {
+    "method_breakdown": "The study implements and compares two neural recommendation architectures in TensorFlow Recommenders on MovieLens 20M: a Two-Tower model that encodes users and items into separate embedding towers and retrieves candidates via approximate nearest neighbor search, and Neural Collaborative Filtering (NCF) which replaces the dot-product interaction with an MLP to learn non-linear user-item relationships. Both are evaluated against a popularity baseline using Precision@10, HR@10, and NDCG@10, with additional Cold Start and Ablation experiments to stress-test sparse-data robustness.",
+    "key_innovation": "There is no fundamental algorithmic novelty — this is an empirical comparative study. The contribution is a systematic head-to-head evaluation of Two-Tower vs NCF under matched conditions (same dataset, same framework, same metrics) including Cold Start and Ablation scenarios, which are often omitted in individual model papers. The reproducible TensorFlow Recommenders implementation is the practical contribution.",
+    "technical_insight": "The most important design insight is that NCF's MLP interaction layer captures higher-order, non-linear user-item correlations that the Two-Tower dot-product cannot, which explains NCF's advantage in sparse Cold Start settings where linear similarity signals are weakest. The Two-Tower model's stable NDCG@10 reflects that factorized retrieval preserves global ranking structure even when pointwise accuracy is lower, making it preferable at inference scale.",
+    "limitations": "The study uses only implicit feedback (ratings as proxies) from a single dataset (MovieLens 20M), limiting generalizability to real-world sparse or sequential interaction data. Neither model incorporates side features (content, context, temporal signals), which are critical in production systems. The Cold Start simulation is artificial rather than drawn from genuine new-user distributions. No latency or throughput benchmarks are reported, which are decisive factors for the Two-Tower model's claimed scalability advantage.",
+    "interview_questions": [
+      "What is the fundamental architectural difference between a Two-Tower model and NCF, and how does it affect their interaction modeling capacity?",
+      "Why does NCF outperform Two-Tower in Cold Start scenarios despite having a more complex interaction function?",
+      "What does stable NDCG@10 in the Two-Tower model indicate about its ranking behavior, and why is that valuable at scale?",
+      "How would you extend either model to handle temporal dynamics or sequential user behavior?",
+      "What are the production trade-offs between deploying a Two-Tower retrieval model versus NCF for a large-scale recommendation system?"
+    ],
+    "interview_answers": [
+      "Two-Tower encodes users and items independently and computes similarity via dot product, making it factorized and ANN-searchable but limited to bilinear interactions. NCF replaces the dot product with a multi-layer perceptron applied to the concatenated user and item embeddings, enabling it to learn arbitrary non-linear interaction patterns at the cost of requiring both embeddings at inference time.",
+      "In Cold Start, users have few interactions so their embedding signals are weak and noisy. NCF's MLP can leverage subtle non-linear patterns across the few available signals, whereas Two-Tower's dot product relies on well-trained embeddings that align in a shared space — a property that degrades when user embeddings are underfit due to sparsity.",
+      "Stable NDCG@10 means the Two-Tower model correctly orders items by relevance even if its absolute precision is lower, which is exactly what matters in a retrieval stage that feeds a downstream ranker. At scale, Two-Tower's factorized structure allows pre-computing item embeddings and using ANN indices, making it orders of magnitude faster than NCF for candidate generation over millions of items.",
+      "Both models can be extended with recurrent or transformer-based sequence encoders (e.g., SASRec, BERT4Rec) in the user tower to capture session-level dynamics. Alternatively, time-stamped interaction features or positional embeddings can be injected into the MLP layers of NCF to model drift in user preferences over time.",
+      "Two-Tower is the standard choice for the retrieval (candidate generation) stage because its factorized inference enables ANN search over millions of items sub-millisecond; it trades some accuracy for scalability. NCF or a heavier ranker is better suited for the re-ranking stage over a small candidate set (hundreds of items) where latency constraints are relaxed and precision matters more. Running NCF over the full item catalog is computationally infeasible in production."
+    ],
+    "generated_at": "2026-03-23T20:32:01Z"
+  }
+}
