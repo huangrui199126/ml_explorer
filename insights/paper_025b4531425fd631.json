@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MatData is a voter registration system that uses the FaceNet512 deep learning model to generate 512-dimensional facial embeddings, comparing them via cosine similarity to detect and prevent duplicate registrations in real time. It integrates the full pipeline from face capture to EPIC (voter ID) generation into a unified framework.",
+    "key_idea": "By encoding faces as normalized 512-dimensional vectors and thresholding cosine similarity against a stored embedding database, the system can reliably flag duplicate identities without relying on manual document checks.",
+    "why_it_matters": "Biometric deduplication at scale is a practical alternative to error-prone manual verification in high-stakes identity systems, and this paper demonstrates a concrete, end-to-end deployment architecture using an off-the-shelf pretrained model.",
+    "possible_use_cases": [
+      "National or regional voter registration deduplication to prevent fraudulent multi-registrations",
+      "KYC (Know Your Customer) identity verification pipelines in banking or fintech",
+      "Benefit-program enrollment systems to prevent duplicate claims across government databases"
+    ],
+    "generated_at": "2026-03-23T22:35:16Z"
+  },
+  "deep": {
+    "method_breakdown": "MatData uses DeepFace's FaceNet512 model to extract 512-dimensional L2-normalized facial embeddings from real-time camera input. These embeddings are stored in a secure database and compared against new registrations using cosine similarity; if similarity exceeds a tuned threshold, the registration is flagged as a duplicate and rejected. The pipeline integrates authentication, face capture, embedding extraction, database lookup, and EPIC (Electoral Photo Identity Card) generation into a single automated workflow.",
+    "key_innovation": "The primary contribution is the end-to-end integration of a production-ready biometric deduplication pipeline into a voter registration context rather than any novel modeling advance. Using FaceNet512's pretrained embeddings with cosine similarity is well-established; the novelty is the system architecture that combines real-time duplicate detection with automated ID document generation in a single deployable framework.",
+    "technical_insight": "The critical design choice is using cosine similarity on L2-normalized 512-d embeddings rather than Euclidean distance or raw pixel comparison. Normalized embeddings collapse intra-class variance (lighting, pose, aging) while preserving inter-class separability, making the threshold-based duplicate gate robust across demographic variation without retraining.",
+    "limitations": "The system relies entirely on FaceNet512's pretrained weights with no fine-tuning on diverse voting-age populations, risking higher error rates for underrepresented demographics. Cosine similarity with a fixed global threshold will produce different false-accept/false-reject tradeoffs across ethnicities and ages. The paper lacks rigorous evaluation on adversarial attacks (makeup, masks, printed photos). Scalability of the embedding database lookup at national-scale registries is unaddressed. The topic label 'Learning to Rank' is a mismatch — this is a biometric verification system, not a ranking model.",
+    "interview_questions": [
+      "Why is cosine similarity preferred over Euclidean distance for comparing FaceNet512 embeddings, and what property of the embeddings makes this valid?",
+      "How would you choose and calibrate the similarity threshold to balance false acceptance rate (FAR) and false rejection rate (FRR) in a high-stakes voter registration context?",
+      "What are the demographic bias risks in deploying a pretrained FaceNet512 model across a diverse national population, and how would you mitigate them?",
+      "How would this system scale to tens of millions of registrations, given that naive cosine similarity against a full embedding database is O(N)?",
+      "What adversarial attacks could defeat this duplicate detection system, and what defenses would you add?"
+    ],
+    "interview_answers": [
+      "FaceNet512 is trained with a loss that projects faces onto a unit hypersphere via L2 normalization. On a unit hypersphere, cosine similarity equals the dot product and directly measures angular distance, which corresponds to learned identity separability. Euclidean distance conflates magnitude with direction and loses this geometric property after normalization.",
+      "Use a held-out labeled dataset of known duplicates and genuine pairs representative of the target population. Plot the ROC curve and select the threshold that minimizes a weighted combination of FAR and FRR reflecting the asymmetric costs: allowing a duplicate registration is more damaging than rejecting a legitimate one, so you bias toward lower FAR even at the cost of higher FRR. Re-calibrate periodically as the database grows.",
+      "FaceNet512 was trained on datasets (VGGFace2, MS-Celeb) that over-represent certain demographics, leading to higher error rates for darker skin tones and older individuals. Mitigation includes fine-tuning on a balanced representative dataset, auditing FAR/FRR disaggregated by demographic group, and setting group-adaptive thresholds or using a fairness-aware loss during fine-tuning.",
+      "Replace linear scan with approximate nearest neighbor (ANN) search using FAISS or ScaNN, which supports cosine similarity via inner product on normalized vectors. Hierarchical NSW or IVF-PQ indexes reduce search to O(log N) or sublinear time with controllable recall. Embedding vectors can also be sharded across nodes for distributed lookup.",
+      "Attacks include high-quality printed photos (print attack), 3D masks, deepfake video injection into the capture stream, and adversarial perturbations to images. Defenses include liveness detection (blink/head-turn challenges, IR depth sensing), input provenance verification, adversarial training of the embedding model, and logging with human audit queues for borderline similarity scores."
+    ],
+    "generated_at": "2026-03-23T22:35:41Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a formula retrieval system that uses two R-GCNs to produce separate visual and semantic embeddings of math formulas, trained jointly via contrastive self-supervised learning to align the two representations. Retrieval scores from both modalities are combined using a ColBERT-style greedy node alignment, achieving competitive results on ARQMath and NTCIR-12 benchmarks.",
+    "key_idea": "Jointly training visual and semantic graph embeddings with contrastive loss, then scoring candidates via greedy node alignment, lets the model exploit complementary formula representations without fusing them prematurely.",
+    "why_it_matters": "Math formula search is a hard multimodal problem; this work shows that keeping visual and semantic streams separate but jointly optimized yields better retrieval than either alone, pointing a clear path toward more accessible mathematical knowledge bases.",
+    "possible_use_cases": [
+      "Academic search engines that retrieve papers or textbooks by querying with a math formula",
+      "Automated homework or exam grading systems that match student-written expressions to canonical forms",
+      "Mathematical question-answering systems that look up relevant formulas from large scientific corpora"
+    ],
+    "generated_at": "2026-03-23T22:44:46Z"
+  },
+  "deep": {
+    "method_breakdown": "The method trains two Relational Graph Convolutional Networks (R-GCNs) — one for visual formula representations and one for semantic representations — jointly using a contrastive self-supervised objective that classifies node pairs as belonging to the same formula or different formulas. At retrieval time, each modality produces node-level embeddings independently, and relevance scoring uses a greedy node alignment strategy inspired by ColBERT, where query nodes are matched to the most similar candidate nodes and scores are aggregated. Final retrieval scores are obtained by combining visual and semantic relevance scores via various fusion strategies.",
+    "key_innovation": "Prior math retrieval systems either use purely visual or purely semantic representations, or fuse them in a single encoder that risks information loss. This work keeps the two modalities in separate retrieval pipelines (preserving modality-specific structure) while training them jointly via contrastive loss on paired visual-semantic formula nodes, enabling each encoder to implicitly learn cross-modal alignment without collapsing representations into a single embedding.",
+    "technical_insight": "The use of ColBERT-style late interaction (greedy node alignment) rather than single-vector dot-product similarity is the most critical design choice — math formulas are structured objects where subexpression-level matches matter, and aggregating fine-grained node-to-node similarities preserves structural alignment signal that a global pooled embedding would destroy.",
+    "limitations": "Greedy node alignment is a heuristic and does not guarantee optimal structural matching, potentially missing valid but non-greedy correspondences. The contrastive training requires clean paired visual-semantic data for the same formula, which may be noisy or ambiguous for complex expressions. Performance likely degrades on rare or novel formula structures underrepresented in training. Scalability of per-query node-level alignment at inference time is a practical concern for large-scale retrieval.",
+    "interview_questions": [
+      "Why use separate R-GCNs for visual and semantic representations instead of a shared encoder with modality embeddings?",
+      "How does the contrastive loss create alignment between visual and semantic formula spaces during joint training?",
+      "What are the tradeoffs between greedy node alignment (ColBERT-style) and global average pooling for formula graph retrieval?",
+      "How would you handle formulas where visual and semantic representations disagree — e.g., equivalent formulas with different visual layouts?",
+      "How does this approach scale to a retrieval corpus of millions of formulas, given node-level scoring?"
+    ],
+    "interview_answers": [
+      "Separate encoders preserve modality-specific inductive biases — visual graphs encode spatial layout and symbol shape relationships, while semantic graphs encode operator precedence and logical structure. A shared encoder risks one modality dominating or encoding information in ways that are suboptimal for the other; separate encoders allow each R-GCN to specialize, with joint training providing alignment signal through the contrastive loss rather than forced parameter sharing.",
+      "The contrastive loss is applied to node pairs drawn from visual and semantic graphs of the same formula (positive pairs) versus different formulas (negative pairs). By pushing same-formula embeddings together and different-formula embeddings apart in a shared or comparable space, the training forces the two encoders to produce compatible representations for matched formulas, effectively learning a cross-modal bridge without explicit alignment supervision.",
+      "Greedy node alignment captures fine-grained structural correspondences — a subexpression in the query can match its most similar counterpart in a candidate regardless of global position, which is critical for partial formula matching. Global pooling collapses this to a single vector, losing token-level precision. The tradeoff is computational: greedy alignment is O(|Q|·|C|) per query-candidate pair, whereas dot-product on pooled vectors is O(1). For math retrieval where structural similarity at subexpression level matters, the precision gain justifies the cost.",
+      "This is a genuine challenge — visually different but semantically equivalent formulas (e.g., different notations for the same concept) would produce high semantic similarity but low visual similarity. The score fusion strategy must account for this; one approach is to take the max or a weighted combination of visual and semantic scores, treating them as complementary evidence. Tuning fusion weights on a held-out validation set, or learning a small fusion model, would help handle such disagreements adaptively.",
+      "Scalability requires a two-stage approach: first use the pooled/averaged node embedding as a dense retrieval index (ANN search via FAISS) to retrieve a candidate set, then re-rank candidates using the full greedy node alignment scoring. This is analogous to how ColBERT itself is deployed — MaxSim is only computed for a shortlisted candidate set, not the entire corpus. The node embeddings can be precomputed and stored offline, making re-ranking feasible at query time."
+    ],
+    "generated_at": "2026-03-23T22:45:13Z"
+  }
+}
