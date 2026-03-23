@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MaRI is a lossless inference acceleration framework for ranking models in recommendation systems that eliminates redundant user-side computation in feature fusion matrix multiplication via structural reparameterization. Unlike knowledge distillation or model lightweighting, it achieves speedups with zero accuracy degradation.",
+    "key_idea": "User-side feature vectors are request-invariant across items during ranking, so their matrix multiplications can be pre-computed and folded into model weights at inference time via structural reparameterization.",
+    "why_it_matters": "Recommendation system ranking stages face strict latency budgets; most existing acceleration methods sacrifice accuracy, so a lossless technique that stacks on top of existing optimizations is directly deployable in production without quality regression.",
+    "possible_use_cases": [
+      "Accelerating fine-ranking models in e-commerce recommendation pipelines (e.g., product feeds, search ranking)",
+      "Reducing serving costs for coarse-ranking stages that score millions of candidates per request",
+      "Combining with knowledge distillation or pruning for compounded latency reductions while preserving model quality"
+    ],
+    "generated_at": "2026-03-23T05:37:19Z"
+  },
+  "deep": {
+    "method_breakdown": "MaRI identifies that in feature fusion matrix multiplication within ranking models, user-side feature computations are repeatedly performed for every candidate item despite being request-level constants. By applying structural reparameterization, MaRI pre-computes and absorbs user-side matrix factors offline or at request time, reducing the online multiplication to a simpler, lower-cost operation. This restructuring is mathematically equivalent to the original computation, achieving lossless acceleration.",
+    "key_innovation": "Prior acceleration work focuses on model compression (pruning, distillation, lightweight architectures) which trades accuracy for speed. MaRI is the first to exploit the structural redundancy of user-side invariance within feature fusion matrix multiplications via reparameterization — achieving zero accuracy loss acceleration as a complementary technique orthogonal to existing methods.",
+    "technical_insight": "The core insight is that user feature vectors are constant across all item scoring within a single request, so any linear transformation applied to user features in a bilinear or matrix fusion operation can be pre-computed once per request rather than once per item. This amortizes the cost over the entire candidate set, and because the transformation is purely algebraic rearrangement, no approximation is introduced.",
+    "limitations": "The approach is fundamentally limited to linear (matrix multiplication) feature fusion operations — nonlinear fusion layers (e.g., element-wise products followed by MLPs, attention with softmax over items) cannot be reparameterized this way. Gains depend on candidate set size; for small candidate pools the amortization benefit diminishes. It also does not address item-side or cross-feature interaction redundancies, and offers no help for memory-bound rather than compute-bound bottlenecks.",
+    "interview_questions": [
+      "What is structural reparameterization and why is it applicable to ranking model inference?",
+      "Why is user-side computation considered redundant in feature fusion matrix multiplication, and under what conditions does this hold?",
+      "How does MaRI differ from knowledge distillation or model pruning as an acceleration strategy?",
+      "What are the theoretical conditions under which MaRI's reparameterization is exactly lossless versus approximate?",
+      "How would you extend MaRI to handle nonlinear feature interactions such as those in attention-based or DCN-style fusion layers?"
+    ],
+    "interview_answers": [
+      "Structural reparameterization refers to algebraically transforming a model's computation graph into an equivalent but cheaper form at inference time, without changing outputs. In ranking, bilinear feature fusion involves multiplying user and item feature matrices together per candidate, and the user matrix factors can be pre-merged, reducing per-item FLOPs.",
+      "Within a single ranking request, the user's feature vector (and any derived representations) is fixed — it does not change as the model scores different item candidates. Therefore any matrix multiplication involving only user features can be computed once per request and reused, making per-item recomputation redundant. This holds strictly for request-scoped user features with no item dependency.",
+      "Distillation and pruning are lossy: they reduce model capacity or transfer knowledge to a smaller model, accepting accuracy degradation for speed. MaRI is lossless — it reorganizes identical computations algebraically so no information is lost or approximated. They are orthogonal and MaRI can be stacked on top of a distilled model for additional gains.",
+      "MaRI is exactly lossless when the fused operation is a linear map in the user features, i.e., the user contribution can be factored out as a separate matrix. If the fusion involves nonlinearities that couple user and item features (e.g., element-wise product inside a nonlinear activation), strict equivalence breaks and approximations would be required, making the approach lossy or inapplicable.",
+      "One direction is to identify sub-expressions within attention or cross-network layers where user-only terms can be isolated — for example, in dot-product attention the query projection of user features can be pre-computed. For fully entangled nonlinear interactions, one could learn a linear approximation of the user-side factor via a small auxiliary network trained to minimize reconstruction error, accepting a controlled accuracy trade-off."
+    ],
+    "generated_at": "2026-03-23T05:37:45Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a multi-stage semantic search framework that chains POS filtering, spaCy/KeyBERT-based entity extraction, and FLAN-T5 query expansion with reciprocal rank fusion to improve retrieval quality. The system achieves 83.4% recall@100 and 0.462 nDCG@10 by progressively reducing noise and closing the gap between user intent and indexed content.",
+    "key_idea": "Stacking linguistic preprocessing (POS filtering, entity detection, keyphrase extraction) before neural query expansion yields compounding gains in recall and precision that neither approach achieves alone.",
+    "why_it_matters": "Practitioners building enterprise search, RAG pipelines, or document retrieval systems can use this lightweight hybrid approach to significantly boost recall without retraining dense retrievers, making it practical for production deployments with existing transformer models.",
+    "possible_use_cases": [
+      "Improving recall in RAG pipelines by expanding sparse or ambiguous user queries before retrieval",
+      "Enterprise document search where domain jargon causes intent mismatch with indexed content",
+      "E-commerce or academic search engines needing higher recall@k with limited computational budget"
+    ],
+    "generated_at": "2026-03-23T05:33:14Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework operates as a multi-stage pipeline starting with transformer-based dense retrieval, then applies POS filtering to retain only content-bearing tokens (nouns, verbs, adjectives), removing stopwords and function words to reduce noise. A hybrid NLP layer combines spaCy NER with KeyBERT keyphrase extraction to enrich passage representations with higher entity density. Finally, FLAN-T5 generates query expansions that are fused with original query results via reciprocal rank fusion (RRF) to mitigate intent-vocabulary mismatch.",
+    "key_innovation": "The primary novelty is the cascade combination of linguistically-motivated preprocessing (POS filtering) with neural query expansion (FLAN-T5) fused via RRF — treating linguistic structure and neural generation as complementary rather than competing signals. Most prior work uses either lexical augmentation or dense retrieval alone; this work shows a synergistic multi-stage pipeline where each step targets a distinct failure mode of semantic search.",
+    "technical_insight": "POS filtering as a preprocessing step is the most important design choice: by removing non-content tokens before embedding, the dense vectors concentrate semantic mass on meaning-bearing words, which directly addresses the curse of high-dimensional noise in transformer embeddings. This is more computationally efficient than learned sparse attention and requires no additional training, making it a lightweight yet effective inductive bias.",
+    "limitations": "The pipeline introduces multiple sequential dependencies (POS tagger, NER, KeyBERT, FLAN-T5), each adding latency and potential error propagation — a failure in early stages compounds downstream. The evaluation metrics (recall@100=83.4%, nDCG@10=0.462) are moderate and dataset/domain specifics are not clearly stated, making generalization claims uncertain. POS filtering may harm recall for queries relying on function words or syntactic structure (e.g., negation, comparative queries). FLAN-T5 query expansion can hallucinate or introduce topical drift, and the paper does not ablate failure cases.",
+    "interview_questions": [
+      "How does reciprocal rank fusion combine the original and expanded query result lists, and what are its theoretical properties compared to score-based fusion?",
+      "POS filtering removes over 38% of tokens — how do you ensure that semantically critical function words (e.g., 'not', 'without') are not discarded, and how does this affect negation handling?",
+      "FLAN-T5 is a generative model — what prompt format is used for query expansion, and how do you control for hallucination or off-topic expansion terms?",
+      "The nDCG@10 of 0.462 is relatively modest — what is the baseline without any of these augmentations, and which single component contributes most to the improvement?",
+      "How does this pipeline scale to real-time search latency requirements given the sequential NER, KeyBERT, and FLAN-T5 inference steps?"
+    ],
+    "interview_answers": [
+      "RRF assigns each document a score of 1/(k + rank_i) for each ranked list and sums across lists, where k is a smoothing constant (typically 60). Its key property is robustness to score scale differences across retrievers — it only uses rank position, not raw scores, making it effective when combining heterogeneous retrieval signals like BM25 and dense retrieval.",
+      "This is a genuine limitation of the approach. Standard POS filtering typically retains NOUN, VERB, ADJ, ADV and discards determiners, prepositions, and conjunctions. Negation ('not', 'no') and comparative modifiers ('better than') are often dropped, which can invert query semantics. A robust implementation would require dependency parsing to preserve negation arcs or use a whitelist for semantically critical function words.",
+      "Typically FLAN-T5 is prompted with a template like 'Generate related queries for: [query]' or 'Expand the following search query with synonyms and related terms: [query]'. Hallucination control is usually minimal in such pipelines — common mitigations include top-k/top-p sampling with low temperature, filtering expansions by semantic similarity threshold to the original query, or using the expansion only as a soft signal in RRF rather than a hard rewrite.",
+      "The paper reports improvements relative to a transformer baseline but does not clearly isolate per-component contribution in an ablation table. Ideally, the ablation would show: baseline dense retrieval → +POS filtering → +hybrid NER/KeyBERT → +FLAN-T5 expansion. Without this, it is unclear whether linguistic preprocessing or neural expansion drives the majority of the 5.7% recall gain.",
+      "Latency is a significant concern. spaCy NER is fast (CPU-feasible), but KeyBERT requires BERT inference per passage and FLAN-T5 requires autoregressive decoding at query time. In practice, KeyBERT indexing would need to be precomputed offline, and FLAN-T5 expansion would need to be cached or run with aggressive batching and quantization. The paper does not report latency benchmarks, which is a critical omission for production viability."
+    ],
+    "generated_at": "2026-03-23T05:33:44Z"
+  }
+}
