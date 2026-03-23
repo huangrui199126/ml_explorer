@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Bat is a serving system for Generative Recommenders that introduces Bipartite Attention, allowing flexible switching between user or item tokens as the KV cache prefix to maximize cache reuse. Combined with a disaggregated cache pool and hotness-aware scheduling, it achieves up to 1.6x throughput improvement and 58% compute reduction.",
+    "key_idea": "User and item token semantics in generative recommenders are permutation-invariant, so either can serve as the prompt prefix, enabling adaptive KV cache reuse that traditional user-as-prefix approaches cannot exploit.",
+    "why_it_matters": "Generative Recommenders are compute-bound and expensive to serve at scale; Bat's caching and scheduling optimizations dramatically cut inference cost without accuracy loss, making production deployment of GRs more practical.",
+    "possible_use_cases": [
+      "High-throughput product recommendation serving in e-commerce platforms",
+      "Real-time personalized content ranking for social media feeds",
+      "Scalable video or music recommendation inference under strict latency budgets"
+    ],
+    "generated_at": "2026-03-23T20:15:24Z"
+  },
+  "deep": {
+    "method_breakdown": "Bat introduces Bipartite Attention, which exploits the permutation-invariance between user and item token sets in Generative Recommenders to allow either user or item sequences to serve as the KV cache prefix interchangeably. It pairs this with a disaggregated KV cache pool that maintains separate user-prefix and item-prefix caches, using a hot-replicated cold-sharded placement strategy to manage memory efficiently. A hotness-aware prompt scheduler then selects the optimal prefix (user or item) at inference time based on cache availability and query hotness.",
+    "key_innovation": "Prior GR serving always treated the user sequence as the fixed prompt prefix, making cache reuse difficult due to high personalization. Bat's key novelty is proving and exploiting permutation-invariance between user and item tokens — meaning attention computations are equivalent regardless of which side is the prefix — enabling item-side caching for the first time, which is far more reusable across queries since items are shared across many users.",
+    "technical_insight": "The most important design choice is the hot-replicated cold-sharded item cache placement: hot (frequently accessed) item caches are replicated across nodes to avoid communication bottlenecks, while cold item caches are sharded to minimize memory footprint. This asymmetry is critical because naive replication of all item caches would exhaust memory, while pure sharding would create unacceptable latency for popular items under high concurrency.",
+    "limitations": "The 1.6x throughput gain is an upper bound seen under specific hotness distributions; skewed or uniform item popularity distributions will degrade cache hit rates and reduce gains. The permutation-invariance assumption holds only when user and item attention is structurally separable — architectures with cross-attention or positional encodings that couple user-item order would break this property. Additionally, the disaggregated cache pool adds system complexity and inter-node communication overhead that may dominate at small batch sizes or low-latency SLO regimes.",
+    "interview_questions": [
+      "Why are Generative Recommenders compute-bound like LLM prefill rather than decode, and what does that imply for optimization strategy?",
+      "What does permutation-invariance between user and item tokens mean formally, and what architectural constraint must hold for it to be valid?",
+      "Why is naive prefix caching insufficient for GRs, and how does Bipartite Attention specifically unlock higher cache reuse?",
+      "Explain the hot-replicated cold-sharded placement strategy — what problem does each half of the strategy solve?",
+      "How does the hotness-aware scheduler decide which prefix (user vs item) to use for a given query, and what are the trade-offs in that decision?"
+    ],
+    "interview_answers": [
+      "GRs process long user history and item feature sequences in a single forward pass over a large transformer, making each inference request a dense matrix-multiply workload proportional to sequence length squared — identical in character to the prefill stage of LLMs. This means the bottleneck is compute (FLOPS), not memory bandwidth, so reducing redundant computation via caching has higher leverage than, say, quantization or batching tricks alone.",
+      "Permutation-invariance means the attention output for any token in set A attending to set B is identical whether A or B is placed first in the sequence, provided there are no positional encodings that encode absolute or relative order between the two sets. Architecturally, this requires that user and item tokens do not use tied positional embeddings across the boundary, and that the attention mask does not encode ordering assumptions between the two groups.",
+      "Standard prefix caching reuses KV caches when the prompt prefix is identical across requests. In GRs, user profiles are highly personalized so user prefixes rarely repeat, and real-time item retrieval means item sets change per query — both make cache hits rare under the fixed user-as-prefix convention. Bipartite Attention breaks the fixed ordering constraint, so the system can cache whichever side (user or item) is more likely to be reused for the next incoming query, dramatically improving expected hit rate.",
+      "Replication addresses latency: hot items are requested by many users simultaneously, so sharding them would require cross-node fetches on every hit, creating a communication bottleneck. Sharding addresses memory: cold items are rarely accessed but there are many of them, so replicating all would exhaust GPU memory. Together, the strategy concentrates memory on the long tail while ensuring the most contended caches are locally available on every node.",
+      "The scheduler estimates a 'hotness score' for both the user profile and the candidate item set based on recent access frequency. It selects the prefix with the higher cache hit probability given current memory state, effectively maximizing expected computation saved per query. The trade-off is asymmetric: choosing item-as-prefix saves more computation when items are hot and shared across many users, but incurs extra memory pressure from storing item caches; the scheduler must balance hit-rate gain against the eviction cost imposed on other cached entries."
+    ],
+    "generated_at": "2026-03-23T20:15:56Z"
+  }
+}

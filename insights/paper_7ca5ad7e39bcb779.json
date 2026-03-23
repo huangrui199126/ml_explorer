@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RURA is a plug-in re-ranking method for financial recommender systems that balances user preference alignment with investment outcome quality by optimizing a user-specific expected-utility objective with risk tolerance. It improves ROI over risk-aware baselines while maintaining strong relevance ranking (nDCG) through calibrated adoption probabilities and a diversification hyperparameter.",
+    "key_idea": "Re-rank top financial asset candidates by maximizing a risk-tolerance-weighted expected utility that combines predicted returns with calibrated user adoption probabilities, using a single hyperparameter to trade off diversification against upstream ranking preservation.",
+    "why_it_matters": "Financial recommenders that optimize only for user preference may deliver poor returns, while return-optimized lists may ignore user tastes and fail adoption — RURA offers a practical post-hoc layer that improves actual ROI without rebuilding the upstream model, making it easy to deploy on top of existing systems.",
+    "possible_use_cases": [
+      "Robo-advisor platforms re-ranking ETF or stock recommendations to match individual investor risk profiles",
+      "Brokerage apps personalizing asset suggestions to balance user engagement with portfolio performance",
+      "Wealth management tools that need to comply with suitability requirements while maximizing client-specific expected utility"
+    ],
+    "generated_at": "2026-03-23T20:09:47Z"
+  },
+  "deep": {
+    "method_breakdown": "RURA is a post-processing re-ranking module that takes the top-K candidates from an upstream retrieval/ranking system and reorders them to maximize a user-specific expected-utility objective. It incorporates investor risk tolerance (e.g., risk-averse vs. risk-seeking profiles) directly into the utility function, and a likelihood-aware variant weights expected utility by calibrated adoption probabilities to jointly optimize for what users will actually adopt and what delivers value. A single diversification hyperparameter controls the trade-off between preserving upstream nDCG order and improving ROI.",
+    "key_innovation": "The core novelty is framing financial recommendation as a utility re-ranking problem that simultaneously encodes (1) investor-specific risk tolerance via expected-utility theory rather than a single return objective, and (2) adoption likelihood via calibrated probabilities — making it a plug-in layer decoupled from the upstream model rather than requiring end-to-end retraining. Prior work either optimizes relevance or return in isolation; RURA explicitly models the tension between them within a single tractable objective.",
+    "technical_insight": "The most critical design choice is the likelihood-aware variant that multiplies expected utility by calibrated adoption probability. This works because maximizing raw expected utility without adoption likelihood can produce high-value lists that users ignore; by weighting utility by the probability the user actually clicks/adopts, the objective aligns financial value maximization with behavioral realism. Calibration ensures these probabilities are not overconfident, preventing the ranker from over-indexing on items the model is spuriously confident about.",
+    "limitations": "The method relies on calibrated adoption probability estimates, which are hard to obtain reliably in financial domains with sparse interaction data and distribution shift. The single diversification hyperparameter may not generalize across user segments without per-group tuning. As a re-ranking plug-in, RURA is bounded by the quality of upstream candidates and cannot recover assets excluded from the candidate set. Finally, expected-utility theory assumes a fixed risk-tolerance parameter per user, which is a simplification of real investor behavior that is dynamic and context-dependent.",
+    "interview_questions": [
+      "How does RURA parameterize risk tolerance, and what utility function family does it use to encode different risk profiles?",
+      "Why is RURA designed as a plug-in re-ranker rather than an end-to-end model, and what are the practical trade-offs of this choice?",
+      "How are adoption probabilities calibrated in the likelihood-aware variant, and why does calibration matter specifically here?",
+      "What does the diversification hyperparameter control mechanically, and how does it create the nDCG vs. ROI trade-off?",
+      "How does RURA handle the cold-start or sparse-data regime where adoption likelihood estimates are unreliable?"
+    ],
+    "interview_answers": [
+      "RURA uses a parameterized expected-utility function — likely from the CARA or CRRA family — where a risk-aversion coefficient scales the penalty on variance or downside of asset returns. Risk-averse users get a concave utility that penalizes volatility, risk-seeking users get a convex utility that rewards upside, allowing a single framework to serve heterogeneous investors by simply varying this coefficient.",
+      "The plug-in design avoids retraining the upstream model, which may be proprietary, expensive, or unavailable. It also makes RURA composable — any retrieval backend can be upgraded without architectural changes. The trade-off is that RURA cannot influence what enters the candidate set, so it can only re-order and cannot inject truly novel diverse assets not already retrieved upstream.",
+      "Calibration (e.g., via temperature scaling or isotonic regression) adjusts raw model probability outputs so that a predicted 70% adoption probability corresponds to ~70% empirical adoption rate. This matters because uncalibrated probabilities in the likelihood-aware objective would cause the ranker to over-weight assets the model is falsely confident about, undermining the financial utility gains the method is designed to achieve.",
+      "The hyperparameter interpolates between full preservation of the upstream ranking order (weight=1, no reordering) and full optimization of the utility objective (weight=0, unconstrained). Mechanically it likely appears as a regularization term penalizing rank displacement. Higher values protect nDCG at the cost of suboptimal utility; lower values allow aggressive reordering that improves ROI but can degrade relevance metrics.",
+      "The paper does not fully resolve this; in sparse regimes, the likelihood-aware variant may degrade to the base utility variant by down-weighting all items equally. A practical mitigation is to fall back to the non-likelihood-aware RURA when confidence in adoption estimates falls below a threshold, or to use a prior-smoothed probability estimate that regularizes toward the population average adoption rate."
+    ],
+    "generated_at": "2026-03-23T20:10:15Z"
+  }
+}

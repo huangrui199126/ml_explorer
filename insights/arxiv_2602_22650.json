@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "AHBid is a hierarchical auto-bidding framework for multi-channel online advertising that combines a diffusion model-based high-level planner for budget allocation with a real-time control-based bidding algorithm. It addresses limitations of both optimization-based and RL-based approaches by capturing historical context and temporal patterns while remaining adaptable to dynamic market conditions.",
+    "key_idea": "Use a diffusion model as a generative planner to dynamically allocate budgets and constraints across ad channels by learning from historical trajectories, then refine bids in real-time with a control-based algorithm.",
+    "why_it_matters": "Advertisers running campaigns across multiple channels (search, display, social) can achieve significantly better ROI—13.57% improvement over baselines—without manually tuning bids, as the system automatically balances budget constraints and adapts to shifting market dynamics.",
+    "possible_use_cases": [
+      "Cross-channel budget allocation for e-commerce advertisers managing spend across search, social, and display simultaneously",
+      "Real-time bid optimization for programmatic advertising platforms handling millions of auctions with varying competitive landscapes",
+      "Automated campaign management for performance marketers with strict ROAS or CPA constraints across heterogeneous ad inventory"
+    ],
+    "generated_at": "2026-03-23T20:16:49Z"
+  },
+  "deep": {
+    "method_breakdown": "AHBid uses a two-level hierarchical architecture: a high-level generative planner based on diffusion models that periodically allocates budgets and constraints across channels by capturing historical temporal patterns, and a low-level control-based bidding algorithm that operates in real-time using the high-level plan combined with live market signals. A constraint enforcement mechanism projects generated plans onto feasible regions to guarantee budget and constraint compliance, while a trajectory refinement mechanism adapts the diffusion model's outputs using recent historical data to handle distribution shifts.",
+    "key_innovation": "The primary novelty is using diffusion models as a generative planner for budget allocation in multi-channel bidding — replacing optimization solvers or RL policies with a generative model that can capture complex multivariate temporal dependencies across channels. The trajectory refinement mechanism, which conditions the diffusion denoising process on recent observed trajectories, is a practically important addition that addresses the non-stationarity problem without retraining.",
+    "technical_insight": "The most critical design choice is decoupling planning horizon from execution horizon: the diffusion planner operates at a coarse timescale to generate budget/constraint allocation plans, while a separate control algorithm handles fine-grained real-time bid adjustments. This separation allows the generative model to focus on capturing long-range historical context (which diffusion models handle well via their iterative denoising over full sequences) while the control layer handles fast-changing auction dynamics, yielding both adaptability and responsiveness.",
+    "limitations": "The diffusion model's inference latency may be prohibitive for very high-frequency replanning cycles, limiting how quickly the high-level plan can react to sudden market shifts. The framework's performance likely degrades when historical data is sparse (new advertisers or new channels) since both the diffusion planner and trajectory refinement rely on rich historical trajectories. The constraint enforcement projection may introduce suboptimality if the feasible region is far from the unconstrained diffusion output. Online A/B test details are minimal, making it hard to assess generalization across advertiser types and budget scales.",
+    "interview_questions": [
+      "Why use a diffusion model specifically for the high-level planner rather than a transformer or LSTM-based sequence model?",
+      "How does the trajectory refinement mechanism work technically, and how does it avoid overfitting to recent but potentially noisy observations?",
+      "What does the constraint enforcement mechanism look like mathematically — is it a projection onto a convex set, and how is feasibility guaranteed?",
+      "How is the two-level hierarchy trained end-to-end or separately, and what reward signal drives the high-level planner?",
+      "In multi-channel settings with heterogeneous auction dynamics, how does AHBid handle channels that have very different temporal patterns or data volumes?"
+    ],
+    "interview_answers": [
+      "Diffusion models excel at modeling complex multivariate distributions over sequences and can capture multi-modal budget allocation strategies that deterministic models would average out. They also naturally support conditional generation, enabling the trajectory refinement mechanism to condition on recent observations. However, the tradeoff is higher inference cost compared to a single forward pass through a transformer.",
+      "Trajectory refinement likely works by using recent observed (state, allocation) trajectories as conditioning context during the diffusion denoising process — either via classifier-free guidance or by concatenating the recent trajectory as a conditioning input. The risk of overfitting to noisy recent data is partially mitigated by the diffusion model's inherent smoothing during denoising, but the paper likely uses a recency-weighted scheme or a fixed context window.",
+      "The constraint enforcement is most likely a Euclidean projection onto the feasible polytope defined by total budget equality/inequality constraints and channel-level bounds. For linear constraints this is a quadratic program, solvable efficiently. Feasibility is guaranteed by construction if the feasible set is non-empty and the projection always finds the nearest feasible point.",
+      "The two levels are likely trained separately: the diffusion planner is trained via supervised imitation on historical allocation trajectories (treating good past allocations as demonstrations) or via an offline RL objective, while the low-level bidding controller is trained independently with a PID or constrained optimization formulation. Full end-to-end training would be challenging due to the non-differentiability of the auction environment.",
+      "The framework handles channel heterogeneity by learning channel-specific embeddings or using separate model heads per channel within the diffusion architecture, allowing the planner to learn distinct temporal patterns per channel. For low-data channels, transfer or shared representations across channels would be necessary, though the paper likely relies on feature engineering to normalize cross-channel behavioral differences."
+    ],
+    "generated_at": "2026-03-23T20:17:17Z"
+  }
+}
