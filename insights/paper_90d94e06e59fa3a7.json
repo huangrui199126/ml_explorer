@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MAAQR is a multi-agent LLM framework deployed at Alipay that rewrites user search queries to better match product listings in e-commerce search. It combines knowledge-enhanced fine-tuning with collaborative multi-agent refinement to adaptively improve query-item relevance.",
+    "key_idea": "Fine-tuning an LLM on domain-specific knowledge and then orchestrating multiple specialized agents to collaboratively rewrite queries enables adaptive, high-quality reformulations that bridge the lexical gap between user intent and item descriptions.",
+    "why_it_matters": "Query rewriting directly impacts click-through rates, transaction volume, and zero-results rate in production search — this framework shows a practical, deployed path to significantly improving all three metrics using LLMs in a high-scale e-commerce setting.",
+    "possible_use_cases": [
+      "E-commerce search query expansion to reduce zero-results and improve product discoverability",
+      "Mini-app or marketplace search systems where user vocabulary diverges from merchant product terminology",
+      "Adaptive search personalization pipelines that refine queries based on evolving product catalogs or seasonal trends"
+    ],
+    "generated_at": "2026-03-23T17:38:59Z"
+  },
+  "deep": {
+    "method_breakdown": "MAAQR first applies knowledge-enhanced fine-tuning on an LLM to improve its understanding of domain-specific query and item semantics in the Alipay mini-app ecosystem. It then deploys a multi-agent collaborative rewriting architecture where multiple specialized agents work together to generate, evaluate, and iteratively refine query rewrites. The system adaptively responds to new or shifting query-item relationships, reducing zero-result queries while improving relevance.",
+    "key_innovation": "The combination of domain-aware LLM fine-tuning with a multi-agent refinement loop is the core novelty. Prior query rewriting work typically uses single-model or retrieval-augmented approaches without an explicit agent-based feedback and revision mechanism. The adaptive refinement via agent collaboration addresses the dynamic nature of e-commerce inventory and evolving user intent, which static rewriting models cannot handle.",
+    "technical_insight": "The most important design choice is decoupling domain knowledge injection (fine-tuning phase) from adaptive rewriting quality control (multi-agent phase). Fine-tuning alone overfits to training distribution and cannot handle novel query-item patterns; pure prompting lacks domain grounding. Splitting these concerns lets the system be both domain-aware and dynamically correctable, which is why it achieves simultaneous CTR gains and ZRR reduction — these objectives are often in tension.",
+    "limitations": "The paper likely underreports latency costs: multi-agent LLM pipelines are inherently slower than single-pass rewriters, which is critical for real-time search. The approach may be brittle to catastrophic query types not seen during fine-tuning. Knowledge-enhanced fine-tuning requires ongoing data curation as inventory evolves, creating a maintenance burden. Evaluation is limited to Alipay's mini-app vertical, so generalizability to other e-commerce domains or languages is unproven. Agent coordination overhead and failure modes (e.g., agent disagreement, hallucinated rewrites) are not deeply analyzed.",
+    "interview_questions": [
+      "How does the multi-agent architecture decide when a rewrite is 'good enough' versus requiring further refinement, and what signals drive that decision?",
+      "What specific domain knowledge is injected during fine-tuning — is it structured product catalog data, query logs, or something else, and how is it formatted?",
+      "How do you handle latency constraints in production given that multi-agent LLM calls are expensive — do you use caching, distillation, or asynchronous rewriting?",
+      "Query rewriting can hurt precision by over-broadening — how does MAAQR balance recall improvement (reducing ZRR) against precision degradation (irrelevant results)?",
+      "How does the system handle adversarial or ambiguous queries where multiple valid rewrites exist with very different intents?"
+    ],
+    "interview_answers": [
+      "Likely a critic or verifier agent scores rewrites against learned criteria (relevance, coverage, fluency) and triggers revision if below threshold; the stopping condition is probably a fixed iteration cap or confidence score, though the exact mechanism is a key implementation detail the paper may not fully disclose.",
+      "Most likely a combination of structured product taxonomy, historical query-to-item click logs, and possibly item description text — formatted as instruction-tuning examples that teach the LLM to map colloquial user language to catalog terminology specific to Alipay's mini-app domain.",
+      "Common mitigations include serving rewrites asynchronously (rewriting in parallel with the original query), caching rewrites for frequent queries, and potentially distilling the multi-agent output into a faster single-model for high-traffic queries — the paper likely uses a hybrid serving strategy.",
+      "The ZRR reduction and CTR improvement together suggest the system uses the original query as an anchor constraint, allowing expansion only when the original yields poor results; agent collaboration likely includes a relevance-checking agent that prunes over-broad rewrites before they reach the ranker.",
+      "Ambiguous queries are a known hard case; the system likely generates multiple candidate rewrites and either selects the highest-scoring one or passes multiple rewrites to the retrieval layer, relying on downstream ranking to surface the best match — true intent disambiguation would require user context signals not always available at query time."
+    ],
+    "generated_at": "2026-03-23T17:39:25Z"
+  }
+}

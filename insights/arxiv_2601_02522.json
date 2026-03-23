@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "A controlled experiment evaluating five techniques to reduce energy consumption in RAG systems, finding that optimizing similarity retrieval thresholds and reducing embedding sizes can cut energy use significantly without sacrificing accuracy.",
+    "key_idea": "Tuning retrieval similarity thresholds and shrinking embedding dimensions are the most effective levers for reducing RAG energy consumption because they lower compute and memory overhead while preserving answer quality.",
+    "why_it_matters": "As RAG deployments scale in production, energy costs and carbon footprint become real concerns; this study gives practitioners concrete, empirically validated knobs to pull that reduce costs without degrading user-facing accuracy.",
+    "possible_use_cases": [
+      "Optimizing production RAG pipelines to reduce cloud inference costs and energy bills",
+      "Guiding green-software engineering decisions when deploying LLM-backed search or Q&A systems",
+      "Benchmarking and selecting embedding models or vector index configurations based on energy-accuracy tradeoffs"
+    ],
+    "generated_at": "2026-03-23T17:41:41Z"
+  },
+  "deep": {
+    "method_breakdown": "The study conducts a controlled experiment on a production-like RAG system evaluating five green techniques: adjusting similarity retrieval thresholds, reducing embedding dimensions, applying vector indexing (HNSW/IVF), using a BM25S reranker, and combining these approaches. Each technique is tested across 9 configurations using the CRAG benchmark dataset, measuring energy consumption (via hardware power monitoring), latency, and accuracy (exact match / F1) over 200+ hours of trials. The experiment isolates each technique's effect to identify Pareto-optimal configurations that reduce energy without sacrificing accuracy.",
+    "key_innovation": "This is the first empirical, controlled study systematically quantifying energy-accuracy-latency trade-offs specifically for RAG system design choices. Prior green ML work focused on model training or inference optimization in isolation; this work targets the full RAG pipeline (retrieval + reranking + generation) in a production setting and identifies two techniques — retrieval threshold tuning and embedding size reduction — that achieve up to 60% energy savings with zero accuracy loss, a finding not previously established empirically.",
+    "technical_insight": "The most important design choice is that retrieval threshold filtering acts as an adaptive compute gate: by raising the similarity cutoff, fewer irrelevant chunks are passed to the LLM, reducing both prompt length and generation cost without degrading answer quality (since low-similarity chunks are noise anyway). This works because RAG accuracy is more sensitive to retrieved chunk quality than quantity, so aggressive filtering improves signal-to-noise while cutting energy proportionally to context reduction.",
+    "limitations": "Vector indexing strategies (HNSW/IVF) caused up to 30% accuracy drops due to approximate nearest-neighbor search errors, making them unsuitable for quality-sensitive deployments. Results are benchmarked on CRAG (a closed QA dataset) and a single partner's RAG architecture, limiting generalizability to open-domain or multi-hop reasoning tasks. Energy measurements are environment-specific (hardware, load conditions), and the study does not account for the one-time energy cost of building indexes or fine-tuning embedding models. BM25S reranking gains may not transfer to dense semantic retrieval tasks where lexical overlap is weak.",
+    "interview_questions": [
+      "Why does increasing the similarity retrieval threshold reduce energy consumption, and what is the risk of setting it too high?",
+      "The paper finds that approximate vector indexing (HNSW/IVF) saves energy but hurts accuracy by up to 30%. What causes this accuracy drop and how might it be mitigated?",
+      "How does reducing embedding dimensionality affect retrieval quality, and why might it not hurt accuracy in practice?",
+      "What is BM25S and why would a sparse lexical reranker reduce energy consumption in a dense-retrieval RAG pipeline?",
+      "How would you design a RAG system from scratch that optimizes for energy efficiency without sacrificing accuracy, based on these findings?"
+    ],
+    "interview_answers": [
+      "A higher similarity threshold filters out chunks below a cosine/dot-product cutoff before passing them to the LLM, reducing prompt token count and generation cost. The risk is over-filtering: if the threshold is too aggressive, relevant chunks that are semantically similar but not near-identical to the query get dropped, causing recall failures and accuracy degradation — the optimal threshold is dataset-dependent and must be validated empirically.",
+      "HNSW and IVF are approximate nearest-neighbor algorithms that trade exactness for speed by exploring only a subgraph or cluster of the vector space. The accuracy drop comes from missed true neighbors — chunks that are highly relevant but not in the explored region. Mitigation strategies include increasing the search beam width (ef parameter in HNSW), using product quantization with higher codebook resolution, or applying a post-index exact re-scoring step on the top-k approximate candidates.",
+      "Embedding dimensionality reduction (e.g., via Matryoshka Representation Learning or PCA truncation) compresses vectors while preserving the dominant variance directions that encode semantic similarity. It doesn't hurt accuracy when the removed dimensions carry low discriminative signal for the target domain — essentially, most retrieval tasks are solvable with far fewer than 1536 or 3072 dimensions. It reduces energy by shrinking both storage I/O and dot-product computation during ANN search.",
+      "BM25S is a fast sparse retrieval variant of BM25 that uses inverted indexes and term frequency statistics rather than dense vector similarity. As a reranker it takes the top-k dense-retrieved candidates and re-scores them lexically, then prunes low-scoring ones before LLM ingestion. Energy savings come from two sources: the BM25S scoring itself is orders of magnitude cheaper than a neural reranker, and pruning reduces the context passed to the expensive generative model.",
+      "Based on the findings, I would: (1) tune the retrieval similarity threshold on a held-out validation split to find the highest cutoff with no accuracy loss; (2) use Matryoshka-trained embeddings and truncate to the smallest dimension that maintains target accuracy; (3) avoid approximate indexing unless latency SLAs demand it, in which case use HNSW with high ef and validate accuracy; (4) use BM25S reranking to prune the retrieved set before generation; (5) monitor energy per query in production and retune thresholds as data distribution shifts."
+    ],
+    "generated_at": "2026-03-23T17:42:12Z"
+  }
+}
