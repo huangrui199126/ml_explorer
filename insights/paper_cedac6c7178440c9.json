@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Cedar is a technique that automatically selects relevant code examples for few-shot prompts by using embedding similarity or frequency analysis, without requiring task-specific fine-tuning. It achieves 76% exact match on test assertion generation and 52% on program repair, outperforming specialized models.",
+    "key_idea": "Retrieving semantically similar code demonstrations for few-shot prompts—rather than using random or fixed examples—dramatically improves LLM performance on code tasks.",
+    "why_it_matters": "Practitioners can get high accuracy on code tasks like test generation and bug repair using only a handful of relevant examples, with no model fine-tuning, making it cheap, fast, and generalizable across languages and tasks.",
+    "possible_use_cases": [
+      "Automated test assertion generation for new codebases without training data",
+      "Automated program repair suggestions in CI/CD pipelines",
+      "Multilingual code completion and refactoring tools that adapt to different languages without retraining"
+    ],
+    "generated_at": "2026-03-23T20:46:28Z"
+  },
+  "deep": {
+    "method_breakdown": "Cedar automatically constructs few-shot prompts for code tasks by retrieving the most similar code demonstrations to a query using either embedding-based similarity (dense retrieval via code embeddings) or frequency-based analysis (BM25/token overlap). The retrieved examples are ranked by similarity and prepended as demonstrations in the LLM prompt alongside natural language instructions. This retrieval-augmented prompting is applied to large pre-trained code LLMs (e.g., Codex) without any fine-tuning.",
+    "key_innovation": "Prior few-shot prompting work used fixed, manually curated demonstrations for all queries; Cedar introduces dynamic, query-specific demonstration selection by retrieving semantically similar code examples per query. This is the first systematic study of retrieval-based prompt construction specifically for code-related tasks, showing that embedding similarity outperforms random or fixed shot selection significantly.",
+    "technical_insight": "The most important design choice is using code-specific embeddings (rather than generic NL embeddings) to measure similarity between the query and candidate demonstrations. Code has structural regularity — syntactic and semantic patterns repeat across test assertions and bug fixes — so embedding-based nearest-neighbor retrieval surfaces examples with matching control flow or assertion patterns, giving the LLM highly relevant in-context examples that steer generation far more effectively than random shots.",
+    "limitations": "Cedar's performance depends on having a sufficiently large and representative pool of demonstrations to retrieve from; for rare or novel programming patterns, no similar example may exist. The approach inherits Codex/LLM costs and context window limits, bounding how many demonstrations can be included. Evaluation is limited to two tasks and two languages, so generalization claims are preliminary. Exact-match metrics may undercount semantically correct but lexically different outputs.",
+    "interview_questions": [
+      "How does Cedar select which demonstrations to include in the prompt, and why is embedding similarity preferable to random selection?",
+      "What are the trade-offs between embedding-based retrieval and frequency-based (BM25) retrieval in Cedar, and when would you prefer one over the other?",
+      "Cedar achieves 333% improvement over task-specific models for assertion generation — what baseline is that relative to, and is that comparison fair?",
+      "How does the number of retrieved shots (k) affect Cedar's performance, and what is the practical constraint on k?",
+      "How would you extend Cedar to a setting where no labeled demonstration pool exists (zero-resource scenario)?"
+    ],
+    "interview_answers": [
+      "Cedar embeds the query code snippet and all candidate demonstrations into a shared vector space, then ranks candidates by cosine similarity, selecting top-k as the prompt demonstrations. Embedding similarity is preferable because it captures structural and semantic code patterns beyond surface token overlap, so the retrieved examples share the same logical structure as the query, giving the LLM stronger in-context signal about the expected output format and logic.",
+      "Embedding-based retrieval captures deep semantic similarity (e.g., two assertions testing the same logic with different variable names), making it better for semantically complex tasks like program repair. BM25/frequency-based retrieval is faster, interpretable, and performs well when token overlap is a reliable proxy for similarity (e.g., assertion generation where method names matter). Embedding retrieval generally wins on harder tasks but requires a pre-trained code encoder and is more expensive at inference time.",
+      "The 333% improvement is over task-specific models trained or tuned on the specific dataset without LLM prompting — essentially rule-based or small-model baselines. The comparison is somewhat favorable to Cedar because those baselines lack the massive pre-training of Codex; however, it is fair in the sense that Cedar requires no task-specific training, making it a lower-effort alternative that substantially outperforms dedicated pipelines.",
+      "Performance generally improves with more shots up to a point, then plateaus or degrades as irrelevant examples dilute the prompt or the context window fills. The practical constraint is the LLM's context window (e.g., 4k–8k tokens for Codex), which limits k to roughly 5–20 examples depending on code length. Optimal k is task-dependent and should be tuned on a validation set.",
+      "In a zero-resource scenario, one approach is to use the query itself as a synthetic demonstration by applying code transformations (variable renaming, dead code insertion) to generate pseudo-similar examples, then retrieve among those. Alternatively, you could retrieve from a general open-source code corpus (e.g., GitHub) at inference time using the query as a search key, treating retrieved snippets as approximate demonstrations even without ground-truth labels."
+    ],
+    "generated_at": "2026-03-23T20:46:57Z"
+  }
+}

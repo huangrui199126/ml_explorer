@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "STHAN-SR reformulates stock selection as a learning-to-rank problem using a spatiotemporal hypergraph attention network that models complex inter-stock relationships and temporal price dynamics jointly. It outperforms state-of-the-art forecasting methods across three markets over six years of data.",
+    "key_idea": "By combining a hypergraph to capture multi-stock relational structure with a Hawkes temporal attention mechanism, the model directly optimizes for profit ranking rather than treating each stock's prediction independently.",
+    "why_it_matters": "Most stock prediction models ignore cross-stock signals and optimize for prediction accuracy rather than investment returns; this approach directly aligns the model objective with trading profit and leverages relational market structure for more actionable stock selection.",
+    "possible_use_cases": [
+      "Automated quantitative portfolio construction by ranking stocks for long/short positions",
+      "Risk-aware asset allocation using learned inter-stock dependency graphs",
+      "Event-driven trading strategies that exploit temporal spillover effects between correlated stocks"
+    ],
+    "generated_at": "2026-03-23T20:43:42Z"
+  },
+  "deep": {
+    "method_breakdown": "STHAN-SR models stocks as nodes in a hypergraph where hyperedges capture multi-stock relationships (e.g., sector membership, supply chains), then applies a spatiotemporal attention mechanism combining hypergraph convolution for cross-stock signals with a Hawkes process-inspired temporal attention over price history. The model is trained end-to-end with a learning-to-rank objective (approximating NDCG or pairwise ranking loss) that directly optimizes stock ordering by expected return rather than minimizing point-wise prediction error.",
+    "key_innovation": "Two orthogonal innovations combined: (1) hypergraph over simple graphs — hyperedges allow one relation to connect >2 stocks simultaneously, capturing group-level dependencies that pairwise edges cannot express; (2) reformulating stock selection as learning-to-rank rather than regression/classification, aligning the training objective with the actual investment goal of identifying the top-k return stocks.",
+    "technical_insight": "The Hawkes attention mechanism is the critical design choice — classical self-attention treats all past time steps equally, but stock price reactions exhibit self-exciting behavior (a shock triggers clustered follow-on moves). By parameterizing attention weights with a Hawkes intensity kernel, the model gives higher weight to recent, causally-clustered events while still attending to distant context, matching the empirical autocorrelation structure of financial returns.",
+    "limitations": "Hypergraph construction is static or rule-based (sector/industry labels), so it cannot adapt to regime changes where correlation structures shift dramatically (e.g., COVID crash decoupling). The Hawkes kernel adds inductive bias that may hurt in markets where price dynamics are more diffusive than self-exciting. Transaction costs, slippage, and short-selling constraints are not modeled, so backtested rank-based returns may not be achievable in practice. Experiments on three markets may not generalize to less liquid or emerging markets with microstructure noise.",
+    "interview_questions": [
+      "Why is a hypergraph strictly more expressive than a standard graph for modeling stock relationships, and what real-world financial relationships does this extra expressiveness capture?",
+      "What is the specific learning-to-rank loss used, and why does optimizing it outperform MSE on next-day return prediction?",
+      "How does the Hawkes process attention differ mechanically from standard scaled dot-product attention, and what hyperparameters govern the decay kernel?",
+      "How are hyperedges constructed — are they learned end-to-end or defined by domain knowledge — and what is the sensitivity of results to this construction?",
+      "How does STHAN-SR handle look-ahead bias and data leakage during training, given that stock correlations are computed over historical windows that overlap with the test period?"
+    ],
+    "interview_answers": [
+      "A standard graph edge connects exactly two nodes; a hyperedge connects an arbitrary subset, so a single 'technology sector' hyperedge links all tech stocks simultaneously. This lets the model propagate a signal through an entire correlated group in one message-passing step rather than requiring O(n²) pairwise edges, and naturally encodes multi-party relationships like ETF co-membership or supply-chain clusters involving 3+ firms.",
+      "MSE penalizes absolute return prediction error uniformly, but investors only care about relative ordering — picking the top decile. A listwise or pairwise ranking loss (e.g., ListNet, LambdaRank, or approx-NDCG) directly penalizes incorrect orderings of stocks, so gradient updates focus on swapping high-return stocks above low-return ones rather than reducing residuals for already-correctly-ranked pairs.",
+      "In standard attention, the weight between query q and key k is softmax(qᵀk/√d). In Hawkes attention, an additional multiplicative term λ(t−tₖ) = μ + α·exp(−β(t−tₖ)) modulates the weight by the Hawkes intensity at lag (t−tₖ), where α controls excitation magnitude and β controls decay rate. This means temporally clustered events near time t get amplified attention, while distant events are exponentially downweighted independent of their content similarity.",
+      "In STHAN-SR hyperedges are constructed from predefined domain knowledge (industry/sector classifications, sometimes wikidata relations), not learned. This is a limitation: results are sensitive to the quality of the taxonomy, and stocks that are fundamentally related but uncategorized together will lack a shared hyperedge. Some ablations swap in correlation-based hyperedges showing moderate sensitivity, suggesting learned hyperedge construction is a valuable future direction.",
+      "The paper uses a strict walk-forward split: hypergraph structure and attention weights are fitted only on data preceding each evaluation window, and correlation-based edges are computed on a rolling historical window that ends before the prediction date. The key risk is that sector labels themselves encode survivor bias (delisted stocks drop out), and if hyperedge definitions use forward-looking index membership they would introduce leakage — the paper does not explicitly address this edge case."
+    ],
+    "generated_at": "2026-03-23T20:44:14Z"
+  }
+}

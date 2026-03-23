@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MB-GMN combines graph neural networks with meta-learning to model multiple user behavior types (click, favorite, purchase) jointly, learning personalized behavior patterns for each user. It captures heterogeneous relational structures across behavior types rather than treating all interactions uniformly.",
+    "key_idea": "A meta-learning framework generates behavior-specific graph parameters per user, enabling the model to distill how each behavior type (e.g., browsing vs. buying) contributes differently to predicting a target behavior like purchase.",
+    "why_it_matters": "Most recommender systems discard rich behavioral signals by collapsing all interaction types into one signal; MB-GMN shows that explicitly modeling behavior heterogeneity and user-level diversity significantly improves recommendation accuracy.",
+    "possible_use_cases": [
+      "E-commerce platforms leveraging click, cart, and purchase signals to improve product recommendations",
+      "Content platforms using view, like, share, and comment behaviors to personalize feeds",
+      "Streaming services modeling watch, search, and rating behaviors to predict what users will actually finish watching"
+    ],
+    "generated_at": "2026-03-23T20:42:27Z"
+  },
+  "deep": {
+    "method_breakdown": "MB-GMN constructs multiple user-item interaction graphs, one per behavior type (click, favorite, purchase), and uses graph neural networks to learn behavior-specific embeddings. A meta-learning component generates personalized transformation parameters for each user by aggregating signals across behavior graphs, capturing how different behaviors relate for that specific user. The final recommendation target (e.g., purchase) is predicted by combining the target behavior embedding with meta-learned cross-behavior context.",
+    "key_innovation": "Prior multi-behavior methods either naively concatenate behavior signals or use fixed transfer weights across all users. MB-GMN introduces meta-learning to generate user-specific behavior transition patterns — the meta network produces personalized parameters conditioned on a user's own multi-behavior history, so the influence of auxiliary behaviors (clicks) on the target behavior (purchase) is different per user rather than globally shared.",
+    "technical_insight": "The most important design choice is decoupling behavior-specific GNN encoding from cross-behavior fusion via a meta network. By learning to generate transformation functions rather than fixed weights, the model avoids the assumption that auxiliary-to-target behavior relationships are homogeneous across users — a critical assumption violation in real systems where some users click-then-buy while others browse extensively without intent to purchase.",
+    "limitations": "The meta-learning component adds significant computational overhead, making scaling to very large catalogs or user bases difficult. The model requires all behavior types to be present at training time and may degrade when a user has sparse auxiliary behavior signals. It also assumes a fixed set of behavior types known at design time, limiting adaptability to new interaction modalities without retraining.",
+    "interview_questions": [
+      "Why is it insufficient to simply concatenate embeddings from different behavior-type graphs?",
+      "How does the meta network generate user-specific parameters, and what is it conditioned on?",
+      "What is the target behavior in training, and how are auxiliary behaviors used during loss computation?",
+      "How does MB-GMN handle users with very sparse auxiliary behavior signals?",
+      "What inductive bias does using GNNs per behavior type provide over a single heterogeneous graph?"
+    ],
+    "interview_answers": [
+      "Concatenation applies uniform fusion weights across all users, ignoring that the relationship between auxiliary and target behaviors is personalized. A user who always clicks before purchasing conveys different signal than one who clicks randomly; fixed fusion conflates these patterns and loses the conditional dependency structure.",
+      "The meta network takes as input the aggregated multi-behavior graph embeddings of a user and outputs transformation matrices/vectors that parameterize how auxiliary behavior representations should influence the target behavior embedding. It is conditioned on the user's own behavior context, making the generated parameters instance-specific rather than globally shared.",
+      "The target behavior (e.g., purchase) drives the recommendation loss. Auxiliary behaviors (click, favorite) are not directly supervised but contribute through the meta-learned cross-behavior embeddings that enrich the target behavior representation. The model is trained end-to-end with BPR loss on target behavior interactions.",
+      "Sparse auxiliary signals mean the meta network has limited context to generate meaningful personalized parameters, potentially falling back toward behavior-agnostic representations. The paper does not explicitly address a cold-start or sparsity mitigation strategy for auxiliary behaviors, which is a practical weakness.",
+      "Separate GNNs per behavior type allow each graph to propagate behavior-homogeneous neighborhood signals without interference from other interaction types. A single heterogeneous graph risks over-smoothing across behavior types and makes it harder to isolate what a specific behavior pattern contributes, whereas type-separated graphs produce cleaner type-specific representations before fusion."
+    ],
+    "generated_at": "2026-03-23T20:42:49Z"
+  }
+}

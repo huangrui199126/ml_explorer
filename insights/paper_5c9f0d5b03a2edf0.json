@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper develops a production Rhetorical Role Labeling (RRL) system for Hungarian court decisions, comparing BiLSTM, attention-based networks, and SVM architectures with different embedding strategies. It finds that late chunking—a technique that improves retrieval tasks—actually hurts sentence-level classification in this legal NLP context.",
+    "key_idea": "Late chunking embeddings, which add surrounding context during vectorization, introduce noise rather than useful signal for sentence-level rhetorical role classification in legal documents.",
+    "why_it_matters": "Practitioners building legal document analysis pipelines should not assume that embedding techniques optimized for retrieval (like late chunking) will transfer to classification tasks, especially in non-English legal corpora with unique structural properties.",
+    "possible_use_cases": [
+      "Automated structuring of court decisions for legal search engines and case law databases",
+      "Preprocessing pipeline for legal AI assistants that need to identify facts vs. arguments vs. rulings",
+      "Training data creation for multilingual legal NLP by providing a labeled Hungarian benchmark"
+    ],
+    "generated_at": "2026-03-23T20:35:33Z"
+  },
+  "deep": {
+    "method_breakdown": "The system frames Rhetorical Role Labeling as a sequential sentence classification task, where each sentence in a Hungarian judicial decision is assigned a functional role (facts, arguments, decision, etc.). Multiple neural architectures are compared: BiLSTM, attention-based networks, and an SVM baseline, each consuming sentence embeddings. A key experimental axis is the vectorization strategy — specifically comparing classical (independent) chunking against late chunking, where embeddings are produced with broader document context before being pooled per sentence.",
+    "key_innovation": "The primary novelty is the empirical investigation of late chunking — a technique recently shown to improve retrieval tasks — applied to sequential legal document classification in a non-English (Hungarian) setting. The paper provides the first evidence that late chunking can hurt rather than help for sentence-level RRL, contrasting with retrieval benchmarks, and contributes a human-annotated Hungarian judicial corpus with annotator agreement statistics.",
+    "technical_insight": "The most important design choice is treating RRL as a sequential (not independent) classification problem, allowing models like BiLSTM to propagate context across adjacent sentences. This matters because legal document structure is strongly positional — procedural facts appear early, reasoning in the middle, and holdings at the end — so sequential models capture structural priors that bag-of-sentences approaches miss.",
+    "limitations": "Late chunking introduces contextual noise in this domain, suggesting the benefit is task-dependent and not universally transferable from retrieval to classification. The corpus is Hungarian-only, limiting generalizability; Hungarian has complex morphology and a distinct legal tradition from common-law datasets used in prior RRL work. The dataset size is not specified in the abstract but human-annotated legal corpora are typically small, risking overfitting and high variance in evaluation.",
+    "interview_questions": [
+      "Why does late chunking improve retrieval but potentially hurt sentence-level RRL?",
+      "How does the sequential nature of BiLSTM help in legal document classification compared to independent sentence classifiers?",
+      "What specific rhetorical roles were annotated, and how was inter-annotator agreement measured?",
+      "What makes Hungarian judicial decisions structurally different from English-language legal datasets used in prior RRL research?",
+      "How would you extend this system to handle documents where sentences serve multiple rhetorical roles simultaneously?"
+    ],
+    "interview_answers": [
+      "In retrieval, late chunking enriches a chunk's embedding with surrounding document context, improving semantic matching against queries. In RRL, however, each sentence embedding must cleanly represent its local rhetorical function; injecting neighboring context blurs these local signals and introduces noise, especially when adjacent sentences have different roles — a common pattern at section boundaries in legal judgments.",
+      "BiLSTM maintains a hidden state that accumulates evidence about the document's structural position as it processes sentences sequentially. Legal documents have strong positional priors — introductory sections contain facts, middle sections contain legal reasoning, and terminal sections contain the holding — so the sequential hidden state effectively learns a soft positional encoding of document structure, which independent classifiers must infer from the sentence alone.",
+      "Typical roles include statement of facts, legal argumentation, citation of precedent, procedural history, and operative decision/holding. Inter-annotator agreement is usually reported via Cohen's Kappa or Fleiss' Kappa; high kappa on clear structural roles (decision) and lower kappa on ambiguous roles (argument vs. reasoning) is the expected pattern, reflecting genuine label ambiguity in legal discourse.",
+      "Hungarian uses a civil law tradition with distinct document templates compared to Anglo-American common law. The language itself is agglutinative with rich morphology, making tokenization and embedding transfer from multilingual models less reliable. Hungarian court decisions also have different section ordering conventions and varying degrees of formalization depending on court level, unlike highly standardized US or UK case law used in datasets like ECtHR.",
+      "One approach is multi-label classification per sentence, replacing the softmax output with independent sigmoid heads per role. Alternatively, a conditional random field (CRF) decoding layer on top of the sequential encoder can model label co-occurrence and transition constraints, allowing a sentence to carry soft membership in multiple roles while still enforcing globally consistent label sequences across the document."
+    ],
+    "generated_at": "2026-03-23T20:35:59Z"
+  }
+}

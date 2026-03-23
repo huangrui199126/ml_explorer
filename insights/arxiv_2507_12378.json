@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a scalable multimodal RAG system that combines hybrid search (metadata + embeddings) with a late interaction re-ranker to retrieve relevant document pages containing visual elements like charts and tables, then uses an MLLM to generate answers from those pages. The approach addresses practical barriers to deploying vision-augmented Q&A in enterprise settings by working within constraints of standard vector databases and improving retrieval speed.",
+    "key_idea": "Use single-vector hybrid search as a first-stage retriever to stay compatible with mainstream vector databases, then apply a late interaction re-ranker as a second stage to recover the accuracy benefits of multi-vector models — achieving scalability without sacrificing retrieval quality.",
+    "why_it_matters": "Most enterprise document corpora are rich in tables, charts, and figures that text-only RAG systems miss entirely; this design offers a production-viable path to multimodal Q&A without requiring specialized multi-vector database infrastructure or full late-interaction indexing overhead.",
+    "possible_use_cases": [
+      "Enterprise document search over PDF reports with embedded charts and tables",
+      "Financial or scientific Q&A where answers are encoded in infographics rather than prose",
+      "Regulatory compliance review systems that must interpret mixed text and visual content across large document repositories"
+    ],
+    "generated_at": "2026-03-23T20:38:17Z"
+  },
+  "deep": {
+    "method_breakdown": "The system uses a multi-step pipeline: first, documents are indexed using hybrid search combining metadata filters and dense embeddings in standard vector databases (avoiding native multi-vector requirements). Candidate pages are then re-ranked using a late interaction mechanism (ColPali-style token-level matching) to identify the best visual pages. Finally, a multimodal LLM reads the top-ranked pages to generate grounded answers.",
+    "key_innovation": "The key novelty is decoupling late interaction from the retrieval stage — using it only as a re-ranker on a smaller candidate set rather than as the primary index. This sidesteps the need for multi-vector database support and ANN indexing incompatibility, making ColPali-style late interaction deployable in standard enterprise vector databases like Pinecone, Weaviate, or pgvector.",
+    "technical_insight": "Using approximate nearest neighbor search for coarse candidate retrieval followed by exact late interaction re-ranking is the critical design choice. Late interaction (MaxSim over token embeddings) is computationally expensive at full corpus scale, but becomes tractable on a small shortlist — preserving its accuracy advantage while achieving production-level speed. This is analogous to how BM25+cross-encoder pipelines work in text RAG.",
+    "limitations": "The two-stage design introduces a recall ceiling: if the first-stage retriever misses the relevant page, the re-ranker cannot recover it. The paper likely evaluates on clean, well-structured documents and may degrade on noisy scans. Latency of MLLM inference for multi-page visual context is not addressed. Generalization to highly heterogeneous document collections or non-English infographics is untested.",
+    "interview_questions": [
+      "Why can't you just use late interaction (e.g., ColPali) directly as your primary ANN index, and what does this paper do instead?",
+      "What is the MaxSim operation in late interaction, and why does it outperform single-vector retrieval for visual documents?",
+      "How does hybrid search (metadata + embedding) improve recall in the first retrieval stage compared to embedding-only search?",
+      "What are the space and compute tradeoffs introduced by storing multi-vector (token-level) embeddings versus single-vector page embeddings?",
+      "How would you evaluate whether the two-stage pipeline's first-stage recall is a bottleneck, and how would you fix it if it were?"
+    ],
+    "interview_answers": [
+      "Late interaction models like ColPali produce one embedding vector per image patch/token, requiring multi-vector ANN indexing which most production vector databases do not natively support, and ANN indices are not designed for MaxSim aggregation. This paper instead uses single-vector embeddings for ANN retrieval to get a candidate set, then applies late interaction only on that shortlist as a re-ranker — keeping the expensive multi-vector computation bounded and compatible with standard infrastructure.",
+      "MaxSim computes the maximum cosine similarity between each query token embedding and all document token embeddings, then sums these per-query-token maxima. This preserves fine-grained token-level alignment signal, so a query token matching a specific chart label or table cell can score highly even if the overall page embedding is only moderately similar — capturing localized visual-textual correspondences that single-vector embeddings average away.",
+      "Metadata filters (e.g., document type, date, section) reduce the search space before embedding similarity is computed, improving both precision and recall by excluding irrelevant documents entirely. Pure embedding search can retrieve semantically similar but contextually wrong pages; metadata constraints enforce hard business logic boundaries, making the retrieval more reliable in enterprise settings with structured document corpora.",
+      "Single-vector embeddings require O(d) storage per page (e.g., 1536 floats), whereas multi-vector late interaction stores one vector per patch — often 196–1024 vectors per page — multiplying storage by 100-1000x. Compute scales similarly: scoring one query against a corpus of N pages requires N×T_q×T_d dot products for late interaction versus N×d for single-vector. This is why the paper confines late interaction to a small re-ranking shortlist.",
+      "You measure first-stage recall@K (what fraction of gold pages appear in the top-K candidates) and compare it against end-to-end answer accuracy. If recall@K is significantly higher than final accuracy, the MLLM reader is the bottleneck; if end-to-end accuracy tracks recall@K closely, the first stage is limiting. To fix first-stage recall, you could increase K, use query expansion, add dense+sparse fusion (BM25 + embeddings), or train a domain-specific embedding model."
+    ],
+    "generated_at": "2026-03-23T20:38:45Z"
+  }
+}

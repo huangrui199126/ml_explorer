@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a two-stage LLM framework that first normalizes unstructured text into canonical descriptions, then performs semantic duplicate detection with risk-level assignment. The system is deployed as a production API that auto-generates reports to help operators prioritize recurring issues.",
+    "key_idea": "Using LLMs in two sequential stages—normalization then semantic comparison—outperforms both embedding similarity and keyword matching for duplicate detection in noisy real-world text streams.",
+    "why_it_matters": "Practitioners dealing with high-volume unstructured data (support tickets, bug reports, incident logs) can automate duplicate triage at scale without hand-crafted rules, reducing operator workload and response latency.",
+    "possible_use_cases": [
+      "Customer support ticket deduplication to route recurring issues to existing solutions",
+      "IT incident management to surface repeated alerts and suppress noise",
+      "Bug report clustering in software development pipelines to avoid duplicate investigation effort"
+    ],
+    "generated_at": "2026-03-23T20:36:51Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework uses a two-stage LLM pipeline: first, a standardization stage converts raw unstructured text into concise canonical descriptions by stripping noise and normalizing phrasing; second, a semantic comparison stage uses the LLM to reason over whether the canonicalized new entry matches any existing entry in a knowledge base, assigning a risk level (e.g., low/medium/high duplicate probability). The system is deployed as a scalable API service that ingests streaming text, runs both stages, and outputs structured analytical reports for operators.",
+    "key_innovation": "The genuine novelty is using an LLM not just for embedding/retrieval but as an explicit two-stage reasoning system: normalization decouples surface-form variance from semantic content before comparison, allowing the second stage to focus purely on semantic equivalence rather than fighting noisy text. Prior work relied on embedding cosine similarity or keyword matching, which conflate vocabulary mismatch with semantic difference and miss paraphrastic duplicates.",
+    "technical_insight": "The most important design choice is the canonicalization pre-processing stage. By having the LLM first rewrite noisy, unstructured input into a clean canonical form, the system eliminates lexical noise before semantic comparison, dramatically reducing false negatives caused by surface variation. This works because LLMs have strong paraphrase-compression capabilities, and separating normalization from comparison allows each stage to be independently optimized and prompted.",
+    "limitations": "The two-stage LLM approach introduces significant latency and cost compared to pure embedding baselines, making it potentially impractical for very high-throughput streams. The framework's performance depends heavily on prompt engineering quality, which may degrade on domain shifts not covered in prompt design. The paper evaluates on a single real-world dataset, so generalizability to other domains or text types is unproven. Additionally, LLM-based canonicalization may hallucinate or over-compress, potentially losing distinguishing details that would differentiate two superficially similar but distinct issues.",
+    "interview_questions": [
+      "Why use a two-stage LLM approach instead of a single LLM call that directly compares two raw texts for duplication?",
+      "How does this framework compare to dense retrieval with embedding models like SBERT or BGE in terms of accuracy and latency trade-offs?",
+      "What are the failure modes of the canonicalization stage, and how do they propagate to the downstream duplication decision?",
+      "How would you scale this system to handle millions of daily entries while controlling LLM inference costs?",
+      "How do you define and measure 'risk level' for duplicate entries, and what are the risks of miscalibration in a production alerting system?"
+    ],
+    "interview_answers": [
+      "A single comparison call must handle both normalization and semantic reasoning simultaneously, making the prompt complex and prone to conflating surface noise with semantic difference. Separating the stages allows the LLM to focus on one well-defined subtask at a time, improving reliability and enabling independent prompt tuning for each stage.",
+      "Embedding models are faster and cheaper but encode meaning into fixed-size vectors that can lose fine-grained distinctions; cosine similarity thresholds are brittle to domain-specific phrasing. This LLM framework sacrifices latency for higher-precision semantic reasoning, making it better suited for low-to-medium volume streams where accuracy is more critical than throughput.",
+      "If the canonicalization stage over-compresses or mistranslates meaning, the deduplication stage receives corrupted input and will produce incorrect risk assessments — errors are non-recoverable within the pipeline. Under-compression (retaining noise) partially degrades the benefit of the stage but is less catastrophic. Monitoring canonicalized output distributions and using human-in-the-loop spot checks are essential safeguards.",
+      "Caching canonicalized representations of known entries avoids re-processing the knowledge base. Batching new entries, using smaller/distilled LLMs for the canonicalization stage, and reserving the larger model only for borderline-confidence comparisons via a confidence-gated cascade can reduce costs significantly. Approximate nearest-neighbor pre-filtering on embeddings can also narrow the candidate set before LLM comparison.",
+      "Risk level likely reflects estimated probability and operational impact of a duplicate being missed — e.g., high risk if the issue has caused past incidents. Miscalibration toward false negatives (missed duplicates flagged as new) wastes operator effort on re-investigation; false positives (novel issues flagged as duplicates) risk suppressing critical alerts. Calibration should be validated on held-out labeled data and recalibrated periodically as the issue distribution drifts."
+    ],
+    "generated_at": "2026-03-23T20:37:21Z"
+  }
+}
