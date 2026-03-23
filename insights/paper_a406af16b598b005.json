@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "VitaChat is a RAG-based healthcare chatbot that encodes antibiotic reference texts using Sentence Transformers and ChromaDB, then retrieves source-grounded responses to user queries via LangChain. It targets both patients and clinicians seeking reliable antibiotic information across varying levels of medical expertise.",
+    "key_idea": "Combining dense vector embeddings of curated medical texts with retrieval-augmented generation ensures responses are accurate, cited, and grounded in trusted sources rather than parametric model knowledge alone.",
+    "why_it_matters": "Demonstrates a practical, low-hallucination pattern for deploying LLMs in high-stakes medical domains by anchoring outputs to vetted reference material and surfacing citations for verification.",
+    "possible_use_cases": [
+      "Clinical decision support for prescribing antibiotics with source-backed guidance",
+      "Patient-facing chatbot for understanding antibiotic side effects and usage instructions",
+      "Medical education tool for students querying curated pharmacology references"
+    ],
+    "generated_at": "2026-03-23T19:20:33Z"
+  },
+  "deep": {
+    "method_breakdown": "VitaChat uses a two-stage RAG pipeline: first, three antibiotic reference books are chunked, encoded into dense vector embeddings via a Sentence Transformer model using LangChain, and stored in a ChromaDB vector store. Second, at inference time, a user query is embedded and used to retrieve the most semantically similar document chunks via cosine similarity, which are then passed as context to a generative model to produce a grounded, citation-backed response.",
+    "key_innovation": "The primary novelty is domain-specific grounding of a healthcare chatbot strictly to curated antibiotic reference literature, ensuring responses are source-attributed and constrained to a trusted medical corpus rather than relying on unconstrained LLM parametric knowledge. This reduces hallucination risk in a safety-critical domain.",
+    "technical_insight": "The critical design choice is using Sentence Transformers for embedding over sparse retrieval (BM25) — dense embeddings capture semantic similarity (e.g., 'adverse reactions' matching 'side effects'), enabling retrieval even when exact terminology differs between query and document. Storing embeddings in ChromaDB provides efficient approximate nearest-neighbor search at scale.",
+    "limitations": "The system is narrowly scoped to antibiotic information from only three books, severely limiting coverage breadth. It does not handle dynamic or updated medical guidelines unless the corpus is manually refreshed. Response quality is entirely bounded by retrieval quality — poor chunking or out-of-distribution queries yield unreliable answers. No clinical validation or safety benchmarking against established medical QA standards is reported, and the evaluation appears informal rather than rigorous.",
+    "interview_questions": [
+      "How does ChromaDB perform similarity search, and what distance metric is typically used?",
+      "What are the failure modes of dense retrieval in a medical RAG system, and how would you mitigate them?",
+      "How would you handle a query that falls outside the antibiotic corpus but is still health-related?",
+      "What chunking strategy would you use for dense medical reference texts, and why does chunk size matter?",
+      "How would you evaluate the factual correctness of a RAG-based medical chatbot beyond user satisfaction metrics?"
+    ],
+    "interview_answers": [
+      "ChromaDB uses approximate nearest-neighbor search, defaulting to cosine similarity on L2-normalized embeddings or L2 distance. It indexes vectors using HNSW (Hierarchical Navigable Small World graphs) for sub-linear query time, trading a small accuracy loss for significant speed gains at scale.",
+      "Dense retrieval can fail when queries use highly specific medical jargon absent from training data of the encoder, retrieving semantically plausible but factually irrelevant chunks. Mitigations include hybrid retrieval (dense + BM25 reranked), query expansion, and a cross-encoder reranker to re-score top-k candidates before generation.",
+      "Out-of-scope queries should be detected via a confidence or relevance threshold on retrieval scores. If the top retrieved chunks have similarity below a calibrated threshold, the system should respond with a graceful fallback rather than hallucinating, optionally routing to a broader medical knowledge base or flagging for human review.",
+      "Chunk size involves a tradeoff: small chunks (128–256 tokens) preserve precision but lose surrounding context; large chunks (512–1024 tokens) retain context but dilute the embedding signal. Sentence-boundary or paragraph-level chunking with overlap (e.g., 50-token stride) is standard to avoid cutting mid-concept while maintaining retrieval specificity.",
+      "Factual correctness should be evaluated using reference-based metrics against gold-standard medical QA datasets (e.g., MedQA, PubMedQA), automated faithfulness scoring (e.g., checking if the answer is entailed by retrieved passages via an NLI model), and citation precision/recall. Human expert review on a stratified sample of query types is essential for safety-critical deployment."
+    ],
+    "generated_at": "2026-03-23T19:20:58Z"
+  }
+}
