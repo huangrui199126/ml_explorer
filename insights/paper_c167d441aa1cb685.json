@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes an automatic query expansion system for document retrieval that combines a graph-enhanced BERT variant (HT-GEBERT) with manifold ranking to generate better search queries and reduce query drift. The system uses pseudo adversarial embedding for data augmentation and an eccentricity-based keyword extractor to improve retrieval accuracy.",
+    "key_idea": "Augmenting BERT with graph structure and hyperparameter optimization via Gorilla Troops algorithm, then re-ranking expanded query terms with manifold ranking, produces more relevant document retrieval than standard query expansion approaches.",
+    "why_it_matters": "Search and retrieval systems that rely on keyword matching suffer when users write imprecise queries; this approach automatically enriches queries with contextually relevant terms while actively suppressing topic drift, improving recall without sacrificing precision.",
+    "possible_use_cases": [
+      "Enterprise knowledge base search where employees use informal or incomplete terminology",
+      "Legal or medical document retrieval where precise terminology matters but users may not know exact terms",
+      "Academic literature search systems that need to surface relevant papers beyond exact keyword matches"
+    ],
+    "generated_at": "2026-03-23T19:02:25Z"
+  },
+  "deep": {
+    "method_breakdown": "The system first augments the user query using Pseudo Adversarial Embedding (PAE) to diversify training data, then preprocesses text through tokenization, lemmatization, stop word removal, and spell correction before extracting key phrases via Eccentricity-Based Keyword Extraction (EKE). These keywords are then vectorized using HT-GEBERT — a Graph-Enhanced BERT variant whose hyperparameters are tuned via the Artificial Gorilla Troops Optimization Algorithm (AGTO). Finally, a Manifold Ranking Algorithm reranks candidate expansion phrases by relevance, and cosine similarity between query and document segments determines retrieval.",
+    "key_innovation": "The primary novelty is combining graph-enhanced contextual embeddings (GEBERT) with automatic hyperparameter optimization (Gorilla Troops algorithm) and manifold ranking for query expansion reranking — attempting to reduce query drift while maintaining semantic coherence. Most prior AQE work uses static embeddings or standard BERT without graph structure or automated tuning pipelines.",
+    "technical_insight": "Using manifold ranking as the final reranking step is the most defensible design choice: unlike cosine similarity alone, manifold ranking exploits the geometric structure of the embedding space so that relevance propagates through a neighborhood graph of terms, making it more robust to noisy or polysemous expansions that would otherwise cause query drift.",
+    "limitations": "The reported 94% accuracy on a single dataset with no comparison to strong baselines (e.g., ColBERT, DPR, SPLADE) makes claims unverifiable. The pipeline is heavily engineered with many ad-hoc components (PAE, EKE, AGTO, manifold ranking) whose individual contributions are never ablated, raising questions about whether complexity is justified. The Gorilla Troops optimizer is a metaheuristic with no convergence guarantees, and the approach likely scales poorly to large corpora. Dataset 1 is not publicly identified, preventing reproducibility.",
+    "interview_questions": [
+      "What is query drift in AQE and how does manifold ranking specifically mitigate it compared to naive top-k expansion?",
+      "Why use a graph-enhanced variant of BERT (GEBERT) over standard BERT or a dense retrieval model like DPR for query expansion?",
+      "How does the Artificial Gorilla Troops Optimization Algorithm tune BERT hyperparameters, and what search space is being explored?",
+      "What role does Pseudo Adversarial Embedding play in data augmentation, and how does it differ from standard back-translation or synonym replacement?",
+      "How would you design an ablation study to determine which component — HT-GEBERT, manifold ranking, or PAE — contributes most to the reported accuracy gain?"
+    ],
+    "interview_answers": [
+      "Query drift occurs when expanded terms shift the query topic away from the user's intent. Manifold ranking mitigates this by treating the term embedding space as a manifold and propagating relevance scores through a nearest-neighbor graph, so only terms geometrically close to the original query concept receive high scores — distant but superficially similar terms are suppressed.",
+      "Standard BERT encodes tokens independently of explicit relational structure between terms. GEBERT incorporates a knowledge or co-occurrence graph as an additional signal, allowing the model to capture term-term relationships (e.g., synonymy, hypernymy) that pure attention may underweight in short queries, potentially yielding more semantically coherent expansion candidates.",
+      "AGTO is a population-based metaheuristic that mimics gorilla troop social behavior to explore hyperparameter space (likely learning rate, number of layers unfrozen, batch size). Each 'gorilla' represents a candidate configuration evaluated on a validation metric; the colony converges toward high-performing regions. The key weakness is cost: each evaluation requires a forward pass, making this expensive without aggressive early stopping.",
+      "PAE generates adversarial perturbations in embedding space — small, targeted noise vectors — to create augmented training examples that are semantically similar but distributionally diverse. Unlike back-translation (which stays in token space) or synonym replacement (which is discrete), PAE operates continuously in embedding space, potentially covering more of the semantic neighborhood and improving model robustness to paraphrase variation.",
+      "A proper ablation would train five model variants: (1) baseline BM25+AQE, (2) +BERT embeddings without graph, (3) +GEBERT, (4) +AGTO tuning, (5) +manifold ranking, evaluating each on MRR@10 and NDCG@10 on a standard benchmark like MS MARCO or TREC-DL. This isolates each component's marginal contribution and reveals whether the full pipeline outperforms simpler alternatives by a statistically significant margin."
+    ],
+    "generated_at": "2026-03-23T19:02:53Z"
+  }
+}

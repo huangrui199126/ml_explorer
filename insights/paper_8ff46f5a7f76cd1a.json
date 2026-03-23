@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper examines how vector databases solve the vocabulary mismatch problem in long-tail queries by encoding semantic meaning in high-dimensional spaces, enabling retrieval by conceptual similarity rather than keyword matching. It covers dense passage retrieval, approximate nearest neighbor algorithms, and hybrid architectures that combine semantic and keyword search for optimal performance.",
+    "key_idea": "Neural embeddings map queries and documents into a shared semantic space so that conceptually related content can be retrieved even when the exact words differ.",
+    "why_it_matters": "Practitioners building search or retrieval systems over specialized corpora (legal, medical, regulatory) can dramatically improve recall for non-expert or informal queries without requiring users to know the precise terminology used in the source documents.",
+    "possible_use_cases": [
+      "Regulatory compliance search where engineers query formal policy documents using informal language",
+      "Enterprise knowledge bases where employees with varying expertise levels need to surface relevant documentation",
+      "Customer support retrieval systems that match user-phrased questions to technical FAQs or product manuals"
+    ],
+    "generated_at": "2026-03-23T19:03:46Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes using vector databases that encode text into high-dimensional dense embeddings via neural models (e.g., transformers), enabling semantic similarity search using approximate nearest neighbor (ANN) algorithms. Queries and documents are mapped to the same embedding space so retrieval is based on cosine or dot-product similarity rather than lexical overlap. A hybrid architecture combining dense vector retrieval with traditional keyword (BM25-style) search balances semantic understanding with exact-match precision.",
+    "key_innovation": "The central contribution is framing the long-tail query problem specifically as a vocabulary mismatch issue and proposing dense passage retrieval (DPR) as the principled fix. Unlike prior work that applied semantic expansion or query reformulation on top of inverted indexes, this approach replaces the retrieval backbone with vector similarity search, making semantic matching a first-class citizen rather than a post-processing step.",
+    "technical_insight": "The most important design choice is the hybrid retrieval architecture (dense + sparse). Pure semantic search fails on queries containing proper nouns, product codes, or rare identifiers because embeddings smooth over surface-form distinctions; pure keyword search fails on paraphrased or domain-shifted queries. Combining both via a linear interpolation or re-ranking step captures the strengths of each, which is why hybrid consistently outperforms either alone in retrieval benchmarks.",
+    "limitations": "Embedding models are static after training and struggle with novel terminology, highly specialized jargon, or rapidly evolving domains without frequent re-indexing and fine-tuning. ANN search introduces recall-precision trade-offs — approximate indexes can miss relevant documents. The paper is largely a survey/position piece with limited empirical evaluation on the specific regulatory compliance domain it motivates. Computational and storage costs of dense indexes at billion-document scale are not adequately addressed.",
+    "interview_questions": [
+      "What is the vocabulary mismatch problem and why do keyword-based systems fail to solve it for long-tail queries?",
+      "How does dense passage retrieval differ architecturally from BM25, and what enables it to capture semantic similarity?",
+      "Why does a hybrid dense+sparse retrieval system outperform either approach alone, and how are the two scores typically combined?",
+      "What are approximate nearest neighbor algorithms, and what trade-offs do they introduce in a production vector search system?",
+      "How would you fine-tune an embedding model for a specialized domain like regulatory compliance, and what data would you need?"
+    ],
+    "interview_answers": [
+      "Vocabulary mismatch occurs when a user's query terms do not literally appear in relevant documents (e.g., 'car insurance waiver' vs 'vehicle coverage exemption'). BM25 and TF-IDF rely on exact term overlap in an inverted index, so they assign zero score to semantically relevant documents that share no surface tokens with the query.",
+      "DPR uses two separate transformer encoders (query encoder and passage encoder) trained contrastively so that relevant query-passage pairs have high dot-product similarity in the embedding space. Unlike BM25, which operates on discrete term frequencies, DPR projects both query and document into a continuous vector space where geometric proximity encodes semantic relatedness.",
+      "Dense retrieval excels at paraphrase and semantic variation but degrades on rare named entities and exact identifiers that are underrepresented in training data. Sparse retrieval handles these exact-match cases well. Hybrid systems interpolate scores (e.g., score = α·dense + (1-α)·sparse) or use a neural re-ranker on the union of both candidate sets, retaining recall from both retrieval modes.",
+      "ANN algorithms (HNSW, IVF-PQ, ScaNN) avoid exhaustive O(N) vector comparison by building index structures that prune the search space. The trade-off is recall: some true nearest neighbors may not be visited, reducing retrieval accuracy. Latency, memory footprint, and recall@k are the key parameters to tune, and the right balance depends on the application's tolerance for missed results.",
+      "You would collect domain-specific query-document relevance pairs (e.g., compliance questions paired with relevant regulation passages), then fine-tune with a contrastive loss (e.g., in-batch negatives or hard negatives mined from BM25). Hard negatives — passages that are lexically similar but semantically wrong — are critical for teaching the model to distinguish subtle domain distinctions. Evaluation should use domain-specific retrieval benchmarks, not just general BEIR tasks."
+    ],
+    "generated_at": "2026-03-23T19:04:14Z"
+  }
+}

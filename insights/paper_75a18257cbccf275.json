@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes an extractive query-based summarization system that combines BERT embeddings, K-means clustering, LDA topic modeling, and Deep Reinforcement Learning to select relevant sentences from multiple documents based on a user query. The DRL agent is trained with a reward function that jointly optimizes BERT-based coherence and Maximal Marginal Relevance (MMR) to balance relevance, coherence, and non-redundancy.",
+    "key_idea": "Using a DRL agent with a multi-objective reward combining semantic coherence (BERT) and diversity (MMR) enables principled sentence selection that simultaneously satisfies query relevance, readability, and non-redundancy across multiple documents.",
+    "why_it_matters": "Practitioners building document summarization pipelines—especially for search, retrieval-augmented generation, or enterprise knowledge bases—can adopt this reward-shaping approach to reduce hallucination-like redundancy and improve summary quality without relying on abstractive generation.",
+    "possible_use_cases": [
+      "Query-focused summarization of scientific literature or legal documents where users need targeted, non-redundant answers",
+      "Enterprise search systems that surface coherent summaries from multiple retrieved documents in response to user queries",
+      "Preprocessing step for RAG pipelines to compress retrieved context while preserving query-relevant and semantically diverse content"
+    ],
+    "generated_at": "2026-03-23T19:01:02Z"
+  },
+  "deep": {
+    "method_breakdown": "The system encodes sentences using BERT embeddings, clusters them with K-means for semantic grouping, and applies LDA topic modeling to capture latent topical structure. A Deep Reinforcement Learning agent then sequentially decides to select or skip each candidate sentence, guided by a reward function combining BERT-based coherence scores with Maximal Marginal Relevance (MMR) to jointly optimize relevance, coherence, and non-redundancy. The model is trained on QuerySum and evaluated on CNN/Daily Mail, framing summarization as a sequential decision-making problem.",
+    "key_innovation": "The primary novelty is the multi-objective reward function that fuses BERT-based coherence with MMR inside a DRL framework, rather than using ROUGE or a single objective as the training signal. Layering LDA topic modeling on top of BERT embeddings to explicitly capture topical diversity before the RL selection step is also non-standard and distinguishes this from pure embedding-based extractive methods.",
+    "technical_insight": "Using MMR inside the reward function is the most critical design choice: it directly penalizes redundancy at training time rather than as a post-processing heuristic, so the agent learns a policy that intrinsically balances novelty and relevance. This makes diversity a first-class optimization objective rather than an afterthought, which is why the system produces less redundant summaries than approaches that apply MMR only at inference.",
+    "limitations": "Training on QuerySum but testing on CNN/Daily Mail introduces a domain mismatch that makes it hard to attribute gains cleanly to the method vs. dataset properties. The sequential sentence-selection architecture scales poorly to very long documents since the RL state space grows with document length. LDA adds a brittle hyperparameter (number of topics) that requires tuning per corpus. ROUGE-based comparisons remain noisy proxies for actual summary quality, and no human evaluation is reported to validate coherence and relevance claims.",
+    "interview_questions": [
+      "How does the MMR term inside the reward function prevent redundancy, and what happens if you remove it?",
+      "Why use LDA topic modeling on top of BERT embeddings — aren't BERT embeddings already capturing semantic similarity?",
+      "The model is trained on QuerySum but tested on CNN/Daily Mail. How do you rule out that the ROUGE gains are an artifact of this cross-dataset setup rather than genuine model superiority?",
+      "How does the RL agent encode the current summary state, and how does it handle the sequential dependency between sentence selections?",
+      "What are the computational trade-offs of this pipeline compared to a simple fine-tuned extractive BERT model, and when would you prefer the simpler baseline?"
+    ],
+    "interview_answers": [
+      "MMR penalizes a candidate sentence proportionally to its maximum cosine similarity with already-selected sentences, so the reward decreases for redundant picks. Removing it collapses the reward to coherence alone, causing the agent to greedily select topically similar sentences and produce repetitive summaries — the ablation would likely show a drop in diversity metrics and ROUGE-2.",
+      "BERT embeddings capture contextual semantic similarity but do not explicitly model global topical structure across a document set. LDA provides a discrete topic distribution per sentence that captures corpus-level thematic clusters, which is complementary: two sentences can be semantically close in BERT space but belong to different LDA topics, enabling finer-grained diversity control that BERT similarity alone would miss.",
+      "This is a real threat to validity. Without a controlled experiment where the same model is trained and tested on both datasets, or an ablation comparing to baselines also trained on QuerySum, it is difficult to isolate the method's contribution. The gains could partly reflect that QuerySum training aligns well with CNN/Daily Mail's news style rather than demonstrating general superiority.",
+      "The agent typically encodes state as a combination of the current candidate sentence embedding, a representation of the query, and an aggregate of already-selected sentences (e.g., mean BERT embedding of the current summary). Sequential dependency is handled implicitly through this running summary representation, which updates after each selection decision, allowing the policy to condition future picks on what has already been chosen.",
+      "This pipeline is significantly more expensive than a fine-tuned extractive BERT model: it requires K-means clustering, LDA fitting, and RL training with many environment rollouts. The simpler baseline is preferable when latency, compute budget, or data availability is constrained, or when redundancy is not a primary concern. This pipeline is worth the cost when query-specificity, coherence, and non-redundancy must all be jointly optimized and sufficient training data exists."
+    ],
+    "generated_at": "2026-03-23T19:01:32Z"
+  }
+}
