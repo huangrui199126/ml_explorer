@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DLProv is a suite of provenance services that provides end-to-end traceability across deep learning workflows, from data preparation through model training, evaluation, and deployment. It supports SQL-based querying, generates PROV-standard compliant provenance graphs, and works independently of specific DL frameworks with only 1.4% execution overhead.",
+    "key_idea": "A framework-agnostic provenance layer that captures the full lineage of DL workflow decisions using standard PROV graphs and SQL queries, enabling reproducibility and transparency without lock-in to proprietary formats.",
+    "why_it_matters": "As ML models move into production, teams need auditable records of how models were built and why they perform as they do; DLProv provides that traceability with minimal overhead and without requiring changes to existing frameworks like Keras or TensorFlow.",
+    "possible_use_cases": [
+      "Auditing and compliance: maintaining a verifiable record of training data, preprocessing steps, and hyperparameter choices for regulated industries",
+      "Experiment reproducibility: re-running or comparing past DL experiments by querying provenance graphs to reconstruct exact workflow configurations",
+      "Model debugging: tracing performance degradation back to specific data preparation or training decisions using SQL queries over captured provenance data"
+    ],
+    "generated_at": "2026-03-23T02:07:41Z"
+  },
+  "deep": {
+    "method_breakdown": "DLProv is a suite of provenance services that instruments deep learning workflows to capture end-to-end traceability data across data preparation, training, and evaluation phases. It stores provenance information in a relational database queryable via SQL during training, and generates PROV-compliant provenance graphs that can travel with deployed models. The architecture is framework-agnostic, with specialized adapters for Keras and PINNs that hook into framework lifecycle events without modifying user code.",
+    "key_innovation": "Unlike prior provenance tools that address only data lineage or only model training in isolation, DLProv unifies the full DL workflow lifecycle into a single PROV-standard graph. The critical novelty is that the provenance document is designed to accompany the model into production, enabling post-deployment auditability — something existing tools like MLflow do not natively produce as a portable, interoperable artifact.",
+    "technical_insight": "The most important design choice is adherence to the W3C PROV standard rather than a proprietary format. This ensures provenance graphs are interpretable across different environments and tools without lock-in, and enables interoperability with existing provenance infrastructure — making DLProv's outputs durable beyond the tool itself. The SQL-queryable store during training further allows real-time introspection without waiting for post-hoc analysis.",
+    "limitations": "The evaluation is limited to classification tasks (MNIST, CIFAR-100) and one transcription workflow, leaving provenance capture for NLP, generative models, and reinforcement learning unvalidated. The 1.4% overhead figure is measured under unspecified conditions and may not hold for large-scale distributed training. SQL-based querying, while accessible, may become a bottleneck for very high-frequency training events. The note on 'Learning to Rank' as the topic is a metadata mismatch — the paper does not address ranking tasks.",
+    "interview_questions": [
+      "How does DLProv capture provenance across framework boundaries without requiring modifications to user training code?",
+      "What are the trade-offs of using a relational SQL store for provenance capture during training versus an append-only event log?",
+      "How does PROV standard compliance help when the deployed model is retrained or fine-tuned in a different environment?",
+      "The 1.4% overhead is claimed to be minimal — what factors could cause this to degrade significantly in practice?",
+      "How would DLProv handle distributed training scenarios where model state is updated across multiple nodes simultaneously?"
+    ],
+    "interview_answers": [
+      "DLProv uses a framework-agnostic service layer that exposes provenance capture APIs callable independently of any specific DL framework. Specialized adapters for frameworks like Keras hook into framework-provided callbacks and lifecycle events, translating them into standardized provenance records without requiring the user to alter their training scripts.",
+      "A relational SQL store enables structured, ad-hoc queries during training (e.g., 'which hyperparameter configuration yielded the best validation loss so far'), but introduces write contention and schema rigidity. An append-only log would offer higher write throughput and simpler consistency guarantees but would require a separate query layer and post-processing to answer structured questions in real time.",
+      "PROV compliance means the provenance graph uses a standardized entity-activity-agent model that is interpretable by any PROV-aware tool, regardless of which framework or environment generated it. When a model is fine-tuned elsewhere, the new environment can read the existing provenance graph, append new nodes representing the fine-tuning activity, and produce a continuous lineage chain without format conversion.",
+      "The overhead could degrade significantly under high-frequency gradient update logging, large batch sizes generating many provenance events per second, network-mounted storage for the provenance database, or multi-GPU setups where provenance writes from parallel workers create contention. The benchmark conditions are not fully specified, making generalization uncertain.",
+      "Distributed training would require provenance aggregation across nodes, likely necessitating a centralized provenance store with concurrent write support or a merge protocol for per-node provenance logs. DLProv's current architecture appears single-node centric, and handling distributed consistency — especially for asynchronous gradient updates — would require non-trivial extensions to the service layer."
+    ],
+    "generated_at": "2026-03-23T02:08:06Z"
+  }
+}
