@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "AVG reformulates text-to-image retrieval as an autoregressive generation task, where text tokens generate discrete image 'vokens' (visual tokens), combining the effectiveness of cross-attention matching with the efficiency of embedding-based retrieval.",
+    "key_idea": "By discretizing images into semantically-aligned vokens and training a generative model to produce them from text tokens—augmented with discriminative training to close the retrieval gap—the system achieves both fine-grained cross-modal interaction and fast inference.",
+    "why_it_matters": "It breaks the long-standing effectiveness-efficiency tradeoff in image retrieval: practitioners get 7.53% better accuracy than CLIP-style two-tower models while running 4× faster, making it viable for large-scale production retrieval systems.",
+    "possible_use_cases": [
+      "Large-scale e-commerce visual search where both speed and relevance are critical",
+      "Multimodal RAG pipelines that retrieve images as context for vision-language models",
+      "Content moderation and media monitoring systems requiring fast, accurate text-to-image matching"
+    ],
+    "generated_at": "2026-03-23T04:00:49Z"
+  },
+  "deep": {
+    "method_breakdown": "AVG (Autoregressive Voken Generation) discretizes images into discrete tokens called 'vokens' using a codebook that aligns with both visual features and high-level semantic embeddings (e.g., CLIP), then trains an autoregressive language model to generate these voken sequences conditioned on text queries. At retrieval time, the model generates voken sequences for a query and matches them against pre-indexed image voken representations, avoiding exhaustive pairwise scoring.",
+    "key_innovation": "The core novelty is recasting retrieval as a generative sequence prediction task over a semantically-aligned discrete visual vocabulary ('vokens'), rather than embedding matching or cross-attention. Unlike prior generative retrieval work on text documents (DSI, NCI), vokens are constructed to jointly capture low-level visual fidelity and high-level semantic alignment, and a discriminative training objective is co-applied to steer the generative model toward retrieval-relevant representations rather than pure reconstruction.",
+    "technical_insight": "The dual-alignment voken codebook is the critical design choice: by forcing discrete image codes to simultaneously minimize reconstruction loss and align with CLIP-style semantic embeddings, AVG avoids the classic failure mode of vector-quantized codes that are visually accurate but semantically opaque. This means the autoregressive model can be trained with a language modeling objective yet still learn semantically meaningful generation paths, bridging the modality gap without sacrificing retrieval signal.",
+    "limitations": "Voken codebook size and granularity create a fixed capacity ceiling — images sharing similar voken sequences may be indistinguishable, harming recall for visually similar but semantically distinct images. The two-stage pipeline (codebook training → autoregressive training) adds training complexity and potential error propagation. Generative retrieval inherently struggles with unseen or out-of-distribution images added after training without re-indexing. The 4× efficiency claim likely depends on corpus size and beam search budget, which may not hold at very large scale (billions of images).",
+    "interview_questions": [
+      "How does AVG construct the voken codebook, and how does it balance visual reconstruction fidelity against semantic alignment?",
+      "What is the discriminative training component in AVG, and why is it necessary given the generative training objective?",
+      "How does AVG handle retrieval at inference time — does it enumerate all images or use the generated voken sequence as an index key?",
+      "What are the scalability limits of token-to-voken generative retrieval, and how does codebook size affect recall vs. precision trade-offs?",
+      "How does AVG compare to two-tower models like CLIP in terms of handling compositional or fine-grained text queries, and where does it still fall short?"
+    ],
+    "interview_answers": [
+      "The voken codebook is trained via vector quantization with a composite loss: a reconstruction term (ensuring vokens capture visual details) plus a semantic alignment term that pulls voken embeddings toward CLIP image embeddings. This dual objective forces the codebook to be both visually expressive and semantically structured, so autoregressive generation over vokens implicitly operates in a semantically meaningful space.",
+      "The discriminative training adds a contrastive or ranking loss on top of the generative cross-entropy, using the model's internal representations to push matched text-image pairs closer and mismatched pairs apart. It is necessary because maximum likelihood generation training optimizes for sequence prediction probability, not retrieval ranking — without this correction, the model may generate plausible voken sequences that do not correspond to the correct target image.",
+      "At indexing time, each image is encoded into its voken sequence and stored in a lookup table. At query time, the autoregressive model generates a voken sequence conditioned on the text, and this sequence is used as a key to retrieve the matching image — making retrieval O(1) lookup after generation, rather than O(N) dot products over all embeddings, which is the source of efficiency gains.",
+      "Scalability is bounded by codebook expressiveness: with a fixed codebook, the number of distinct voken sequences is exponential in sequence length but collisions increase with corpus size, degrading precision. Very large corpora (billions of images) likely require longer sequences or hierarchical codebooks, increasing autoregressive decoding cost and potentially eroding the efficiency advantage over approximate nearest neighbor search used in two-tower systems.",
+      "AVG's fine-grained interaction during generation should in principle handle compositional queries better than two-tower dot-product matching, since the autoregressive model can condition each voken step on the full query context. However, the paper's gains are moderate (7.53% over CLIP), suggesting that for highly compositional or attribute-specific queries, the fixed voken vocabulary may still lack the granularity to discriminate subtle visual differences, a known weakness of discrete tokenization approaches."
+    ],
+    "generated_at": "2026-03-23T04:01:19Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates using LLMs to automatically generate 'usefulness' labels for search results, which go beyond simple relevance by considering user intent and task context. The study finds LLMs can produce moderate-quality usefulness labels, performing best on shorter search sessions with full session context provided.",
+    "key_idea": "LLMs can approximate human usefulness judgments for search documents by conditioning on task-level, query-level, document-level features, and behavioral signals from the user's search session.",
+    "why_it_matters": "Manual relevance labeling by crowd workers is expensive and slow, and relevance alone doesn't capture whether a document actually helped a user complete their task — LLM-driven usefulness labeling could dramatically reduce evaluation costs while producing richer, intent-aware quality signals.",
+    "possible_use_cases": [
+      "Automated IR benchmark construction without crowd-sourced annotators",
+      "Real-time search quality evaluation pipelines that account for user task context",
+      "Training data generation for learning-to-rank models that optimize for user task completion rather than topical relevance"
+    ],
+    "generated_at": "2026-03-23T03:59:27Z"
+  },
+  "deep": {
+    "method_breakdown": "The method feeds task-level (overall search task context), query-level (individual query intent), and document-level features together with user search behavior signals (clicks, dwell time, etc.) into pre-trained LLMs to generate usefulness labels. The LLM is prompted with the full search session context to judge whether a document is useful given the user's broader task objective, not just topical relevance. An ablation study systematically removes feature groups to identify which signals most critically drive accurate usefulness label generation.",
+    "key_innovation": "Prior work on LLM-based annotation focused on topical relevance, which measures document-query match. This paper targets usefulness — a session-aware, task-objective-aware metric that better captures whether a document actually helped the user accomplish their goal. The inclusion of behavioral signals (search session context, click patterns) alongside textual features to guide LLM judgment is the distinguishing angle over standard relevance labeling pipelines.",
+    "technical_insight": "The most important design choice is conditioning the LLM on the full search session context rather than isolated query-document pairs. This works because usefulness is inherently session-dependent — a document's value depends on what the user already found, their evolving intent, and the overall task goal. The paper shows this matters most for short sessions where context is sparse but still sufficient for the LLM to leverage.",
+    "limitations": "Performance degrades for long search sessions, likely due to context window constraints and noise accumulation from many queries. The approach relies on behavioral signals that may not be available in cold-start or low-traffic scenarios. LLMs only achieve 'moderate' agreement with human usefulness labels, suggesting the gap between relevance and usefulness is not fully captured. Generalizability across domains and languages is not evaluated.",
+    "interview_questions": [
+      "Why is usefulness a better evaluation metric than relevance for complex search tasks, and what is the core distinction between them?",
+      "What specific behavioral signals did you incorporate, and how did they influence the LLM's usefulness judgments?",
+      "Why did LLM performance drop for longer search sessions, and how might you address this limitation?",
+      "What did the ablation study reveal about which features are most critical for usefulness label generation?",
+      "How do you envision this LLM-driven usefulness labeling being deployed in a real-world IR evaluation pipeline at scale?"
+    ],
+    "interview_answers": [
+      "Relevance measures topical match between a query and document in isolation, but usefulness measures whether the document actually helped the user complete their broader task. A highly relevant document can be useless if the user already found that information, and a tangentially related document can be highly useful if it fills a gap in the user's knowledge. Usefulness is session-aware and intent-aware, making it a more realistic proxy for user satisfaction.",
+      "The paper incorporates signals such as clicks, dwell time, and query reformulations within a session. These signals implicitly encode whether the user found a document satisfying — for example, long dwell time suggests utility, while immediate back-navigation suggests disappointment. By including these alongside textual features, the LLM gains a behavioral grounding signal that pure text analysis cannot provide.",
+      "Longer sessions introduce more queries and documents into the context, which can exceed effective context window usage and introduce conflicting signals about user intent evolution. Potential mitigations include summarizing earlier session segments, using retrieval-augmented context selection to surface the most relevant prior interactions, or fine-tuning models specifically on long-session usefulness annotation data.",
+      "The ablation study identified that session-level context (the overall task framing) was the most critical feature group — removing it caused the largest performance drop. Document-level features alone were insufficient, confirming that usefulness cannot be assessed without understanding the task objective. Behavioral signals provided incremental but meaningful gains, particularly for ambiguous cases where textual features alone were inconclusive.",
+      "The pipeline would replace or augment expensive crowd-sourced usefulness labeling in offline evaluation frameworks. LLM-generated labels could be used to build or refresh test collections for benchmarking ranking models. Given the 'moderate' agreement with human labels, a hybrid approach makes practical sense: use LLMs for high-volume, lower-stakes labeling and reserve human annotators for difficult or high-stakes cases. Cost and latency tradeoffs would need to be benchmarked against annotation throughput requirements."
+    ],
+    "generated_at": "2026-03-23T03:59:55Z"
+  }
+}

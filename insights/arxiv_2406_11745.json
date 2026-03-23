@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces a news expert recommendation system that identifies trustworthy information sources by matching experts to news queries based on their previously quoted statements, using a new dataset of 23,571 quote-speaker pairs. The proposed multi-layer ranking framework leverages LLMs with in-context learning to improve both accuracy and behavioral quality of recommendations.",
+    "key_idea": "Stack a retrieval stage with an LLM-based in-context learning ranker and a multi-layer filter to progressively refine which experts are most likely to be credible sources for a given news query.",
+    "why_it_matters": "Automatically surfacing credible, domain-relevant experts for news events can help journalists, fact-checkers, and news platforms combat misinformation and reduce the manual effort of source vetting at scale.",
+    "possible_use_cases": [
+      "Automated journalist assistance: suggesting vetted expert sources when reporters are writing stories on specific topics",
+      "Misinformation detection: flagging when quoted sources lack a credible track record on the relevant subject",
+      "News aggregation platforms: ranking or filtering article sources by speaker credibility and topical authority"
+    ],
+    "generated_at": "2026-03-23T03:55:18Z"
+  },
+  "deep": {
+    "method_breakdown": "The system builds a retrieval pipeline over the NewsQuote dataset (23,571 quote-speaker pairs) where experts are represented by their historical quoted statements. Given a news query, candidates are first retrieved via embedding similarity, then re-ranked using an LLM in an in-context learning setup that scores relevance between the query and an expert's profile. A multi-layer filtering stage further prunes low-quality candidates using behavioral signals, producing a final ranked list of trustworthy sources.",
+    "key_innovation": "The primary novelty is framing expert/source recommendation as a quote-based retrieval task with a dedicated dataset (NewsQuote), combined with a multi-layer LLM re-ranking pipeline that separates predictive quality (relevance) from behavioral quality (trustworthiness/reliability). Prior work on expert recommendation typically uses structured knowledge bases or social networks; this approach leverages unstructured quoted speech from news articles.",
+    "technical_insight": "Using in-context learning for LLM re-ranking is the critical design choice: rather than fine-tuning, the LLM is prompted with a few examples of query-expert pairs and asked to score relevance, which generalizes well without labeled training data per domain. The multi-layer structure matters because a single-pass ranker conflates relevance with reliability, while separating these concerns allows each layer to optimize a distinct quality signal.",
+    "limitations": "The dataset is domain-specific to news quotes, limiting generalization to other expert recommendation domains. Quote-based profiles are sparse for lesser-cited experts, creating popularity bias toward frequently quoted sources. The in-context LLM ranker is sensitive to prompt design and example selection, and inference cost scales poorly with candidate set size. Trustworthiness is implicitly proxied by quotation frequency rather than ground-truth reliability annotations, which is a weak supervision signal.",
+    "interview_questions": [
+      "How do you represent an expert's profile in the retrieval stage, and what embedding strategy do you use for quote-speaker pairs?",
+      "How does the multi-layer ranking framework decide when to apply each filtering layer, and what signals distinguish the layers?",
+      "How do you handle cold-start experts who have very few or no prior quotes in the NewsQuote dataset?",
+      "What does 'behavioral quality' mean concretely in your evaluation, and how is it measured differently from predictive quality?",
+      "How sensitive is the LLM re-ranker to the choice of in-context examples, and did you ablate different example selection strategies?"
+    ],
+    "interview_answers": [
+      "Each expert is represented as an aggregated embedding of their historical quotes using a pre-trained sentence encoder; at retrieval time the query is encoded similarly and cosine similarity is used to retrieve the top-K candidate experts from the quote-speaker index.",
+      "The first layer is embedding-based retrieval for recall, the second is LLM-based re-ranking for precision on topical relevance, and the third is a behavioral filter that applies rule-based or model-based signals to remove sources that, despite topical relevance, have low trustworthiness indicators such as low citation diversity.",
+      "Cold-start is a known limitation; the system falls back to prior-layer rankings without the behavioral filter for experts with insufficient quote history, which likely degrades recommendation quality for niche or emerging sources.",
+      "Behavioral quality captures whether the recommended experts are consistently cited across diverse, reputable outlets rather than just being topically relevant; it is measured via metrics like citation diversity and source credibility scores derived from outlet reputation, distinct from NDCG-style relevance metrics.",
+      "The paper conducts ablations showing that random in-context example selection degrades performance relative to similarity-based selection, confirming sensitivity; similarity-retrieved examples that are close to the query in embedding space produce the most stable LLM scoring behavior."
+    ],
+    "generated_at": "2026-03-23T03:55:43Z"
+  }
+}
