@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes merging multiple task-specific Transformer models into a single model by converting MLP layers into a Weight-Ensembling Mixture of Experts (MoE) module, which dynamically routes inputs to blend shared and task-specific knowledge. This approach outperforms static merging methods like task arithmetic by adapting per-input rather than using a fixed parameter combination.",
+    "key_idea": "Replacing merged MLP layers with a dynamic MoE module that separates shared from task-specific knowledge reduces parameter interference and enables input-adaptive multi-task inference without full multi-task retraining.",
+    "why_it_matters": "Practitioners can combine multiple fine-tuned models into one deployable model with minimal performance degradation, avoiding the cost of storing and serving separate models per task or retraining from scratch on all tasks jointly.",
+    "possible_use_cases": [
+      "Deploying a single unified LLM that handles multiple NLP tasks (classification, QA, summarization) instead of maintaining separate fine-tuned checkpoints",
+      "Continual learning scenarios where new task-specific models need to be merged into an existing multi-task model without catastrophic forgetting",
+      "Resource-constrained edge deployments where only one model can be loaded but multiple task capabilities are required"
+    ],
+    "generated_at": "2026-03-23T18:00:59Z"
+  },
+  "deep": {
+    "method_breakdown": "The method merges task-specific Transformer models by sharing most parameters while replacing the MLP layers in Transformer blocks with a Weight-Ensembling Mixture of Experts (MoE) module. Each expert corresponds to a task-specific delta (the difference between the fine-tuned and pretrained weights), and a router dynamically computes input-dependent mixing coefficients to blend shared and task-specific knowledge at inference time. This allows the merged model to adapt its effective weights per-instance rather than committing to a single static parameter combination.",
+    "key_innovation": "Unlike prior methods (task arithmetic, TIES-merging, RegMean) that search for a single static point in weight space, this approach introduces dynamic, input-conditioned weight interpolation via a MoE routing mechanism. The experts are not separate networks but are virtual — formed by linearly combining the pretrained weights with task-specific weight deltas — making the approach parameter-efficient and avoiding the need to store full copies of each task model.",
+    "technical_insight": "The critical design choice is treating weight deltas as experts rather than activations, so routing coefficients blend the actual parameters before the forward pass rather than blending outputs afterward. This directly addresses parameter interference: conflicting task-specific directions in weight space are no longer forced to coexist statically but are gated by input relevance, letting the model route around destructive interference on a per-sample basis.",
+    "limitations": "The router adds inference overhead and must be trained, requiring access to data from all tasks during the merging phase — weakening the zero-shot or data-free merging appeal of methods like task arithmetic. The MoE expansion only targets MLP layers, leaving attention parameters statically merged and still subject to interference. Scalability to very large numbers of tasks is unclear since each task adds a weight delta to store and a routing dimension to handle. Generalization experiments may not fully reflect real-world distribution shift scenarios.",
+    "interview_questions": [
+      "How does the Weight-Ensembling MoE differ from a standard sparse MoE, and why is this distinction important for model merging?",
+      "What problem does parameter interference refer to in multi-task model merging, and how does dynamic routing mitigate it?",
+      "Why are only the MLP layers converted to MoE modules rather than the attention layers as well?",
+      "What data requirements does this method have compared to data-free merging methods like task arithmetic, and what trade-offs does this introduce?",
+      "How would you extend this approach to continual learning where new tasks arrive sequentially without access to old task data?"
+    ],
+    "interview_answers": [
+      "Standard sparse MoE uses discrete token routing to select among fully independent expert networks. Weight-Ensembling MoE instead computes soft mixing coefficients over weight delta matrices, so each 'expert' is a virtual parameterization formed by blending pretrained and task-specific weights. This is crucial for merging because it avoids storing N full model copies — only the compact deltas are needed — and enables smooth interpolation in weight space rather than hard discrete selection.",
+      "Parameter interference occurs when task-specific weight updates point in conflicting directions in parameter space; averaging them causes destructive cancellation that degrades all tasks. Dynamic routing assigns input-dependent coefficients to each task's weight delta, so for a given input the model up-weights deltas from relevant tasks and down-weights irrelevant ones. This means conflicting directions are not simultaneously active, reducing mutual degradation.",
+      "Attention layers capture relational structure that tends to be more transferable and shared across tasks, while MLP layers act as key-value memories that store more task-specific factual knowledge. Applying MoE only to MLPs targets the component most responsible for task-specific behavior, reducing added complexity while still addressing the primary source of interference. Applying it to attention would also multiply the parameter cost of routing over the larger attention projections.",
+      "Task arithmetic and TIES-merging require no task data at merge time, making them attractive for privacy-sensitive or data-scarce settings. This method requires labeled or unlabeled data from all tasks to train the router, which re-introduces a data dependency and a training step. The trade-off is higher merging cost and data access requirements in exchange for significantly better multi-task performance through adaptive routing.",
+      "One approach is to add new task deltas incrementally without retraining old ones, and train only the router on the new task's data while regularizing router weights for old tasks (e.g., EWC on router parameters). Alternatively, maintain a small episodic memory buffer of old task examples to jointly fine-tune the router. The weight delta architecture is naturally amenable to this since adding a new expert only requires storing the new delta, not modifying shared parameters."
+    ],
+    "generated_at": "2026-03-23T18:01:28Z"
+  }
+}

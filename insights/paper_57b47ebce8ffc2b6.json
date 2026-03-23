@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This review paper surveys how RAG-based AI agents are being integrated into enterprise software development, covering architectural patterns (vector databases, embedding models, retrieval mechanisms) and production deployment strategies. It synthesizes current research and industrial practice to identify success factors and emerging trends like multi-agent collaboration and hybrid retrieval.",
+    "key_idea": "Combining LLMs with dynamic retrieval over live codebases and documentation enables AI coding agents that stay current and grounded, reducing hallucinations and improving relevance for enterprise workflows.",
+    "why_it_matters": "Practitioners building or evaluating AI coding tools need a structured understanding of where RAG architectures succeed and fail at scale — this paper maps the deployment landscape including latency, security, and context management trade-offs.",
+    "possible_use_cases": [
+      "Automated code review agents that retrieve org-specific style guides and past review decisions to give contextually accurate feedback",
+      "Documentation generation systems that pull live API references and codebase context to produce accurate, up-to-date docs",
+      "Intelligent test generation assistants that retrieve existing test patterns and coverage gaps to suggest targeted new test cases"
+    ],
+    "generated_at": "2026-03-23T17:58:13Z"
+  },
+  "deep": {
+    "method_breakdown": "RAG-based AI agents combine LLMs with dynamic retrieval from vector databases containing code repositories, documentation, and organizational knowledge bases. At query time, embeddings of the input are used to retrieve semantically relevant context, which is injected into the LLM's prompt to ground generation in up-to-date, domain-specific information. This pipeline supports specialized agents for code completion, test generation, documentation, and code review within enterprise CI/CD workflows.",
+    "key_innovation": "The paper's contribution is synthesizing implementation patterns and production deployment strategies for RAG agents specifically in enterprise software contexts — addressing the gap between academic RAG research and real-world constraints like scalability, security, data privacy, and integration with existing developer tooling. It frames hybrid retrieval and multi-agent collaboration as emerging solutions to accuracy and coverage limitations.",
+    "technical_insight": "Context window management is the most critical design choice: controlling what retrieved chunks are injected (relevance scoring, deduplication, chunking strategy) determines whether the LLM produces grounded outputs or hallucinates. Retrieval accuracy is a bottleneck because code semantics are poorly captured by generic embedding models, motivating domain-specific fine-tuning of embedders on codebase corpora.",
+    "limitations": "As a review paper it lacks original empirical benchmarks, making claims hard to quantify. It does not rigorously compare retrieval strategies (BM25 vs dense vs hybrid) with controlled metrics. Enterprise-specific concerns like access control over retrieved documents, handling proprietary code IP, and latency SLAs under production load are discussed qualitatively but not evaluated. Hallucination mitigation strategies described remain heuristic rather than formally validated.",
+    "interview_questions": [
+      "What is the difference between dense retrieval and sparse retrieval, and when would you prefer a hybrid approach in a RAG system?",
+      "How would you handle context window overflow when retrieved chunks exceed the LLM's token limit?",
+      "What are the main failure modes of RAG systems in code-related tasks, and how do you mitigate hallucination?",
+      "How do you evaluate retrieval quality independently from generation quality in a RAG pipeline?",
+      "What security and data privacy concerns arise when deploying a RAG agent over an enterprise codebase, and how do you address them?"
+    ],
+    "interview_answers": [
+      "Dense retrieval uses embedding similarity (e.g., cosine over FAISS index) and excels at semantic matching but misses exact keyword hits. Sparse retrieval (BM25) handles exact terms well but misses paraphrase. Hybrid approaches re-rank results from both using a fusion score (e.g., RRF), which is preferred when queries mix conceptual intent with specific identifiers like function names or error codes — common in code search.",
+      "Strategies include chunk ranking by relevance score and truncating low-scoring chunks, sliding-window summarization of large retrieved documents, map-reduce patterns where the LLM processes chunks independently then synthesizes, and query decomposition to retrieve only what is strictly necessary. The chunking granularity at index time (function-level vs file-level) also determines how precisely retrieval fits the window.",
+      "Common failure modes: retrieving stale or irrelevant code chunks that mislead generation, the LLM ignoring retrieved context and relying on training priors, and retrieved context being syntactically correct but semantically wrong for the specific codebase version. Mitigations include re-ranking with a cross-encoder, citation grounding (forcing the model to reference chunk IDs), and confidence-based fallback to human review.",
+      "Retrieval quality is evaluated independently using metrics like Recall@k and MRR against a labeled set of query-document pairs, or via LLM-as-judge relevance scoring. RAGAS and similar frameworks decouple context precision/recall from answer faithfulness/relevance, enabling targeted debugging of whether failures originate in the retriever or the generator.",
+      "Key concerns include ensuring the retrieval index enforces the same ACLs as the underlying source (so agents cannot surface code a user lacks permission to see), preventing prompt injection through malicious content in retrieved documents, and avoiding leakage of proprietary code through LLM APIs if using third-party hosted models. Mitigations: row-level security filters on the vector store, input sanitization of retrieved chunks, and preferring on-premises or VPC-deployed models for sensitive codebases."
+    ],
+    "generated_at": "2026-03-23T17:58:41Z"
+  }
+}

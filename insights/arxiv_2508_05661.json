@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Mercari built a scalable visual search system for their C2C marketplace using zero-shot vision-language models, finding that multilingual SigLIP outperforms their fine-tuned baseline with 13.3% better nDCG@5 and up to 40.9% higher transaction rates in A/B testing.",
+    "key_idea": "Pre-trained zero-shot vision-language models (specifically multilingual SigLIP) can outperform task-specific fine-tuned models for product image retrieval without any domain-specific training data.",
+    "why_it_matters": "Teams can deploy production-quality visual search systems with minimal ML overhead by leveraging modern foundation models zero-shot, skipping expensive fine-tuning cycles while still achieving measurable business impact.",
+    "possible_use_cases": [
+      "Visual search for e-commerce and marketplace platforms to help buyers find similar products by photo",
+      "Cold-start product discovery in new marketplaces where labeled training data is scarce or unavailable",
+      "Duplicate or near-duplicate listing detection in C2C platforms to reduce catalog noise"
+    ],
+    "generated_at": "2026-03-23T17:56:54Z"
+  },
+  "deep": {
+    "method_breakdown": "The system uses vision-language models (specifically multilingual SigLIP) for zero-shot image retrieval in a C2C marketplace, embedding both query images and catalog listings into a shared vector space without task-specific fine-tuning. A unified embedding pipeline with dimensionality reduction supports both real-time inference (for query images) and background indexing (for catalog updates). Retrieval is evaluated offline via user interaction logs using nDCG@5 and validated online via A/B testing.",
+    "key_innovation": "The primary novelty is demonstrating that a multilingual zero-shot VLM (SigLIP) can outperform a domain-fine-tuned baseline in a production C2C marketplace, challenging the conventional assumption that fine-tuning is necessary for deployment-quality retrieval. The practical contribution is a scalable, low-overhead deployment architecture that decouples real-time query embedding from asynchronous catalog indexing.",
+    "technical_insight": "Dimensionality reduction applied to the shared embedding pipeline is the critical design choice — it reduces index size and retrieval latency while preserving semantic structure, making large-scale ANN search tractable. The use of multilingual SigLIP specifically matters because C2C listings are noisy and text-sparse, so a model pretrained on diverse multilingual image-text pairs generalizes better to the long-tail visual distribution of user-generated listings.",
+    "limitations": "Zero-shot performance depends heavily on pretraining distribution alignment with the marketplace domain; highly niche or culturally specific product categories may still underperform fine-tuned models. The evaluation relies on interaction logs as a proxy for relevance, which introduces position bias and survivorship bias. The approach also lacks mechanisms for handling visual duplicates, counterfeit detection, or seller-side gaming of the retrieval system.",
+    "interview_questions": [
+      "Why does multilingual SigLIP outperform a fine-tuned baseline, and what does this imply about when fine-tuning is actually beneficial?",
+      "How did you construct the offline evaluation dataset from user interaction logs, and what are the biases introduced by this approach?",
+      "What dimensionality reduction technique was used, and how did you determine the target dimensionality without sacrificing retrieval quality?",
+      "How does the background indexing pipeline handle catalog churn in a C2C marketplace where listings are created and removed frequently?",
+      "What failure modes did you observe in the A/B test that were not captured by offline nDCG metrics?"
+    ],
+    "interview_answers": [
+      "SigLIP's contrastive pretraining on massive multilingual image-text data gives it broad visual-semantic coverage that aligns well with the diverse, unstructured nature of C2C listings. Fine-tuning is most beneficial when the target domain has a narrow, well-defined visual distribution with abundant labeled data — conditions that don't hold in a general C2C marketplace with millions of heterogeneous categories.",
+      "Interaction logs (clicks, purchases) are used as implicit relevance signals, treating co-clicked or co-purchased items as positives. This introduces position bias (top-ranked items get more clicks regardless of relevance), popularity bias (frequent categories dominate the metric), and survivorship bias (only items that were shown can appear as positives, so unranked relevant items are invisible).",
+      "The paper does not specify the exact technique (likely PCA or a learned projection), but the standard approach is to sweep target dimensions and measure the trade-off between ANN recall@k and index memory footprint, selecting the knee point where quality degradation is minimal. For SigLIP embeddings (typically 768–1152d), reduction to 256–512d is common without significant quality loss.",
+      "Background indexing typically uses an event-driven or batch pipeline that re-embeds new listings on creation and marks deleted listings as tombstones in the ANN index. The challenge is latency between listing creation and index availability; the system likely tolerates a window of minutes to hours where new listings are not yet searchable, which is acceptable in C2C contexts where freshness SLAs are looser than in e-commerce.",
+      "Offline nDCG misses behavioral effects like session abandonment, query reformulation rate, and whether the retrieved results led to downstream exploration. In A/B tests, users in the treatment group showed higher transaction rates, but offline metrics may not have predicted the magnitude — suggesting that retrieval diversity or serendipity (hard to capture in log-based metrics) was a significant driver of the online gain."
+    ],
+    "generated_at": "2026-03-23T17:57:21Z"
+  }
+}

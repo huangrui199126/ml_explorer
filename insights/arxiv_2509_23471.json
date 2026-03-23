@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Drift-Adapter is a lightweight learned transformation layer that maps new query embeddings into a legacy embedding space, allowing production vector databases to continue using existing ANN indexes when upgrading embedding models. It recovers 95-99% of full re-embedding recall while adding under 10 microseconds of latency and reducing recompute costs by over 100x.",
+    "key_idea": "A small adapter network trained on paired old/new embeddings can bridge two embedding spaces, making new queries compatible with old indexes without rebuilding them.",
+    "why_it_matters": "Re-indexing large vector databases during model upgrades is expensive and disruptive; Drift-Adapter lets teams ship better embedding models incrementally with near-zero downtime and a fraction of the compute cost.",
+    "possible_use_cases": [
+      "Upgrading semantic search embedding models in production without service interruption",
+      "Gradually migrating billion-scale image retrieval systems (e.g. CLIP upgrades) to newer vision encoders",
+      "Enabling continuous model improvement cycles in RAG pipelines without costly full re-ingestion"
+    ],
+    "generated_at": "2026-03-23T17:55:31Z"
+  },
+  "deep": {
+    "method_breakdown": "Drift-Adapter trains a lightweight transformation layer (Orthogonal Procrustes, Low-Rank Affine, or Residual MLP) on a small set of paired embeddings from old and new models to learn a mapping from new query embeddings back into the legacy embedding space. At inference time, new queries are projected through the adapter before ANN lookup, allowing the existing index to remain unchanged. This decouples model upgrades from index rebuilds, enabling gradual migration without re-encoding the corpus.",
+    "key_innovation": "Prior work treats embedding space drift as requiring full re-indexing or expensive dual-index serving; Drift-Adapter reframes the problem as a query-side transformation, learning the inter-space alignment from a tiny paired sample rather than re-encoding the full corpus. The insight that alignment can be approximated with a compact adapter (as few as a few hundred paired examples) and recovers 95-99% recall is the novel practical contribution.",
+    "technical_insight": "The Orthogonal Procrustes parameterization is the most important design choice: constraining the transformation to be orthogonal (rotation/reflection only) preserves the geometric structure of the embedding space (distances, angles) by construction, preventing the adapter from distorting the ANN index's implicit metric assumptions. This inductive bias makes the method work with minimal training data and avoids overfitting, whereas an unconstrained linear map could collapse or expand distances arbitrarily.",
+    "limitations": "Recovery is bounded at 95-99% recall, meaning there is an irreducible gap for queries that lie in semantically shifted regions where the old and new models fundamentally disagree — the adapter cannot recover information not present in the legacy space. The approach assumes the two embedding spaces are approximately alignable (similar dimensionality, related semantic structure); large architectural changes (e.g., dense to sparse, or drastically different dimensions) may break this assumption. Additionally, the training set of paired embeddings must be representative; distribution shift between the training pairs and live queries could degrade adapter quality silently.",
+    "interview_questions": [
+      "How does Drift-Adapter handle the case where the new embedding model has a different dimensionality than the old one?",
+      "Why does the Orthogonal Procrustes solution work well with very few training pairs, and what are its failure modes?",
+      "How would you decide when to use Drift-Adapter versus committing to a full re-index, and what metrics would guide that decision?",
+      "The paper claims >100x compute savings — what assumptions underlie this estimate and when might they break down?",
+      "How does Drift-Adapter interact with quantization or compression applied to the existing ANN index?"
+    ],
+    "interview_answers": [
+      "The Low-Rank Affine variant can incorporate a projection matrix that maps between dimensions, and the Residual MLP can also handle dimension mismatch as an input-output shape difference. However, dimensionality changes make alignment harder because information may exist in the new space that has no counterpart in the legacy space's lower or different-dimensional geometry; the adapter can only approximate this projection with some loss.",
+      "Orthogonal Procrustes has a closed-form solution via SVD (U, S, V = svd(A^T B), W = UV^T), so it cannot overfit — there are no free hyperparameters to tune and the solution is globally optimal under the orthogonality constraint. It fails when the true alignment between spaces requires scaling or shearing (not just rotation), which is why the paper also tests Low-Rank Affine with diagonal scaling as an extension.",
+      "Use Drift-Adapter when the model upgrade is incremental (similar architecture, fine-tune or minor version bump) and you need operational continuity. Commit to full re-index when recall degradation exceeds acceptable thresholds (e.g., below 95%), when the model architecture changes fundamentally, or when cumulative adapter drift across multiple upgrades has compounded. Key metrics: Recall@K gap between adapter and full re-index on a held-out validation set, query latency overhead, and the cost/time of full re-indexing.",
+      "The >100x estimate assumes re-encoding cost scales linearly with corpus size (1M–1B items) and that adapter inference adds only microseconds. This breaks down if the corpus is small (re-indexing is cheap anyway), if the adapter requires expensive MLP inference at scale, or if the ANN index rebuild is parallelized cheaply on existing infrastructure. It also doesn't account for the engineering cost of maintaining the adapter in the serving stack.",
+      "Quantization compresses the stored vectors but doesn't change the embedding space geometry from the ANN's perspective — the adapter outputs a vector in the legacy float space, which then gets quantized at query time for comparison just as any query vector would. However, if the existing index uses product quantization trained on the old embedding distribution, and the adapter introduces subtle distributional shifts, the quantization error may increase slightly, compounding the recall gap beyond what the adapter alone introduces."
+    ],
+    "generated_at": "2026-03-23T17:56:02Z"
+  }
+}
