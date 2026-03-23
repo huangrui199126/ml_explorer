@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "TIN (Temporal Interest Network) improves click/conversion rate prediction by jointly modeling both semantic and temporal correlations between a user's past behaviors and candidate items, something prior models ignored. It uses target-aware temporal and semantic encodings with 4-way interaction attention, outperforming baselines on public datasets and delivering measurable GMV gains in Tencent's live ad platform.",
+    "key_idea": "User interest in a candidate item is best captured by jointly encoding both what behaviors are semantically similar to the target and when those behaviors occurred relative to it, rather than treating these signals independently.",
+    "why_it_matters": "Most deployed interest models leave meaningful ranking signal on the table by ignoring temporal context alongside semantic relevance; TIN shows this gap is practically significant, with verified production gains in GMV and cost efficiency at WeChat Moments scale.",
+    "possible_use_cases": [
+      "E-commerce recommendation engines that need to distinguish between a user's enduring interests and recency-driven purchase intent",
+      "Online display advertising systems optimizing for conversion by weighting recent behavioral signals differently from older ones",
+      "Streaming or content platforms personalizing feeds by combining topic affinity with temporal engagement decay patterns"
+    ],
+    "generated_at": "2026-03-23T21:01:28Z"
+  },
+  "deep": {
+    "method_breakdown": "TIN captures semantic-temporal correlation between user behaviors and candidate items by encoding behaviors with both semantic embeddings and target-aware temporal position encodings (representing the time gap between each behavior and the target interaction). It then performs explicit 4-way interaction — (behavior, target) × (semantic, temporal) — via target-aware attention (to weight behaviors) and target-aware representation (to enrich the final feature), simultaneously learning what a user liked and when they liked it relative to now.",
+    "key_innovation": "Prior work treated semantic correlation (DIN, SIM) and temporal correlation (TIEN, DIEN) in isolation. TIN is the first to jointly model semantic-temporal correlation: it conditions temporal encoding on the target item (not just absolute timestamps), so the model learns that recency matters differently depending on the type of item being predicted — a pattern empirically validated before model design.",
+    "technical_insight": "Target-aware temporal encoding is the critical design choice: instead of encoding raw timestamps, TIN encodes the time delta between each behavior and the candidate item's context, making temporal signals relative and item-conditioned. This works because interest decay is not uniform — a user's recent click on a similar item is far more predictive than an old click, and this signal only becomes apparent when time and semantics are considered jointly.",
+    "limitations": "The empirical gains, while statistically significant, are modest (0.29–0.43% GAUC), suggesting diminishing returns in this design space. The model assumes behavioral timestamps are reliable and densely available, which may not hold for cold-start users or sparse-interaction domains. The 4-way interaction increases computational cost, which the paper partially addresses with SIM-style retrieval but may still bottleneck latency-sensitive serving. Generalization beyond display advertising (e.g., content recommendation with implicit feedback) is unvalidated.",
+    "interview_questions": [
+      "What is semantic-temporal correlation and why hadn't prior models captured it?",
+      "How does target-aware temporal encoding differ from standard positional or timestamp encoding?",
+      "Explain the 4-way interaction in TIN — what are the four combinations and what does each capture?",
+      "How would TIN handle a cold-start user with very few behavior signals?",
+      "The paper reports 0.43% GAUC improvement — why is such a small number considered significant in industrial recommendation?"
+    ],
+    "interview_answers": [
+      "Semantic correlation captures whether a behavior item is conceptually similar to the candidate (e.g., same category). Temporal correlation captures whether a behavior occurred recently. Semantic-temporal correlation is the joint pattern: e.g., a recent click on a similar item is highly predictive, but an old click on a similar item or a recent click on a dissimilar item are far less so. Prior models like DIN handled semantics without time-conditioning, and TIEN handled time without semantic-conditioning, so neither could model the interaction between the two dimensions.",
+      "Standard positional encoding (e.g., Transformer) encodes absolute sequence position. Timestamp encoding encodes wall-clock time. Target-aware temporal encoding encodes the time delta between each behavior and the candidate item being scored, making the representation relative to the prediction target. This means the same behavior gets a different temporal representation depending on which candidate is being evaluated — crucial because interest decay is item-type-specific.",
+      "The 4-way interaction crosses two axes: (behavior vs. target) × (semantic vs. temporal). This yields: (1) semantic behavior–target attention — which past behaviors are semantically relevant to the candidate; (2) temporal behavior–target attention — which past behaviors are temporally relevant; (3) semantic target-aware representation — enriching the candidate embedding with semantically similar past behaviors; (4) temporal target-aware representation — enriching the candidate with temporally proximate past behaviors. Together these give a complete picture of user interest.",
+      "TIN would degrade gracefully but is fundamentally behavior-dependent — with sparse behaviors, both the semantic and temporal signals are weak. Mitigation strategies include falling back to popularity-based or content-based features, or using a SIM-style retrieval to augment sparse behavior sequences with long-tail historical data. The paper does not explicitly address cold-start, which is a noted limitation.",
+      "In large-scale advertising systems, even 0.1% GAUC improvement translates to millions of dollars in revenue due to the massive traffic volume (billions of ad impressions daily). GAUC (Group AUC) is also a stricter metric than AUC as it evaluates ranking quality per user, so gains are harder to achieve. The 1.65% cost lift and 1.93% GMV lift in A/B testing confirm the offline metric gain translates to real business impact, which is the ultimate validation."
+    ],
+    "generated_at": "2026-03-23T21:01:56Z"
+  }
+}
