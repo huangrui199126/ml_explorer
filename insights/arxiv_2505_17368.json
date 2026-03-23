@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HENN is a new graph-based index for approximate nearest neighbor search that provides provable polylogarithmic worst-case query time guarantees, unlike HNSW which relies on randomized heuristics and can degrade to linear time on adversarial data. It also delivers a theoretical explanation for why HNSW works well in practice.",
+    "key_idea": "By building a hierarchical navigation graph on epsilon-nets (geometric coverings with guaranteed spacing properties), HENN achieves fast greedy search with worst-case theoretical bounds that hold regardless of input data distribution.",
+    "why_it_matters": "Systems relying on ANN search (vector databases, semantic search, recommendation engines) currently have no worst-case performance guarantees with HNSW, making HENN important for latency-sensitive or adversarially robust production deployments.",
+    "possible_use_cases": [
+      "Vector database engines requiring predictable worst-case query latency SLAs",
+      "Adversarially robust semantic search where query distributions may shift or be manipulated",
+      "Dense retrieval pipelines in RAG systems where recall and speed guarantees are both critical"
+    ],
+    "generated_at": "2026-03-23T22:54:08Z"
+  },
+  "deep": {
+    "method_breakdown": "HENN builds a hierarchical graph index for ANN search using ε-net theory, where each layer contains a sparser ε-net of the dataset with increasing coverage radii as you go up the hierarchy. During query, navigation starts at the top (coarsest) layer and greedily descends, using the net structure to prune the search space at each level. The ε-net construction ensures that every point in a lower layer is within distance ε of some point in the layer above, guaranteeing polylogarithmic worst-case traversal depth and node degree.",
+    "key_innovation": "HENN is the first hierarchical graph-based ANN index that provides provable worst-case polylogarithmic query time regardless of data distribution, closing a long-standing gap where HNSW had strong empirical performance but no theoretical guarantees. It also derives a probabilistic polylogarithmic bound for HNSW itself, explaining why HNSW works well in practice. Unlike prior theoretically-grounded structures (e.g., cover trees, navigating nets), HENN is designed to be practically implementable with low overhead.",
+    "technical_insight": "The critical design choice is grounding layer membership in ε-net theory rather than random sampling (as in HNSW). An ε-net guarantees that the set of selected points forms both a packing (points are ε-separated) and a covering (every omitted point is within ε of a selected one). This dual property bounds the maximum degree of any node and ensures that greedy layer-by-layer navigation cannot get stuck without making sufficient progress toward the query, yielding the polylogarithmic worst-case guarantee.",
+    "limitations": "Constructing exact ε-nets is itself non-trivial and more expensive than HNSW's randomized insertion, which may increase index build time. The worst-case guarantees rely on the intrinsic dimensionality (doubling dimension) of the data being low — high-dimensional data with large doubling dimension still suffers. The paper's adversarial robustness claim applies to query time, but recall guarantees under adversarial construction are less clear. Real-world recall may still require tuning ef-search style parameters similar to HNSW.",
+    "interview_questions": [
+      "What is an ε-net and why is it useful for constructing hierarchical ANN indices?",
+      "HNSW achieves excellent empirical performance but lacks worst-case guarantees — what specific pathological cases can cause it to degrade to linear query time?",
+      "How does HENN's layer construction differ from HNSW's, and what theoretical property does this difference enable?",
+      "The paper claims polylogarithmic query time — what complexity parameter does this depend on, and what happens as dataset dimensionality grows?",
+      "How would you empirically evaluate whether a new ANN index is truly robust to adversarial data distributions, and what adversarial constructions are most relevant?"
+    ],
+    "interview_answers": [
+      "An ε-net of a metric space S is a subset N such that: (1) any two points in N are at distance > ε (packing), and (2) every point in S is within distance ε of some point in N (covering). For ANN indexing, this ensures sparse but representative summaries at each hierarchy level, bounding node degree and guaranteeing that greedy navigation always makes ε-bounded progress per step.",
+      "HNSW can degrade when the greedy search gets trapped in local minima caused by adversarially arranged clusters — e.g., a ring or grid structure where the greedy nearest neighbor on the graph leads away from the true nearest neighbor. Random layer assignment also means the upper layers may not provide useful shortcuts, forcing the search to traverse nearly all nodes in the base layer.",
+      "HNSW assigns nodes to layers by randomly sampling from an exponential distribution, with no structural guarantee about inter-layer coverage. HENN instead places a point in layer l only if it belongs to the ε_l-net of the dataset, where ε_l decreases geometrically. This covering property ensures every base-layer point is reachable from the layer above within a bounded number of hops, enabling the polylogarithmic traversal proof.",
+      "The polylogarithmic bound is O(log^c n) where the exponent c depends on the doubling dimension d of the dataset — the smallest d such that any ball can be covered by 2^d balls of half the radius. As intrinsic dimensionality grows, the bound degrades and can approach linear in the worst case for truly high-dimensional data with no low-dimensional structure.",
+      "Adversarial evaluation should include: (1) clustered data with deliberate gaps (hub-and-spoke), (2) grid/lattice arrangements that fool greedy search, (3) data distributions where HNSW's random promotion creates disconnected upper layers, and (4) synthetic datasets constructed to maximize the gap between graph neighbor and true nearest neighbor at each greedy step. Metrics should include both recall@k and query latency distributions, not just averages, to surface worst-case behavior."
+    ],
+    "generated_at": "2026-03-23T22:54:37Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "δ-EMG introduces a graph-based approximate nearest neighbor search index that provides provable error bounds on returned results, not just recall guarantees. By enforcing a δ-monotonic geometric constraint during graph construction, any greedy search is guaranteed to converge to a (1/δ)-approximate neighbor.",
+    "key_idea": "Constructing a graph where every edge enforces a monotonic distance reduction constraint ensures greedy traversal always converges to a result within a guaranteed approximation ratio, eliminating the need for backtracking.",
+    "why_it_matters": "Unlike existing ANN methods that only bound recall (missing true positives), δ-EMG also bounds how wrong the returned results can be, enabling more reliable retrieval in high-stakes systems while achieving 40%+ throughput gains over competitors at 0.99 recall.",
+    "possible_use_cases": [
+      "High-precision semantic search where returning a wildly irrelevant result is worse than missing a true positive",
+      "Recommendation systems requiring predictable worst-case result quality for user trust and consistency",
+      "Vector database backends for RAG pipelines where retrieval error bounds directly impact downstream LLM answer quality"
+    ],
+    "generated_at": "2026-03-23T22:56:55Z"
+  },
+  "deep": {
+    "method_breakdown": "δ-EMG constructs a graph index where edges satisfy a δ-monotonic geometric constraint: for any node, its neighbors must include points strictly closer to the query direction by a factor of δ, ensuring greedy search always converges without backtracking. At query time, an adaptive top-k algorithm controls the approximation budget dynamically. The quantized variant δ-EMQG adds localized construction with degree balancing and vector quantization for distance acceleration, achieving near-linear build complexity.",
+    "key_innovation": "Prior graph-based ANN (HNSW, NSG, DiskANN) only offer ε-recall guarantees — they measure how many true neighbors are returned but provide no bound on how wrong the returned neighbors are. δ-EMG is the first graph index with provable (1/δ)-approximation guarantees for arbitrary queries, meaning every returned result is within a multiplicative factor of the true nearest neighbor distance, not just a statistical recall rate.",
+    "technical_insight": "The δ-monotonic constraint during edge selection is the critical design choice: it enforces that the graph has a 'funnel' property where greedy traversal is guaranteed to make progress toward any query. This works because if every node's neighborhood contains a point that reduces distance by factor δ, no local minima can trap the search — unlike standard proximity graphs which can get stuck and must backtrack or restart.",
+    "limitations": "The δ-monotonic constraint during construction is stricter than standard proximity graph rules, likely requiring higher average degree to maintain coverage, increasing both index size and construction cost. The (1/δ)-approximation guarantee is a worst-case bound — the gap between δ and practical recall curves versus systems like HNSW may be marginal on well-clustered datasets. The evaluation is limited to ANN-Benchmarks (SIFT1M), leaving open questions about performance on high-dimensional sparse or out-of-distribution query distributions where the geometric constraint may be harder to enforce efficiently.",
+    "interview_questions": [
+      "What does it mean for a graph to be δ-monotonic, and why does this property guarantee greedy search convergence without backtracking?",
+      "How does the (1/δ)-approximation guarantee differ fundamentally from a ε-recall guarantee, and in what real-world scenarios does this distinction matter?",
+      "How does δ-EMQG achieve near-linear construction complexity while preserving the δ-monotonic property, and what trade-offs does degree balancing introduce?",
+      "When integrating vector quantization into δ-EMQG, how do you ensure that approximate distance computations don't violate the theoretical (1/δ)-approximation bound?",
+      "If δ approaches 1 (tightest approximation), how does graph connectivity and construction cost scale, and is there a practical lower bound on δ for real-world use?"
+    ],
+    "interview_answers": [
+      "A graph is δ-monotonic if for every node v and any query q, the neighborhood of v contains at least one node u such that dist(u, q) ≤ δ · dist(v, q) for δ < 1. This means every step of greedy search strictly reduces distance to the query by factor δ, eliminating local minima and making backtracking unnecessary — the search is provably convergent in O(log_{1/δ} n) steps.",
+      "ε-recall measures what fraction of true top-k neighbors appear in results, but says nothing about the quality of wrong answers — a system with 0.99 recall could return one result that is 100x farther than the true nearest neighbor. (1/δ)-approximation bounds the worst-case distance ratio of any returned result, guaranteeing every answer is within 1/δ of optimal distance. This matters in safety-critical retrieval, deduplication, or any system where a grossly wrong result causes downstream harm.",
+      "δ-EMQG localizes the monotonic constraint to subgraph regions rather than enforcing it globally, so construction only needs to scan local neighborhoods rather than global graph state. Degree balancing prevents hub nodes (high-degree nodes that dominate traversal in NSG/HNSW) by capping degrees, which keeps the worst-case path length bounded. The trade-off is that localized enforcement may occasionally require slightly relaxed δ values in dense regions to maintain feasibility.",
+      "The key is that quantization error is bounded and incorporated into the δ parameter: if quantized distances have bounded relative error ε_q, then using δ' = δ · (1 - ε_q) during construction absorbs the quantization noise into the approximation budget. At query time, the algorithm uses quantized distances for fast candidate filtering but can fall back to exact distances for final ranking, preserving the end-to-end (1/δ)-guarantee.",
+      "As δ → 1, each graph edge must reduce distance by only a tiny fraction, requiring very high out-degree to cover all possible query directions — degree scales roughly as O(1/(1-δ)^d) in d dimensions, making tight δ exponentially expensive. In practice, δ ∈ [0.8, 0.95] offers a useful operating range where the approximation is tight enough for most retrieval tasks while keeping construction tractable. Below δ ≈ 0.7, the approximation bound becomes too loose to differentiate from random retrieval on high-recall benchmarks."
+    ],
+    "generated_at": "2026-03-23T22:57:25Z"
+  }
+}

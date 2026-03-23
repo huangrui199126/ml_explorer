@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PolyMinHash adapts the MinHash locality-sensitive hashing technique to 2D polygons by counting randomly sampled points needed to land inside a polygon's interior, generating compact signatures that preserve area-based Jaccard similarity. This enables efficient approximate nearest neighbor search for polygons in spatial databases and GIS systems.",
+    "key_idea": "Hash a polygon by the expected number of random spatial samples needed to hit its interior, so that similar-area polygons produce similar hash signatures without comparing geometries directly.",
+    "why_it_matters": "Spatial databases and GIS applications frequently need to find similar polygons (e.g., land parcels, building footprints, geographic regions) at scale, but exact geometry comparison is computationally prohibitive — PolyMinHash reduces candidate sets by up to 98%, making large-scale polygon similarity search practical.",
+    "possible_use_cases": [
+      "Finding similar land parcels or building footprints in large cadastral/GIS databases",
+      "Deduplicating or clustering geographic regions (e.g., electoral districts, administrative boundaries) in spatial data pipelines",
+      "Approximate shape matching for map feature retrieval in location-based services"
+    ],
+    "generated_at": "2026-03-23T22:55:31Z"
+  },
+  "deep": {
+    "method_breakdown": "PolyMinHash adapts the classical MinHash technique to 2D polygons by repeatedly sampling random points in a bounding region and counting how many samples are needed before a point falls inside the polygon's interior — this count becomes a hash value that approximates area-based Jaccard similarity between polygons. Multiple independent hash functions generate a signature vector (MinHash sketch) for each polygon. These signatures are then used in an LSH (Locality-Sensitive Hashing) pipeline to bucket similar polygons together, drastically reducing the candidate set before exact geometric verification.",
+    "key_innovation": "Prior MinHash work operates on sets of discrete elements (tokens, pixels, trajectory points), but polygons are continuous 2D regions. The core novelty is reframing polygon overlap as a stochastic sampling problem: the probability that a uniformly sampled point lands in polygon A before polygon B is proportional to their area-based Jaccard index, enabling MinHash's unbiasedness guarantees to transfer to continuous geometry without explicit discretization or rasterization.",
+    "technical_insight": "Using geometric rejection sampling (count trials until interior hit) rather than discretizing the polygon into a grid avoids the resolution–accuracy tradeoff inherent in rasterization approaches. Because the expected count is inversely proportional to the polygon's area fraction within the bounding box, hash values are naturally area-weighted, preserving Jaccard similarity in expectation — this is why the method works without any spatial indexing of the polygon boundary itself.",
+    "limitations": "Accuracy degrades for very thin or highly non-convex polygons where rejection sampling is inefficient (high variance in trial counts). The method measures area-based Jaccard only, so it cannot capture shape similarity independent of size or position (e.g., translated/scaled duplicates). Runtime depends heavily on bounding-box tightness; loose bounding boxes inflate the number of trials needed. Additionally, the approach requires pre-defined bounding regions and may struggle with multi-polygon or geometry-collection types common in real GIS data.",
+    "interview_questions": [
+      "How does PolyMinHash preserve Jaccard similarity mathematically, and what probability argument guarantees this?",
+      "Why is rejection sampling used instead of simply rasterizing polygons to a fixed grid and applying standard MinHash?",
+      "How would you tune the number of hash functions (signature length) vs. the number of hash tables in the LSH index for this system?",
+      "What happens to hash quality for polygons with very small area relative to their bounding box, and how might you mitigate this?",
+      "How would you extend PolyMinHash to handle similarity under affine transformations (rotation, scaling, translation)?"
+    ],
+    "interview_answers": [
+      "For two polygons A and B, a uniformly sampled point falls in A∩B with probability proportional to |A∩B| and in A∪B with probability proportional to |A∪B|. The probability that the first interior hit (for either polygon) lands in A∩B equals |A∩B|/|A∪B|, which is exactly the area-based Jaccard. Each independent trial of 'which polygon do I hit first' is a Bernoulli draw with this probability, so the MinHash estimator is unbiased.",
+      "Rasterization introduces a fixed resolution that trades off between memory/compute and geometric fidelity — fine grids are expensive, coarse grids lose shape detail. Rejection sampling operates directly on the continuous polygon and scales with area, not resolution, avoiding the discretization error entirely while still producing hash values compatible with the MinHash collision probability framework.",
+      "Signature length k controls variance of the Jaccard estimate (std dev ≈ 1/√k), while the number of tables b and bands r in LSH control the recall–precision tradeoff on the candidate retrieval step. For high-recall ANN, increase b (more tables) at the cost of memory; to reduce false positives, increase r (longer bands). The product b×r should equal k. Tune by profiling recall@k and query latency on a held-out validation set.",
+      "When a polygon has small area relative to its bounding box (e.g., thin slivers or sparse irregular shapes), the probability of a random sample hitting the interior is low, meaning many trials are needed per hash — increasing variance and computation time. Mitigations include using a tighter axis-aligned or oriented bounding box, subdividing the polygon into convex parts with individual bounding boxes, or importance-sampling near the polygon boundary using a pre-computed skeleton.",
+      "Affine-invariant similarity requires normalizing polygons to a canonical form before hashing — e.g., aligning to principal axes via PCA, normalizing scale to unit area, and translating centroid to origin. PolyMinHash could then be applied to the normalized representation. Alternatively, one could define a different Jaccard over shape descriptors (e.g., curvature histograms or Fourier descriptors) and design a hash collision probability that matches that descriptor similarity."
+    ],
+    "generated_at": "2026-03-23T22:56:00Z"
+  }
+}
