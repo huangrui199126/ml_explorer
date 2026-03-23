@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ASMR (Activation Steered Multilingual Retrieval) combines a Multilingual Dense Passage Retrieval system with an LLM, using 'steering activations' to guide the model's internal representations for better cross-lingual question answering. It achieves state-of-the-art results on XOR-TyDi QA and MKQA benchmarks.",
+    "key_idea": "By directly manipulating LLM activation vectors at inference time, you can steer the model to better bridge language gaps between queries and documents without retraining.",
+    "why_it_matters": "Most retrieval systems degrade significantly when queries and documents are in different languages; this approach offers a lightweight, training-free mechanism to improve multilingual search quality using existing LLMs.",
+    "possible_use_cases": [
+      "Multilingual enterprise search where employees query in their native language over a mixed-language document corpus",
+      "Cross-lingual open-domain QA systems for low-resource language speakers accessing information in high-resource languages",
+      "Global customer support systems that retrieve relevant documentation across language barriers without requiring parallel corpora"
+    ],
+    "generated_at": "2026-03-23T06:15:07Z"
+  },
+  "deep": {
+    "method_breakdown": "ASMR combines a Multilingual Dense Passage Retrieval (mDPR) system with an LLM reader, using 'steering activations' to redirect the LLM's internal representations toward the target language during inference. Steering vectors are derived from activation differences between language-specific prompts and applied to intermediate transformer layers to bias generation toward coherent, language-appropriate responses. This allows the LLM to act as a cross-lingual reader that retrieves relevant passages in any language and generates answers in the user's query language.",
+    "key_innovation": "The core novelty is applying activation steering (a representation engineering technique) to the CLIR setting, rather than relying on multilingual fine-tuning or prompt-based language control. Prior CLIR work used mDPR + seq2seq readers fine-tuned per language; ASMR instead steers a frozen or lightly adapted LLM's activations at inference time, avoiding expensive multilingual supervision and enabling more generalizable language control.",
+    "technical_insight": "Injecting steering vectors at intermediate transformer layers is the critical design choice — it modifies the model's internal language representation directly rather than relying on surface-level token prompting. This works because LLMs encode language identity as a geometric direction in activation space, so additive steering reliably shifts generation toward a target language without degrading semantic coherence or factual grounding from the retrieved passages.",
+    "limitations": "The steering vectors must be pre-computed per target language, limiting zero-shot generalization to truly unseen languages. Performance likely degrades on low-resource languages where the base LLM has sparse multilingual representations. The approach inherits mDPR's retrieval ceiling — if relevant passages are not retrieved, steering cannot compensate. The paper's scope is limited to extractive/short-answer QA benchmarks (XOR-TyDi, MKQA), leaving open questions about longer-form or abstractive cross-lingual generation.",
+    "interview_questions": [
+      "How are the steering activation vectors computed, and are they derived from the same LLM being steered or a separate model?",
+      "At which transformer layers are the steering activations injected, and how sensitive is performance to this choice?",
+      "How does ASMR behave when the retrieved passages are in a different language than both the query and the target response language — a trilingual mismatch scenario?",
+      "What is the computational overhead of applying steering activations at inference time compared to standard autoregressive decoding?",
+      "Does ASMR require any fine-tuning of the LLM, or is the steering applied purely at inference time to a frozen model?"
+    ],
+    "interview_answers": [
+      "Steering vectors are typically computed as the mean activation difference between two contrastive prompt sets (e.g., prompts that elicit English vs. target-language output) at a specific layer of the same LLM being steered. This makes the approach self-contained but ties vector quality to the LLM's own multilingual representation quality.",
+      "The paper likely evaluates injection at middle-to-late transformer layers, which encode higher-level semantic and linguistic properties. Injection too early disrupts low-level token representations; too late has insufficient influence on generation. The optimal layer is typically found via ablation and tends to be around 60-80% depth in the network.",
+      "This trilingual case is the hardest scenario for ASMR — the model must simultaneously ground facts from passages in language A, understand a query in language B, and generate in language C. Steering toward the query language may help coherence but the model's cross-attention over foreign-language passages remains a bottleneck, likely causing degraded recall.",
+      "Steering activations add a single vector addition per steered layer per forward pass step, making the overhead negligible (microseconds per token) compared to the dominant cost of attention computation. This is a key practical advantage over inference-time methods like constrained decoding or language-specific beam search.",
+      "The framing suggests inference-time steering on a frozen or minimally adapted LLM is the target, which is the method's main efficiency claim. However, if the base LLM has weak multilingual coverage, some task-specific adaptation (e.g., continued pretraining on multilingual corpora) may be needed before steering is effective, partially undermining the training-free narrative."
+    ],
+    "generated_at": "2026-03-23T06:15:34Z"
+  }
+}
