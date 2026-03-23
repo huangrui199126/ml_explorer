@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LiRank is LinkedIn's production ranking framework that combines state-of-the-art architectures including a novel Residual DCN (DCNv2 with attention and residual connections), Dense Gating, and Transformers into a unified model with practical techniques for calibration, quantization, and serving at scale. The system delivers measurable gains across Feed, Jobs, and Ads ranking tasks.",
+    "key_idea": "Combining Residual DCN, Dense Gating, and Transformers into a single unified ranking model, paired with vocabulary compression and quantization, enables SOTA accuracy while remaining deployable at industrial scale.",
+    "why_it_matters": "Practitioners get a battle-tested blueprint for assembling and tuning multiple SOTA ranking components together, with concrete lessons on calibration, explore/exploit, and model compression that translate directly to production recommendation systems.",
+    "possible_use_cases": [
+      "Feed ranking and personalized content recommendation at scale",
+      "Job search and recommendation relevance modeling",
+      "Ads click-through rate prediction and calibration"
+    ],
+    "generated_at": "2026-03-23T03:40:10Z"
+  },
+  "deep": {
+    "method_breakdown": "LiRank is a unified ranking framework that combines Residual DCN (DCNv2 with attention and residual connections), Dense Gating, and Transformers into a single production model. It incorporates calibration techniques, deep learning-based explore/exploit (contextual bandits), and compression via quantization and vocabulary compression for efficient serving. The system is deployed across LinkedIn Feed, Jobs, and Ads with use-case-specific tuning.",
+    "key_innovation": "Residual DCN extends DCNv2 by adding attention mechanisms and residual connections to the cross network, improving feature interaction learning. The novel contribution is the practical fusion of multiple SOTA architectures (DCN, Transformers, Dense Gating) into a single deployable model, alongside productionalized deep learning explore/exploit and a calibration method suited for large-scale non-stationary distributions.",
+    "technical_insight": "Dense Gating selectively activates feature pathways, which prevents interference between heterogeneous feature spaces and allows the unified model to generalize across diverse ranking tasks without architectural compromise. This is critical because naively stacking architectures often causes feature conflicts that degrade performance on any single task.",
+    "limitations": "The paper describes a proprietary LinkedIn-specific system, making reproducibility difficult without access to the same data infrastructure. Calibration techniques are tailored to LinkedIn's label distribution shift and may not generalize. Compression tradeoffs (quantization, vocabulary pruning) are empirically tuned and may require substantial re-tuning for different model sizes or serving hardware. The explore/exploit approach likely depends on LinkedIn's specific reward feedback latency.",
+    "interview_questions": [
+      "What specific changes does Residual DCN make to DCNv2, and why do attention and residual connections help feature crossing?",
+      "How does Dense Gating work, and what problem does it solve when combining multiple architectures in a unified model?",
+      "What calibration challenges arise in large-scale ranking systems, and how does LiRank address non-stationary label distributions?",
+      "How does LiRank productionalize explore/exploit, and what are the key differences from a purely offline-trained ranking model?",
+      "What are the tradeoffs between quantization and vocabulary compression for model serving, and how does LiRank decide which to apply?"
+    ],
+    "interview_answers": [
+      "Residual DCN adds self-attention over the cross-layer outputs so the model learns which feature interactions matter most, and residual connections stabilize gradient flow through deep cross networks — together they improve both expressivity and trainability compared to vanilla DCNv2.",
+      "Dense Gating uses learned gating weights to control how much each input feature contributes to each sub-network, preventing feature-space interference when Transformers, DCN, and MLP heads share input representations — it lets the model specialize pathways without hard partitioning features.",
+      "In production, label distributions shift due to changes in user behavior, item corpus, and policy; LiRank applies post-hoc calibration by learning a correction function over predicted scores, trained on recent data to track distribution drift without full model retraining.",
+      "LiRank implements contextual bandits with a neural uncertainty estimator trained jointly with the ranking model; during serving, it uses Thompson Sampling or UCB to balance exploitation of high-CTR items with exploration of uncertain ones, with exploration rate controlled to limit revenue risk.",
+      "Quantization reduces weight precision (e.g., INT8) to shrink model size and speed up inference with minimal accuracy loss on dense layers, while vocabulary compression reduces embedding table size by pruning low-frequency or redundant ID features — LiRank applies both, choosing aggressiveness based on empirical accuracy-latency Pareto curves per deployment target."
+    ],
+    "generated_at": "2026-03-23T03:40:34Z"
+  }
+}

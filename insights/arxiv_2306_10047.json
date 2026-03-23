@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GNNO is a graph-based negative sampling strategy for sequential recommendation that uses neighborhood overlap in an item transition graph to identify hard negatives, combined with curriculum learning to progressively increase difficulty during training.",
+    "key_idea": "Items with high neighborhood overlap in a user behavior graph are structurally similar and thus serve as more informative hard negatives than randomly sampled items.",
+    "why_it_matters": "Better negative sampling is a drop-in improvement that boosts any sequential recommendation model without architectural changes, and exploiting graph structure captures semantic item relationships that random or popularity-based sampling misses.",
+    "possible_use_cases": [
+      "Improving e-commerce product recommendation systems by providing harder training negatives",
+      "Enhancing video or music streaming sequential recommendations where item transition patterns are rich",
+      "Plug-in negative sampling upgrade for existing models like SASRec or BERT4Rec without retraining from scratch"
+    ],
+    "generated_at": "2026-03-23T03:36:12Z"
+  },
+  "deep": {
+    "method_breakdown": "GNNO constructs a global weighted item transition graph from training sequences, where edge weights reflect co-occurrence frequencies in user histories. It then defines neighborhood overlap between item pairs using Jaccard-like similarity on their graph neighbors, grouping pairs by overlap degree to assign negative hardness. Curriculum learning schedules training from easy negatives (low overlap) to hard negatives (high overlap) as training progresses.",
+    "key_innovation": "Prior hard negative mining methods rely on embedding-space similarity or popularity heuristics, ignoring graph structure. GNNO is the first to use neighborhood overlap on an item transition graph as a proxy for semantic relatedness, exploiting behavioral co-occurrence patterns that emerge before embeddings are well-trained — making it effective even in early training stages.",
+    "technical_insight": "Using structural overlap rather than embedding similarity decouples negative hardness estimation from model quality: embedding-based hard negatives are unreliable early in training when representations are noisy, but graph topology from raw interaction data is stable throughout. This bootstrapping advantage means GNNO provides informative signal precisely when the model needs it most.",
+    "limitations": "The global item transition graph grows quadratically with catalog size, limiting scalability to very large item sets. Neighborhood overlap is a proxy for relatedness that may conflate popularity bias (high-degree hub items have large neighborhoods that overlap broadly). The curriculum schedule is a fixed heuristic and may not adapt well to non-stationary or domain-shifted data streams.",
+    "interview_questions": [
+      "How does GNNO compute neighborhood overlap, and what graph construction choices affect its quality?",
+      "Why is curriculum learning important here — what happens if you use hard negatives from the start?",
+      "How does GNNO compare to embedding-based hard negative methods like DNS or MixGCF, especially early in training?",
+      "What are the scalability bottlenecks of maintaining a global item transition graph, and how might you address them?",
+      "Could the neighborhood overlap signal introduce popularity bias, and how would you detect or mitigate that?"
+    ],
+    "interview_answers": [
+      "Neighborhood overlap is computed as the number of shared neighbors between two items on the weighted transition graph, normalized similarly to Jaccard similarity. Key construction choices include the window size for co-occurrence extraction, edge weight decay (recency weighting), and pruning low-weight edges — these trade off graph density against noise and memory cost.",
+      "Starting with hard negatives immediately introduces false negatives and gradient noise because early embeddings cannot reliably distinguish near-misses from true negatives, causing training instability. Curriculum learning warms up the model on easy, unambiguous negatives first, establishing a stable embedding space before introducing hard cases where overlap is high and the risk of false negatives is greatest.",
+      "Early in training, embedding-based methods like DNS sample quasi-randomly because all embeddings are near-random, giving no advantage over uniform sampling. GNNO's graph-based signal is independent of embedding quality, so it provides consistently harder and more informative negatives from epoch one, which the authors show translates to faster convergence and better final metrics.",
+      "The main bottleneck is computing pairwise neighborhood overlaps for all item pairs, which is O(|I|² · avg_degree). Practical mitigations include approximate nearest-neighbor indexing on the graph (e.g., using SimHash on adjacency vectors), sampling a fixed-size candidate pool per target item rather than ranking the full catalog, and periodically updating the graph rather than rebuilding it every epoch.",
+      "Yes — popular items have many neighbors, so their neighborhoods overlap with many other items regardless of semantic relevance, making them appear as hard negatives spuriously. This can be diagnosed by correlating negative sample popularity with model-assigned hardness scores. Mitigation strategies include popularity-debiased overlap normalization (dividing by expected overlap under a degree-based null model) or capping contribution from high-degree hub nodes."
+    ],
+    "generated_at": "2026-03-23T03:36:38Z"
+  }
+}
