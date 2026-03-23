@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper identifies a code injection vulnerability in AI vector search pipelines that use Lua scripting for post-inference tasks like scoring and ranking. It proposes a secure execution framework using parameterized invocation, allowlist validation, and runtime sandboxing to eliminate the attack surface with negligible latency cost.",
+    "key_idea": "User-controlled query parameters concatenated into dynamically executed Lua scripts create an injection vulnerability that can expose vector embeddings and inference metadata, preventable through parameterized script invocation and strict runtime hardening.",
+    "why_it_matters": "Production RAG and semantic search systems commonly embed scripting engines for custom ranking logic, and this overlooked attack surface could allow adversaries to exfiltrate proprietary embeddings or hijack inference pipelines in cloud deployments.",
+    "possible_use_cases": [
+      "Hardening Lua-based post-processing layers in vector databases like Redis or Weaviate",
+      "Security auditing of RAG pipelines that use custom scoring/filtering scripts",
+      "Designing sandboxed plugin architectures for AI search infrastructure"
+    ],
+    "generated_at": "2026-03-23T03:10:46Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper identifies a code injection vulnerability in AI vector search pipelines where user-controlled query parameters are directly concatenated into dynamically executed Lua scripts used for post-inference tasks like scoring and ranking. The proposed mitigation framework uses parameterized script invocation (separating code from data), strict allowlist validation of permitted operations, Lua runtime sandboxing (removing dangerous standard library functions), and least-privilege access controls on embeddings and metadata. The framework is evaluated on a representative vector search system measuring both security effectiveness and latency impact.",
+    "key_innovation": "The paper is the first to formally characterize post-inference scripting layers as an attack surface in AI vector search pipelines specifically, as opposed to general Lua injection in web contexts. The novelty is applying parameterized invocation and runtime hardening principles to the unique threat model of embedding exfiltration and inference metadata leakage — assets that are rarely considered in traditional injection vulnerability analyses.",
+    "technical_insight": "The most important design choice is strict separation of script logic from user-supplied data via parameterized invocation (analogous to prepared statements in SQL), combined with Lua sandbox hardening that removes I/O, OS, and network library access at runtime. This works because it eliminates the root cause (string concatenation of untrusted input into executed code) while the allowlist and sandbox contain any residual attack surface, providing defense-in-depth without requiring query-time re-compilation of scripts.",
+    "limitations": "The threat model assumes a relatively static scripting layer; pipelines that dynamically generate script templates from user intent (e.g., LLM-generated ranking logic) would require substantially different mitigations. The allowlist approach may limit legitimate scripting flexibility and could be difficult to maintain as ranking logic evolves. Evaluation appears to be on a representative but not production-scale system, so latency claims under high concurrency or with complex scripts may not generalize. The paper does not address supply-chain risks where malicious scripts are introduced at deployment time rather than via query injection.",
+    "interview_questions": [
+      "Why is Lua commonly used as the scripting engine in vector search post-inference pipelines, and what properties make it both attractive and risky in this context?",
+      "Explain the specific injection vector: how does string concatenation of query parameters into Lua code create an exploitable vulnerability, and what can an attacker exfiltrate?",
+      "What is parameterized script invocation in this context, and how does it differ from simply sanitizing or escaping user input?",
+      "How does Lua runtime hardening work, and what standard library components are most critical to remove to prevent exploitation?",
+      "What are the tradeoffs between expressiveness and security when enforcing an allowlist on permitted Lua operations in a ranking pipeline?"
+    ],
+    "interview_answers": [
+      "Lua is lightweight, embeddable, and has low overhead, making it practical for real-time post-inference tasks like custom scoring and re-ranking without significant latency. However, Lua's dynamic execution model and rich standard library (including I/O and OS access) mean that if user input reaches the code execution path, an attacker can run arbitrary commands within the process context.",
+      "When a pipeline constructs Lua code strings by concatenating user query parameters (e.g., filter expressions or boost values), an attacker can inject Lua syntax that breaks out of the intended expression and executes arbitrary code. This can be used to read environment variables, access in-memory embedding vectors, or exfiltrate inference metadata such as model outputs and similarity scores that may reveal proprietary model behavior.",
+      "Parameterized script invocation keeps script logic as a fixed, pre-vetted template and passes user data as typed parameters that are never interpreted as code — analogous to SQL prepared statements. Input sanitization/escaping attempts to make malicious input safe within a concatenation model but is fragile and error-prone, especially with Lua's flexible syntax; parameterization eliminates the concatenation entirely.",
+      "Runtime hardening involves loading Lua in a restricted environment where dangerous standard libraries are not registered or are explicitly removed before any user-influenced execution occurs. The most critical libraries to remove are 'io' (file system access), 'os' (system calls and environment), and 'package'/'require' (dynamic library loading), since these provide the primitive capabilities needed to exfiltrate data or escalate to OS-level execution.",
+      "A strict allowlist enables only a predefined set of operations (e.g., arithmetic on scores, field comparisons, approved aggregation functions), which gives strong security guarantees but limits the flexibility that makes scripting valuable in the first place. Teams must weigh whether the ranking customization use cases can be fully expressed within the allowlist, and must maintain the allowlist carefully as requirements evolve — overly restrictive lists may push engineers toward unsafe workarounds."
+    ],
+    "generated_at": "2026-03-23T03:11:15Z"
+  }
+}

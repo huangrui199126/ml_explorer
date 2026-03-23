@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents an end-to-end dense retrieval system for e-commerce recommendations that uses a two-tower bi-encoder fine-tuned with contrastive learning to match user intent (expressed in natural language) to product catalog items via semantic similarity. The system combines FAISS HNSW indexing with ONNX INT8 quantization for CPU-efficient serving, achieving 2.5x better Recall@10 than BM25 at practical latency.",
+    "key_idea": "Fine-tuning a bi-encoder on review-to-product pairs with contrastive loss builds a shared semantic space where natural language intent and product metadata are aligned, enabling vocabulary-mismatch-free retrieval at catalog scale.",
+    "why_it_matters": "Practitioners get a reproducible, CPU-deployable blueprint that dramatically outperforms BM25 on semantic search without requiring GPU serving infrastructure, making high-quality semantic retrieval accessible at production scale with a 4x smaller model and sub-10ms latency.",
+    "possible_use_cases": [
+      "E-commerce product search where user queries don't lexically match product titles or descriptions",
+      "Review-driven recommendation systems that surface similar products based on user-written feedback",
+      "Catalog-scale semantic search for fashion or other verticals where intent signals are conversational or unstructured"
+    ],
+    "generated_at": "2026-03-23T03:06:34Z"
+  },
+  "deep": {
+    "method_breakdown": "A two-tower bi-encoder (query tower + document tower) is fine-tuned on Amazon Reviews 2023 Fashion data using Multiple Negatives Ranking Loss, treating review text as query proxies and item metadata as positive documents. At inference, all catalog item embeddings are pre-computed and indexed with FAISS HNSW for approximate nearest-neighbor search. The query encoder runs through an ONNX Runtime pipeline with INT8 dynamic quantization, enabling sub-10ms CPU latency at serving time.",
+    "key_innovation": "The primary contribution is an end-to-end production blueprint rather than a novel architecture: combining domain-adaptive fine-tuning (reviews-as-queries) with ONNX+INT8 quantization and HNSW indexing to hit both accuracy (Recall@10: 0.66 vs BM25's 0.26) and deployment constraints (6.1ms median CPU latency, 4x model compression) simultaneously on commodity hardware. Most prior dense retrieval work optimizes for one axis; this paper co-optimizes accuracy, latency, and model size.",
+    "technical_insight": "Using review text as a query proxy during training is the critical design choice — reviews capture latent user intent and natural language descriptions that closely mirror how users actually think about products, bridging the vocabulary gap that cripples BM25. This creates a training signal far richer than click logs alone, since review language semantically overlaps with how a user might query, without requiring explicit query-product labeled pairs.",
+    "limitations": "The approach is evaluated only on Fashion, a visually/textually rich category; performance may degrade on categories with sparse metadata (e.g., industrial parts). Using reviews as query proxies introduces distributional mismatch — real queries are shorter and less descriptive. The 500-token truncation may lose tail-end metadata signals. HNSW recall-latency tradeoffs are not ablated. No multi-modal signals (images) are incorporated despite e-commerce's visual nature. Cold-start items with no reviews cannot contribute training signal.",
+    "interview_questions": [
+      "Why use Multiple Negatives Ranking Loss instead of triplet loss or BPR loss for this retrieval task?",
+      "What are the trade-offs of using review text as a query proxy, and how would you validate whether this proxy is actually representative of real user queries?",
+      "FAISS HNSW vs IVF-PQ: when would you choose one over the other in a production recommendation system?",
+      "How does INT8 dynamic quantization affect embedding quality, and what's the theoretical reason it doesn't collapse retrieval accuracy?",
+      "If you had to extend this system to handle cold-start items (new products with no reviews), what approaches would you consider?"
+    ],
+    "interview_answers": [
+      "MNRL treats all other items in a batch as implicit negatives, giving O(N²) negative pairs per batch without requiring explicit negative mining. Triplet loss requires curated hard negatives which are expensive to construct; BPR only uses one negative per positive. MNRL's in-batch negatives are naturally hard (they are real items from the same domain) and scale efficiently with batch size, making it well-suited for large catalogs where explicit negative curation is impractical.",
+      "Review proxies are longer, more opinionated, and more descriptive than real queries — a user searching 'blue floral dress' behaves very differently from a reviewer writing three paragraphs about fit and fabric. To validate, you'd compare the embedding space geometry of real queries vs. reviews using t-SNE/UMAP, measure retrieval performance on a held-out set of actual user queries (not reviews), and run A/B tests online. A better proxy might be the review summary or headline rather than the full review.",
+      "HNSW offers lower query latency and higher recall at the same ef_search budget since it's a graph-based structure with O(log N) search complexity, but it consumes more RAM (full float32 vectors stored). IVF-PQ uses product quantization to compress vectors 8-32x, enabling much larger catalogs in memory, but at the cost of recall and higher build time. Choose HNSW when catalog fits in RAM and latency is critical; choose IVF-PQ when catalog is >100M items or memory is constrained.",
+      "INT8 dynamic quantization maps float32 weights to int8 at runtime by computing per-tensor scale factors from activation statistics. It preserves relative ordering of dot products (which is all retrieval needs) even if absolute magnitudes shift, because the ranking objective only requires cosine similarity comparisons to remain monotonic. Empirically, 1-2% Recall@10 degradation is typical, and the 4x memory reduction plus SIMD integer arithmetic acceleration outweigh this cost for CPU deployment.",
+      "Options include: (1) content-based fallback — encode the item's metadata text directly without any review signal, relying on zero-shot generalization of the fine-tuned encoder; (2) side-information augmentation — use structured attributes (price, brand, category) as pseudo-review text; (3) knowledge distillation from a larger teacher model; (4) retrieval-augmented generation to synthesize plausible review text for new items using an LLM; (5) progressive indexing — serve cold items through BM25 until enough interactions accumulate to re-encode with behavioral signals."
+    ],
+    "generated_at": "2026-03-23T03:07:05Z"
+  }
+}
