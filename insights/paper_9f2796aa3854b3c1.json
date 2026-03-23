@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a medical image fusion network that combines multimodal images (e.g., MRI and CT) using bidirectional feature interactions both across modalities at the same level and across multiple feature levels. The architecture uses separate modality-independent branches plus a shared branch to capture both unique and common features, with a forward-backward interaction module to leverage multi-scale information.",
+    "key_idea": "Bidirectional feature interaction — vertical (cross-modal at the same scale) and horizontal (across feature pyramid levels via forward-backward passes) — enables more complete extraction and fusion of complementary information from different imaging modalities.",
+    "why_it_matters": "Most fusion methods either lose modality-specific details or fail to leverage multi-scale context; this approach addresses both gaps simultaneously, producing higher-quality fused images that can improve diagnostic accuracy in clinical settings without requiring manual image registration or expert-tuned weighting.",
+    "possible_use_cases": [
+      "Fusing MRI and CT scans for enhanced soft-tissue and bone visualization in pre-surgical planning",
+      "Combining PET and MRI for simultaneous metabolic activity and structural brain imaging in neurological diagnosis",
+      "Merging infrared and visible medical images for improved lesion detection in dermatology or thermal imaging applications"
+    ],
+    "generated_at": "2026-03-23T20:01:37Z"
+  },
+  "deep": {
+    "method_breakdown": "The network uses three branches for feature extraction: two modality-independent branches capturing modal-specific features and one modality-shared branch capturing common representations, with cross-modal interaction enabling vertical feature exchange between modalities at the same hierarchical level. A Forward and Backward Interaction Module (FBIM) then enables horizontal interaction across multiple feature levels, bridging semantic gaps between shallow and deep features. Finally, the modality-shared branch generates weight maps to adaptively fuse the two modality-independent feature streams into the final output.",
+    "key_innovation": "The dual-axis bidirectional interaction design — vertical cross-modal interaction at the same feature level (between modalities) combined with horizontal multi-level interaction across feature hierarchy (within the fusion pipeline via FBIM) — addresses both inter-modal and intra-scale feature utilization gaps that prior methods handle separately or incompletely.",
+    "technical_insight": "Using the modality-shared branch to generate fusion weight maps is the critical design choice: by learning what is common across modalities, the network can identify which modal-specific features are complementary vs. redundant, producing semantically grounded attention weights rather than naive pixel-level blending. This grounds the fusion decision in shared semantic context rather than per-modal statistics.",
+    "limitations": "The three-branch architecture with bidirectional interaction likely incurs significant computational cost, limiting deployment on edge/mobile clinical devices. The method is evaluated on standard fusion benchmarks (likely MRI-CT, MRI-PET) but may not generalize to less common modality pairs. The weight map generation from the shared branch assumes the shared features are reliably extracted, which may fail when modality overlap is minimal or when one modality is heavily corrupted.",
+    "interview_questions": [
+      "How does the cross-modal interactive feature extraction module achieve vertical interaction, and why is separating modality-independent and modality-shared branches beneficial?",
+      "What does the Forward and Backward Interaction Module (FBIM) do specifically, and how does it differ from standard skip connections or FPN-style multi-scale fusion?",
+      "Why use the modality-shared branch specifically for generating fusion weight maps rather than a separate attention head or the modality-independent branches?",
+      "How does this method handle the case where the two input modalities have very different noise characteristics or spatial resolutions?",
+      "What loss functions are used to supervise the fusion, and how do you prevent the modality-shared branch from collapsing to trivial shared representations?"
+    ],
+    "interview_answers": [
+      "The module processes each modality through its own independent branch while a third shared branch aggregates cross-modal features; these interact at the same feature level so each branch can leverage complementary cues from the other modality without conflating modality-specific texture/structural details, preserving discriminative modal information while enabling context sharing.",
+      "FBIM propagates information both forward (shallow to deep) and backward (deep to shallow) across the feature hierarchy, allowing high-level semantic context to refine low-level details and vice versa. Unlike FPN which is typically top-down only, or skip connections which are additive without learned interaction, FBIM explicitly models the bidirectional dependency to close the receptive-field gap between levels.",
+      "The shared branch captures what is semantically consistent across modalities, making it the most reliable signal for deciding how to weight complementary modal-specific information. Using independent branches for weight generation would risk reinforcing modal-specific biases in the fusion decision, whereas the shared branch provides a modality-agnostic arbitration signal.",
+      "This is a real limitation — the paper likely normalizes inputs and relies on registration preprocessing to align spatial resolution differences. Noise differences are implicitly handled by the independent branches learning noise-robust representations, but there is no explicit noise modeling described in the abstract, suggesting this is a gap.",
+      "Typical supervision combines a content loss (e.g., L1/SSIM against source images) with gradient/texture preservation losses. The shared branch is implicitly regularized by being forced to generate useful fusion weights; explicit disentanglement losses (e.g., orthogonality between shared and independent features) may also be used to prevent the shared branch from simply copying one modality."
+    ],
+    "generated_at": "2026-03-23T20:02:00Z"
+  }
+}
