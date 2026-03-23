@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RangePQ is a new indexing scheme that extends PQ-based approximate nearest neighbor (ANN) indexes to efficiently support range-filtered queries (e.g., find the nearest vector where price is between $10–$50) with linear space complexity and fast updates.",
+    "key_idea": "By integrating a hybrid two-layer structure on top of existing product quantization indexes, RangePQ enables arbitrary range attribute filters during ANN search without the typical trade-offs between storage cost, query speed, and update support.",
+    "why_it_matters": "Real-world vector search almost always involves metadata filters (price, date, popularity), and existing solutions force painful trade-offs; RangePQ offers a practical, scalable path to filtered ANN search that fits into production systems without excessive storage or slow updates.",
+    "possible_use_cases": [
+      "E-commerce product search filtering by price range while retrieving semantically similar items",
+      "Document retrieval systems filtering by publication date or relevance score alongside embedding similarity",
+      "Recommendation engines filtering by popularity or recency constraints while finding nearest-neighbor user/item embeddings"
+    ],
+    "generated_at": "2026-03-23T21:59:04Z"
+  },
+  "deep": {
+    "method_breakdown": "RangePQ integrates a range-aware indexing layer on top of existing Product Quantization (PQ)-based ANN indices. It organizes PQ-compressed vectors into a hierarchical structure that allows efficient pruning of candidates outside the attribute range filter before distance computation. A hybrid two-layer design separates frequently-updated recent entries from the main index to reduce space overhead to O(n) while preserving query efficiency.",
+    "key_innovation": "Prior range-filtered ANN methods either build separate indices per range partition (excessive storage), scan all vectors and post-filter (poor query performance), or lack dynamic update support. RangePQ is the first to achieve all three simultaneously — linear space, efficient range filtering, and dynamic updates — by augmenting PQ-based indices rather than replacing them.",
+    "technical_insight": "The critical design choice is reusing PQ's compressed codes across range-aware data structures rather than storing raw or re-encoded vectors. Since PQ compression is lossy but compact, this amortizes storage across the range hierarchy (O(n log K) before optimization) and the two-layer hybrid further collapses this to O(n) by batching updates into a small buffer that merges into the main structure lazily, avoiding per-update structural rebuilds.",
+    "limitations": "Performance degrades for highly selective range filters where few vectors pass the predicate, reducing the benefit of ANN pruning. The method inherits PQ's recall-accuracy tradeoff and may underperform exact methods on low-dimensional data. The two-layer hybrid introduces latency variance during merge operations. It also assumes scalar (1D) range filters; multi-attribute conjunctive filters would require non-trivial extension.",
+    "interview_questions": [
+      "How does RangePQ handle dynamic updates without rebuilding the entire index?",
+      "Why is O(n log K) the natural space complexity before the two-layer optimization, and how does the hybrid structure reduce it to O(n)?",
+      "What are the failure modes when range filters are extremely selective (very narrow ranges)?",
+      "How does RangePQ compare to simply building multiple PQ indices partitioned by attribute buckets?",
+      "What assumptions does RangePQ make about the attribute distribution, and how would skewed distributions affect performance?"
+    ],
+    "interview_answers": [
+      "RangePQ uses a two-layer hybrid where new insertions and deletions go into a small dynamic buffer layer; once the buffer reaches a threshold, it is merged into the main static PQ-based structure in batch, amortizing rebuild cost and bounding update latency.",
+      "The O(n log K) bound arises because each vector's PQ code is referenced in O(log K) nodes of a range-partitioning tree (e.g., a segment tree over attribute values), and K scales with O(log n). The two-layer structure stores each vector's code only once in the main layer, with the buffer holding only recent entries, so total storage converges to O(n).",
+      "With very narrow ranges, few vectors pass the filter, so the index cannot prune effectively — it degenerates toward a sequential scan of the filtered subset. If the subset is tiny, ANN graph traversal offers little benefit and exact search would be comparably fast with less overhead.",
+      "Partition-based approaches require O(B) separate PQ indices for B buckets and cannot handle arbitrary range queries that span bucket boundaries without scanning multiple indices. RangePQ uses a single unified PQ codebook and overlays range structure on top, avoiding redundant storage and supporting arbitrary range predicates natively.",
+      "RangePQ does not explicitly assume a uniform attribute distribution, but skewed distributions cause unbalanced range-tree nodes, concentrating query work in dense attribute regions. Heavily skewed data may require adaptive partitioning strategies (e.g., quantile-based splits) to maintain balanced query performance across the attribute domain."
+    ],
+    "generated_at": "2026-03-23T21:59:28Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MRR-FV is a fact verification system that combines generative multi-hop evidence retrieval with hierarchical reasoning to verify complex claims requiring multiple pieces of interconnected evidence. It uses an autoregressive retriever with a compressor to handle iterative hops and a dual-level reasoner for intra- and inter-sentence evidence analysis.",
+    "key_idea": "Iteratively retrieve evidence autoregressively across multiple hops while using a hierarchical graph-based reasoner to capture both local semantic dependencies and global cross-evidence interactions for accurate claim verification.",
+    "why_it_matters": "Real-world misinformation often requires chaining multiple evidence sources to verify or refute a claim; existing pairwise models fail on such complex claims, and MRR-FV provides a principled framework that significantly improves both retrieval and verification accuracy on standard benchmarks.",
+    "possible_use_cases": [
+      "Automated fact-checking pipelines for news and social media platforms",
+      "Evidence-grounded question answering over large knowledge bases",
+      "Legal or scientific claim validation requiring multi-document reasoning"
+    ],
+    "generated_at": "2026-03-23T22:07:07Z"
+  },
+  "deep": {
+    "method_breakdown": "MRR-FV combines a Generative Multi-hop Retriever (autoregressive model that iteratively retrieves evidence across multiple hops) with a Hierarchical Interaction Reasoner that performs both intra-sentence reasoning (capturing long-range dependencies within sentences) and inter-sentence reasoning over multi-hop evidence subgraphs. A pre-trained compressor addresses 'intention shift' — the drift in retrieval focus across hops — by compressing and re-aligning the query representation at each retrieval step. The final verdict is produced by reasoning over the structured evidence graph capturing complex inter-evidence relationships.",
+    "key_innovation": "The primary novelty is the coupling of generative retrieval (autoregressive docid generation rather than dense retrieval) with multi-hop fact verification, plus the explicit handling of intention shift via a compressor module — prior work treats retrieval as a single-pass or simple iterative dense retrieval without modeling query drift. The hierarchical reasoner distinguishing intra- vs inter-sentence reasoning over evidence subgraphs is also more structured than prior flat attention-based verifiers.",
+    "technical_insight": "The intention shift compressor is the most critical design choice: in multi-hop retrieval, naively chaining queries causes the retrieval focus to drift from the original claim, accumulating noise. By compressing intermediate evidence and re-conditioning the query at each hop, the model maintains claim-centric retrieval while still incorporating previously gathered evidence — this is what enables reliable deep multi-hop chains without cascading retrieval errors.",
+    "limitations": "The autoregressive generative retrieval requires docids to be pre-indexed and struggles with out-of-corpus documents or dynamically updated knowledge bases. Scalability is a concern since generating docids autoregressively is slower than dense retrieval at inference time. The model is evaluated only on FEVER and HOVER, both English Wikipedia-grounded datasets, leaving open questions about cross-lingual and open-domain generalization. Multi-hop chains beyond 2-3 hops may still suffer from compounding errors despite the compressor.",
+    "interview_questions": [
+      "What is 'intention shift' in multi-hop retrieval and how does MRR-FV address it?",
+      "Why use generative retrieval (autoregressive docid generation) instead of dense retrieval for evidence gathering?",
+      "How does the Hierarchical Interaction Reasoner differ from a standard transformer-based verifier?",
+      "What are the scalability trade-offs of the MRR-FV architecture at inference time?",
+      "How would you extend MRR-FV to handle claims requiring numerical reasoning or temporal reasoning?"
+    ],
+    "interview_answers": [
+      "Intention shift refers to the phenomenon where the effective query focus drifts away from the original claim after each retrieval hop, as intermediate evidence conditions the next query and can pull it off-topic. MRR-FV uses a pre-trained compressor that takes the current query and retrieved evidence, compresses them into a focused representation that re-anchors to the original claim before the next hop.",
+      "Generative retrieval encodes document identity into model parameters, enabling end-to-end differentiable retrieval without a separate index lookup; this allows the retriever to be jointly optimized with the verifier. It also naturally supports constrained decoding over the docid space, which can enforce structural constraints on retrieved evidence chains that dense retrieval cannot.",
+      "Standard transformer verifiers treat all evidence tokens uniformly via self-attention. MRR-FV's hierarchical reasoner separates intra-sentence reasoning (modeling semantic dependencies within each evidence sentence) from inter-sentence reasoning (modeling relationships across the multi-hop evidence subgraph), allowing it to capture both local coherence and global evidence interaction patterns explicitly.",
+      "The autoregressive docid generation is O(L) sequential decode steps per hop where L is docid length, versus single forward pass for dense retrieval. With k hops and beam search, inference cost multiplies significantly. Memory overhead from storing the compressor and generative retriever in addition to the reasoner also increases model footprint compared to retrieve-then-read pipelines.",
+      "Numerical and temporal reasoning require augmenting the evidence subgraph with structured knowledge (e.g., dates, quantities extracted via NER/parsing) and adding specialized reasoning modules — such as a numerical comparison head or temporal ordering layer — within the inter-sentence reasoning stage. One could also integrate tool use (calculator, date parser) into the retrieval loop, conditioning subsequent hops on computed intermediate values rather than only textual evidence."
+    ],
+    "generated_at": "2026-03-23T22:07:35Z"
+  }
+}
