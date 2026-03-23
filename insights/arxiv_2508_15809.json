@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Chain-of-Query (CoQ) is a multi-agent framework that improves LLM-based table understanding by using natural-language schema representations, clause-by-clause SQL generation, and a hybrid reasoning approach that separates SQL-based mechanical reasoning from LLM-based logical inference. It achieves substantial accuracy gains and lower invalid SQL rates across five benchmarks compared to existing baselines.",
+    "key_idea": "Decompose table question-answering into specialized agents that handle schema abstraction, incremental SQL construction, and hybrid reasoning to prevent error propagation and reduce over-reliance on SQL execution correctness.",
+    "why_it_matters": "Practitioners building data analytics tools, BI assistants, or enterprise chatbots over structured databases can adopt CoQ to get more reliable natural-language-to-SQL pipelines with fewer invalid queries and better handling of complex multi-step table reasoning.",
+    "possible_use_cases": [
+      "Natural language interfaces to relational databases and data warehouses",
+      "Automated report generation from structured enterprise data",
+      "Question-answering over spreadsheets and tabular datasets in business intelligence tools"
+    ],
+    "generated_at": "2026-03-23T22:15:20Z"
+  },
+  "deep": {
+    "method_breakdown": "Chain-of-Query (CoQ) is a multi-agent framework that decomposes table understanding into two stages: first, it converts raw table schemas into natural-language-style representations to reduce structural noise, then generates SQL queries clause-by-clause (SELECT, WHERE, GROUP BY, etc.) rather than all at once, allowing incremental validation. Finally, it applies a hybrid reasoning division where SQL handles mechanical computation (aggregation, filtering) while LLMs handle logical inference (semantic interpretation, answer derivation), reducing over-dependence on SQL execution success.",
+    "key_innovation": "The core novelty is the hybrid reasoning division that explicitly separates what SQL is good at (deterministic, mechanical operations) from what LLMs are good at (semantic, logical reasoning), rather than treating SQL execution result as the sole grounding signal. Additionally, clause-by-clause SQL generation is new compared to prior work that generates full SQL in one shot, substantially reducing invalid query rates through incremental construction.",
+    "technical_insight": "The most important design choice is the natural-language schema representation, which abstracts away raw table structure (e.g., column names with ambiguous formatting, nested headers) into descriptions LLMs can reliably parse. This directly attacks the root cause of SQL generation failures — the LLM's inability to map structural table metadata to valid SQL syntax — and is what makes the downstream clause-by-clause generation and hybrid reasoning actually tractable.",
+    "limitations": "The framework adds significant inference overhead due to multi-agent, clause-by-clause generation, making it slower and costlier than single-pass approaches. It is also evaluated only on standard benchmarks (WikiTableQuestions, TabFact, etc.) with relatively clean tabular data, so robustness to real-world messy tables (merged cells, multi-level headers, sparse data) is unvalidated. The hybrid reasoning boundary between SQL-based and LLM-based steps is likely hand-designed and may not generalize across domains without re-tuning.",
+    "interview_questions": [
+      "Why does clause-by-clause SQL generation reduce invalid query rates compared to full SQL generation?",
+      "How does CoQ decide which reasoning subtasks to assign to SQL execution versus LLM inference?",
+      "What are the failure modes when the natural-language schema representation itself is incorrect or ambiguous?",
+      "How would CoQ perform on tables with complex multi-level headers or merged cells that don't map cleanly to relational schemas?",
+      "How does error propagation across agents get mitigated in CoQ, and what happens when an early agent produces a wrong intermediate result?"
+    ],
+    "interview_answers": [
+      "Clause-by-clause generation constrains the search space at each step — the LLM generates and validates one SQL clause at a time, catching syntax or semantic errors early before they compound. This prevents the common failure mode where a small early mistake (wrong column alias in SELECT) causes a cascading parse error in the full query.",
+      "CoQ uses a predefined taxonomy: operations that require counting, sorting, filtering, or aggregating numerical/categorical values are routed to SQL, while tasks requiring understanding of implicit meaning, negation, coreference, or multi-hop logical entailment are handled by the LLM. This boundary is determined by the query decomposition agent analyzing the question type.",
+      "If the schema representation introduces incorrect or misleading descriptions (e.g., hallucinated column semantics), the downstream SQL generation will silently target wrong columns, and since the hybrid design partially bypasses execution verification, these errors may go undetected and propagate to the final answer.",
+      "CoQ would likely struggle with such tables since the natural-language schema abstraction assumes a clean relational structure. Multi-level headers require flattening heuristics, and merged cells introduce ambiguity in row-column mapping — both could cause the schema representation step to produce incorrect column descriptions, undermining all downstream reasoning.",
+      "CoQ mitigates propagation by having the hybrid reasoning division serve as a checkpoint — if SQL execution fails or returns null, the LLM inference path can still attempt an answer using the schema and question alone. However, if intermediate decomposition by an early agent is semantically wrong (not just syntactically), no mechanism catches this, and the framework will confidently produce a wrong answer."
+    ],
+    "generated_at": "2026-03-23T22:15:45Z"
+  }
+}
