@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HPMR is a multi-behavior recommendation framework that uses a Projection-based Transfer Network (PTN) to explicitly model how upstream user behaviors (e.g., clicks) inform downstream behaviors (e.g., purchases), improving recommendation quality while reducing negative transfer between tasks. It addresses limitations of prior multi-task learning approaches by comprehensively designing prediction tasks and using projection mechanisms for cleaner information transfer.",
+    "key_idea": "Project upstream behavior representations into the space of downstream behaviors to explicitly capture correlations and refine representations, enabling more effective knowledge transfer without negative interference.",
+    "why_it_matters": "Practitioners building recommendation systems with multiple interaction types (clicks, adds-to-cart, purchases) can use HPMR to better leverage all behavioral signals together, achieving higher conversion-rate predictions without the performance degradation that plagues standard multi-task learning approaches.",
+    "possible_use_cases": [
+      "E-commerce recommendation systems that need to jointly model browsing, wishlist, and purchase behaviors",
+      "Content platforms optimizing for both engagement signals (views, likes) and high-value actions (shares, subscriptions)",
+      "Industrial recommendation pipelines where negative transfer between auxiliary and target tasks is a known bottleneck"
+    ],
+    "generated_at": "2026-03-23T05:56:55Z"
+  },
+  "deep": {
+    "method_breakdown": "HPMR introduces a Projection-based Transfer Network (PTN) that explicitly models correlations between upstream (auxiliary) and downstream (target) user behaviors using projection mechanisms, rather than implicitly mixing signals. The upstream behavior representations are refined by projecting them onto the semantic space of downstream behaviors, ensuring transferred information is behaviorally coherent. This refined representation then augments downstream task learning within a hierarchical multi-task framework.",
+    "key_innovation": "The projection mechanism explicitly decomposes upstream behavior embeddings into components aligned with and orthogonal to downstream behavior semantics, unlike prior work (MMoE, PLE, MBGCN) that either shares experts indiscriminately or uses task-specific extractors without geometric alignment. This explicit projection avoids negative transfer by ensuring only relevant upstream information flows downstream.",
+    "technical_insight": "The core design choice is using vector projection to separate 'relevant' from 'irrelevant' upstream behavior signals before transfer. By projecting upstream representations onto the direction of downstream representations, the model filters noise inherent in auxiliary behaviors (e.g., clicks are noisy proxies for purchases), which directly addresses negative transfer — the primary failure mode of naive multi-task sharing.",
+    "limitations": "The hierarchical structure requires a predefined behavior ordering (e.g., click → cart → purchase), which may not generalize to domains without clear behavioral hierarchies or where behavior semantics are ambiguous. The projection operation assumes linear geometric relationships between behavior embedding spaces, which may underfit complex non-linear inter-behavior dependencies. Industrial dataset experiments are not fully reproducible due to proprietary data.",
+    "interview_questions": [
+      "How does the projection mechanism in PTN mathematically separate relevant from irrelevant upstream behavior information?",
+      "Why does negative transfer occur in standard multi-task learning for multi-behavior recommendation, and how does HPMR specifically mitigate it?",
+      "What assumptions does HPMR make about the relationship between upstream and downstream behaviors, and when might those assumptions break down?",
+      "How does HPMR compare to graph-based multi-behavior methods like MBGCN or KHGT in terms of information propagation?",
+      "If a new behavior type with unclear ordering relative to existing behaviors is added, how would you adapt HPMR's hierarchical structure?"
+    ],
+    "interview_answers": [
+      "PTN computes the projection of the upstream embedding u onto the downstream embedding d as proj = (u·d / ||d||²) * d, extracting the aligned component. The residual u - proj is discarded or down-weighted. This geometrically isolates the portion of upstream signal that shares semantic direction with the downstream task, filtering behaviorally irrelevant variance.",
+      "Negative transfer occurs when gradients from auxiliary tasks pull shared parameters in directions that hurt the target task, typically because auxiliary behaviors (clicks) have different statistical patterns than target behaviors (purchases). HPMR mitigates this by not sharing raw parameters but instead passing only geometrically filtered representations, so upstream gradients cannot corrupt downstream-specific geometry.",
+      "HPMR assumes a strict partial order among behaviors (upstream behaviors causally precede downstream ones) and that their embedding spaces are linearly related enough for dot-product projection to be meaningful. This breaks down when behaviors are peer-level (e.g., two equally weighted interaction types), when the embedding space is highly curved, or when upstream behaviors are noisy enough that even their projected component misleads the downstream task.",
+      "Graph-based methods like MBGCN propagate information across the user-item bipartite graph using behavior-specific adjacency matrices, capturing structural collaborative signals. HPMR instead focuses on representation-level transfer between behavior types without explicit graph propagation, making it computationally lighter but potentially missing higher-order structural patterns. HPMR is more suitable when sequential behavior hierarchy matters more than graph topology.",
+      "One approach is to use a behavior embedding to learn a soft ordering via attention or a learned adjacency in a DAG structure, replacing the fixed hierarchy with a dynamic one. Alternatively, add the new behavior as a leaf node and learn its projection target as a weighted combination of existing behavior embeddings, letting the model discover its position in the hierarchy through end-to-end training on held-out supervision."
+    ],
+    "generated_at": "2026-03-23T05:57:21Z"
+  }
+}
