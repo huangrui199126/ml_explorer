@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates whether re-ranking strategies improve RAG performance on small agriculture QA datasets, using Sentence Transformers for embeddings, FAISS for vector search, and zero-shot classification for re-ranking. The key finding is that re-ranking did not meaningfully boost performance, but FAISS in-memory computing significantly reduced retrieval latency.",
+    "key_idea": "Zero-shot re-ranking adds negligible accuracy gains to RAG pipelines on small domain-specific datasets, while FAISS-based in-memory retrieval delivers substantial latency improvements for real-time QA.",
+    "why_it_matters": "Practitioners building domain-specific RAG systems for agriculture (or similarly data-scarce domains) can skip complex re-ranking overhead and instead focus on fast vector retrieval to meet real-time requirements without sacrificing answer quality.",
+    "possible_use_cases": [
+      "Real-time crop disease diagnosis systems that answer farmer queries with low latency",
+      "Agro-informatics chatbots providing location-specific planting and pest management advice",
+      "Lightweight RAG pipelines for resource-constrained agricultural extension services in low-connectivity regions"
+    ],
+    "generated_at": "2026-03-24T01:32:15Z"
+  },
+  "deep": {
+    "method_breakdown": "The system uses Sentence Transformers to encode agricultural documents and queries into dense embeddings, stored in a FAISS index for fast approximate nearest-neighbor retrieval. Retrieved documents are then re-ranked using zero-shot classification before being passed to a pre-trained language model for answer generation. The pipeline is evaluated on small agriculture QA datasets across QDMR (Question Decomposition Meaning Representation) transformation tasks.",
+    "key_innovation": "The primary contribution is an empirical investigation of whether zero-shot re-ranking adds meaningful value to RAG pipelines in the narrow, low-resource domain of agriculture QA. The finding — that re-ranking does not significantly improve performance but FAISS in-memory indexing substantially reduces latency — is the actionable insight, though it is domain-specific validation rather than a novel algorithmic advance.",
+    "technical_insight": "The most important design choice is using FAISS for in-memory vector search rather than disk-based or remote retrieval. This directly reduces retrieval latency to sub-millisecond levels, which matters for real-time agricultural advisory systems where connectivity may be limited. The zero-shot re-ranking finding suggests that for small, narrow-domain datasets, the embedding similarity from Sentence Transformers is already a strong enough relevance signal that a second-pass classifier adds noise rather than precision.",
+    "limitations": "The dataset is small, making it difficult to draw statistically significant conclusions about re-ranking efficacy. The zero-shot classifier used for re-ranking is not fine-tuned on agriculture, which likely explains its failure to improve results — this is a confound, not a definitive finding about re-ranking in general. QDMR transformation tasks may not reflect real-world agricultural QA complexity. The paper lacks ablations on embedding model choice, re-ranker architecture, or dataset scale effects.",
+    "interview_questions": [
+      "Why did re-ranking fail to improve performance in this experiment, and does that generalize to other RAG settings?",
+      "What are the trade-offs between FAISS flat index and FAISS IVF/HNSW for small vs large agriculture corpora?",
+      "How would you design a stronger re-ranking baseline than zero-shot classification for this domain?",
+      "What would need to change in this pipeline to handle location-specific agricultural queries effectively?",
+      "How does dataset size interact with the utility of re-ranking in retrieval pipelines?"
+    ],
+    "interview_answers": [
+      "Re-ranking failed likely because the zero-shot classifier was not domain-adapted — it lacked agriculture-specific priors. In well-resourced domains with fine-tuned cross-encoders (e.g., ColBERT, MonoT5), re-ranking consistently improves precision. The result here is more a statement about zero-shot re-ranker limitations than re-ranking in general.",
+      "For small corpora, a flat FAISS index (exact search) is preferable since memory fits easily and there is no approximation error. For large corpora, IVF partitioning or HNSW graphs trade a small recall loss for orders-of-magnitude faster search. The crossover point is typically around 100K–1M vectors depending on dimensionality.",
+      "A stronger baseline would use a cross-encoder fine-tuned on agriculture QA pairs (e.g., via MS MARCO then domain-adapted), or a listwise re-ranker like RankGPT using an instruction-tuned LLM with agriculture context. Even BM25 hybrid re-ranking would likely outperform zero-shot classification.",
+      "Location-specific queries require metadata-aware retrieval — tagging documents with geographic and seasonal attributes and filtering or boosting by location at retrieval time. The embedding space alone cannot reliably capture 'best crop for clay soil in Punjab in June' without structured metadata filtering layered on top of dense retrieval.",
+      "Re-ranking provides diminishing returns on very small datasets because the retrieval pool is already small and dense embeddings capture most of the relevant signal. Its value increases as corpus size grows, where top-k retrieval introduces more noise and a second-pass precision stage becomes necessary to surface the most relevant documents."
+    ],
+    "generated_at": "2026-03-24T01:32:38Z"
+  }
+}
