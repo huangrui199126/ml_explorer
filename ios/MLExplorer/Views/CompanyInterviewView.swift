@@ -63,14 +63,8 @@ struct CompanyInterviewView: View {
         }
         .task {
             guard !indexLoaded else { return }
-            // Load the index.json to know which papers have insights
-            let url = URL(string: "https://huangrui199126.github.io/ml_explorer/insights/index.json")!
-            if let (data, resp) = try? await URLSession.shared.data(from: url),
-               (resp as? HTTPURLResponse)?.statusCode == 200,
-               let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
-                inferredKeys = Set(decoded.keys)
-            }
-            indexLoaded = true
+            inferredKeys = await InsightService.shared.fetchIndexedKeys()
+            indexLoaded  = true
         }
     }
 

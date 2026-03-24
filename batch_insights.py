@@ -31,10 +31,8 @@ from pathlib import Path
 REPO_ROOT    = Path(__file__).parent
 PAPERS_JSON  = REPO_ROOT / "papers.json"
 INSIGHTS_DIR = REPO_ROOT / "insights"
-INDEX_FILE   = INSIGHTS_DIR / "index.json"   # key → subfolder name
+INDEX_FILE   = INSIGHTS_DIR / "index.json"   # sorted list of inferred keys
 CLAUDE_BIN   = os.path.expanduser("~/.local/bin/claude")
-
-BATCH_SIZE   = 500   # max files per subfolder
 
 CONCURRENCY  = 1       # one at a time — steady, no hammering
 COMMIT_EVERY = 10      # push every 10 papers so users get insights quickly
@@ -170,41 +168,19 @@ Return exactly:
 
 sem = None  # set in main
 
-def insight_path(key: str, index: dict) -> Path:
-    """Return the path where an insight file should be written.
-    If key is already in the index, use the recorded subfolder.
-    Otherwise, find the first batch folder with room, or create a new one.
-    """
-    if key in index:
-        return INSIGHTS_DIR / index[key] / f"{key}.json"
-    # Find a batch folder with fewer than BATCH_SIZE files
-    n = 1
-    while True:
-        folder = INSIGHTS_DIR / f"batch_{n:03d}"
-        folder.mkdir(exist_ok=True)
-        if len(list(folder.glob("*.json"))) < BATCH_SIZE:
-            return folder / f"{key}.json"
-        n += 1
+def rebuild_index() -> set:
+    """Return set of keys that already have an insight file."""
+    return {f.stem for f in INSIGHTS_DIR.glob("*.json") if f.stem != "index"}
 
 
-def rebuild_index() -> dict:
-    """Scan all batch_* subfolders and return key → subfolder mapping."""
-    index: dict = {}
-    for folder in sorted(INSIGHTS_DIR.glob("batch_*")):
-        if folder.is_dir():
-            for f in folder.glob("*.json"):
-                index[f.stem] = folder.name
-    return index
+def write_index(done_keys: set):
+    INDEX_FILE.write_text(json.dumps(sorted(done_keys), ensure_ascii=False))
 
 
-async def process_paper(paper: dict, idx: int, total: int, loop, index: dict) -> bool:
+async def process_paper(paper: dict, idx: int, total: int, loop, done_keys: set) -> bool:
     key  = paper_key(paper)
 
-    # Check if already done (in index or anywhere in subfolders)
-    if key in index:
-        return False
-    # Also check legacy root location
-    if (INSIGHTS_DIR / f"{key}.json").exists():
+    if key in done_keys:
         return False
 
     async with sem:
@@ -214,11 +190,10 @@ async def process_paper(paper: dict, idx: int, total: int, loop, index: dict) ->
             fast = await asyncio.wait_for(generate_fast(paper, loop), timeout=300)
             deep = await asyncio.wait_for(generate_deep(paper, loop), timeout=300)
             insight = {"fast": fast, "deep": deep}
-            path = insight_path(key, index)
-            path.parent.mkdir(exist_ok=True)
+            path = INSIGHTS_DIR / f"{key}.json"
             path.write_text(json.dumps(insight, ensure_ascii=False, indent=2))
-            index[key] = path.parent.name   # update in-memory index
-            print(f"[{idx+1}/{total} {pct:.1f}%] {key}  ✓  ({path.parent.name})", flush=True)
+            done_keys.add(key)
+            print(f"[{idx+1}/{total} {pct:.1f}%] {key}  ✓", flush=True)
             return True
         except asyncio.TimeoutError:
             print(f"[{idx+1}/{total} {pct:.1f}%] {key}  SKIP (paper-level timeout >5min)", flush=True)
@@ -277,14 +252,7 @@ async def main():
         papers = [p for p in papers if (p.get("date") or "") >= cutoff]
         print(f"--new-only: {len(papers)} papers added since {cutoff}")
 
-    # Build index of already-done keys (scans all batch_* subfolders)
-    index = rebuild_index()
-    # Also pick up any legacy root-level files
-    for f in INSIGHTS_DIR.glob("*.json"):
-        if f.name != "index.json" and f.stem not in index:
-            index[f.stem] = "."   # root level (legacy)
-
-    done_keys = set(index.keys())
+    done_keys = rebuild_index()
     todo = [p for p in papers if paper_key(p) not in done_keys]
     print(f"Total: {len(papers)} papers | Already done: {len(done_keys)} | To do: {len(todo)}")
 
@@ -315,7 +283,7 @@ async def main():
     tasks = []
 
     for idx, paper in enumerate(todo):
-        tasks.append(process_paper(paper, idx, len(todo), loop, index))
+        tasks.append(process_paper(paper, idx, len(todo), loop, done_keys))
 
     # Run in chunks to allow periodic commits
     chunk = COMMIT_EVERY
@@ -325,8 +293,7 @@ async def main():
         newly_done += n
         skipped    += sum(1 for r in results if r is False)
         if n > 0:
-            # Write updated index
-            INDEX_FILE.write_text(json.dumps(index, ensure_ascii=False, sort_keys=True))
+            write_index(done_keys)
             start_num = i + 1
             end_num   = min(i + chunk, len(todo))
             git_commit_push(f"feat: batch insights {start_num}–{end_num} of {len(todo)}")

@@ -71,34 +71,29 @@ actor InsightService {
         return "paper_" + hash.prefix(8).map { String(format: "%02x", $0) }.joined()
     }
 
-    // MARK: - Index cache (key → subfolder)
+    // MARK: - Index cache (set of inferred keys)
 
-    private var folderIndex: [String: String]? = nil
+    private var indexedKeys: Set<String>? = nil
     private var indexLoadedAt: Date? = nil
 
-    private func resolvedFolder(for key: String) async -> String? {
-        // Reload index at most once per hour
-        let needsReload = folderIndex == nil ||
+    private func loadIndexIfNeeded() async {
+        let needsReload = indexedKeys == nil ||
             indexLoadedAt.map { Date().timeIntervalSince($0) > 3600 } == true
-        if needsReload {
-            let indexURL = URL(string: "\(pagesBase)/insights/index.json")!
-            if let (data, resp) = try? await URLSession.shared.data(from: indexURL),
-               (resp as? HTTPURLResponse)?.statusCode == 200,
-               let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
-                folderIndex   = decoded
-                indexLoadedAt = Date()
-            }
+        guard needsReload else { return }
+        let url = URL(string: "\(pagesBase)/insights/index.json")!
+        if let (data, resp) = try? await URLSession.shared.data(from: url),
+           (resp as? HTTPURLResponse)?.statusCode == 200,
+           let keys = try? JSONDecoder().decode([String].self, from: data) {
+            indexedKeys   = Set(keys)
+            indexLoadedAt = Date()
         }
-        return folderIndex?[key]
     }
 
     // MARK: - Shared cache fetch (GitHub Pages CDN)
 
     func fetchSharedInsight(for paper: Paper) async -> SharedInsightFile? {
-        let key    = paperKey(for: paper)
-        let folder = await resolvedFolder(for: key)
-        guard let folder else { return nil }  // not in index = not yet inferred, skip
-        let url = URL(string: "\(pagesBase)/insights/\(folder)/\(key).json")!
+        let key = paperKey(for: paper)
+        let url = URL(string: "\(pagesBase)/insights/\(key).json")!
         guard let (data, resp) = try? await URLSession.shared.data(from: url),
               (resp as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         let decoder = JSONDecoder()
@@ -106,9 +101,10 @@ actor InsightService {
         return try? decoder.decode(SharedInsightFile.self, from: data)
     }
 
-    /// True if this paper has a pre-generated insight in the index.
-    func hasSharedInsight(for paper: Paper) async -> Bool {
-        await resolvedFolder(for: paperKey(for: paper)) != nil
+    /// Fetch the index and return all known inferred keys.
+    func fetchIndexedKeys() async -> Set<String> {
+        await loadIndexIfNeeded()
+        return indexedKeys ?? []
     }
 
     // MARK: - Fast Insight generation
