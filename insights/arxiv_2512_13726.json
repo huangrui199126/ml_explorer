@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles the problem of recommending items when users have limited time budgets, framing it as a reinforcement learning problem where the system must balance item relevance against the time cost of evaluating each item. The authors model slate-based e-commerce recommendations as MDPs and show that RL-based policies outperform contextual bandit methods under tight time constraints.",
+    "key_idea": "Model slate recommendation as a budget-aware MDP where each item's evaluation cost is treated as a resource consumption, allowing RL agents to learn policies that maximize engagement within a user's finite time budget.",
+    "why_it_matters": "Real-world recommendation systems must account for user attention and time limits, not just relevance scores; this framework provides a principled way to optimize for actual engagement rather than predicted click probability alone.",
+    "possible_use_cases": [
+      "Mobile e-commerce apps where scroll-based interfaces require balancing item quality with browsing speed",
+      "Ad slot allocation under session time constraints to maximize conversions before users abandon",
+      "Streaming service content carousels that adapt recommendation slates based on estimated user viewing time remaining"
+    ],
+    "generated_at": "2026-03-24T01:59:10Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper formulates time-constrained slate recommendation as a Markov Decision Process where the state encodes user preferences and remaining time budget, actions correspond to selecting items for a slate, and rewards reflect engagement weighted by evaluation cost feasibility. A simulation framework built on Alibaba's Personalized Re-ranking dataset generates synthetic user time budgets and item evaluation costs to train and evaluate RL policies. Both on-policy (e.g., PPO) and off-policy (e.g., Q-learning variants) control algorithms are benchmarked against contextual bandit baselines under varying budget tightness.",
+    "key_innovation": "The primary novelty is the explicit modeling of item evaluation cost as a resource constraint within the MDP formulation — prior slate recommendation work optimizes for relevance or diversity but ignores the time users spend assessing each item before clicking. This budget-aware utility function forces the policy to trade off item quality against its cognitive/temporal cost, a constraint absent from standard contextual bandit or listwise ranking approaches.",
+    "technical_insight": "The most important design choice is encoding remaining time budget as part of the MDP state rather than as a static constraint. This allows the policy to learn context-dependent strategies — e.g., recommending cheaper-to-evaluate items when budget is tight and higher-relevance costly items when budget is ample — enabling dynamic adaptation that a fixed penalty or greedy cutoff cannot achieve.",
+    "limitations": "The evaluation relies on a simulation framework with synthetic time budgets and evaluation costs layered onto a re-ranking dataset not originally designed for this task, raising questions about ecological validity. The paper is a position paper, so empirical results are preliminary and the simulation assumptions (how evaluation cost maps to item features, budget distributions) may not reflect real user behavior. Scalability of RL training for large item catalogs and cold-start handling are not addressed.",
+    "interview_questions": [
+      "How do you define and estimate the evaluation cost of an item in your framework, and how sensitive are results to this cost model?",
+      "Why does modeling the time budget as part of the MDP state outperform simply post-filtering a ranked list to fit within the budget?",
+      "What are the key differences in how on-policy vs off-policy algorithms behave under tight vs loose time budgets in your experiments?",
+      "How does your MDP formulation handle the combinatorial action space of selecting a full slate, and what approximations are made?",
+      "What would be required to move from this simulation-based evaluation to a live A/B test, and what are the main risks?"
+    ],
+    "interview_answers": [
+      "Evaluation cost is treated as a per-item feature derived from item attributes (e.g., number of images, text length, price complexity) in the simulation, with costs assigned heuristically or sampled from a distribution. The paper acknowledges this is a simplification; in practice, costs would need to be estimated from user dwell-time logs, and results likely depend heavily on how discriminative the cost signal is across items.",
+      "Post-filtering a ranked list ignores the interaction between budget and item order — a greedy cutoff may discard high-relevance items that appear late in the list, while the MDP policy learns to front-load budget-efficient items or reorder to maximize expected utility given remaining budget. The state-dependent policy captures this sequential dependency explicitly.",
+      "On-policy methods tend to be more conservative under tight budgets, learning stable low-cost strategies, while off-policy methods can exploit higher-value trajectories seen in logged data but may overfit to budget conditions in the offline data. Under loose budgets both converge toward relevance-maximizing behavior similar to standard ranking.",
+      "The combinatorial action space is addressed by decomposing slate construction into sequential item selection steps within each MDP episode, reducing the action space to single-item choices at each step conditioned on items already selected. This auto-regressive factorization is a common approximation that sacrifices joint optimality but makes the problem tractable.",
+      "A live test would require instrumenting real dwell-time per item to ground the evaluation cost model, defining a meaningful engagement metric aligned with business goals, and handling exploration safely to avoid degrading user experience. Key risks include distribution shift between simulated and real user budgets, reward sparsity in short sessions, and the cost of RL exploration in a production system."
+    ],
+    "generated_at": "2026-03-24T01:59:35Z"
+  }
+}
