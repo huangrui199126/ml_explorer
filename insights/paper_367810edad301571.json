@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper surveys how large language models have transformed e-commerce search by replacing keyword-based retrieval with semantic understanding, enabling systems to handle vocabulary mismatches, implicit intent, and multimodal queries. LLMs unify previously separate search components—query rewriting, attribute extraction, category classification—into end-to-end systems that reason over natural language and images.",
+    "key_idea": "Transformer-based dense retrieval replaces sparse lexical matching with semantic vector representations, allowing relevant products to be surfaced even without exact keyword overlap.",
+    "why_it_matters": "Practitioners building or scaling e-commerce search can reduce query reformulation rates, improve recall for long-tail queries, and enable image-based and conversational search without maintaining siloed ML pipelines for each subtask.",
+    "possible_use_cases": [
+      "Multimodal search where users upload a photo and add text constraints to find visually and semantically matching products",
+      "Conversational shopping assistants that track user preferences across multi-turn dialogues to progressively refine results",
+      "Automated product attribute extraction and catalog enrichment by synthesizing information from titles, descriptions, and packaging images"
+    ],
+    "generated_at": "2026-03-24T02:16:29Z"
+  },
+  "deep": {
+    "method_breakdown": "The system replaces lexical inverted-index retrieval with transformer-based dense encoders that map queries and products into a shared semantic embedding space, enabling approximate nearest-neighbor retrieval without exact token overlap. Multimodal vision-language models fuse text descriptions, packaging images, and video frames into unified product representations, while a conversational layer maintains dialogue state across turns to refine intent incrementally. Structured metadata filters are applied post-retrieval to blend semantic flexibility with hard constraints such as price, brand, and category.",
+    "key_innovation": "The primary novelty is the consolidation of previously siloed pipeline stages — query rewriting, category classification, attribute extraction, and ranking — into a single LLM-backed system that processes natural language holistically rather than routing through hand-engineered feature pipelines. Additionally, image-to-product search (visual query + textual constraint reasoning) is a new interaction paradigm that classical keyword systems cannot support at all.",
+    "technical_insight": "The most critical design choice is using a shared dense embedding space for both queries and products, trained with contrastive objectives (e.g., in-batch negatives or hard-negative mining). This works because the pre-training corpus encodes world knowledge about synonyms, usage contexts, and semantic relationships, so the model generalizes to vocabulary mismatches that defeat BM25-style systems — for example, matching 'running shoes' to a product titled 'athletic footwear for jogging'.",
+    "limitations": "The paper is a survey/overview rather than an empirical study, so it lacks controlled ablations, latency benchmarks, or dataset-specific evaluations that would validate the claimed improvements. Dense retrieval is computationally expensive at inference time and requires large ANN indexes; cold-start products with sparse descriptions remain hard to embed meaningfully. Multimodal models can hallucinate attributes from ambiguous packaging images, and conversational systems may drift from user intent over long sessions without explicit grounding signals.",
+    "interview_questions": [
+      "How does dense retrieval differ from BM25, and what are the trade-offs in an e-commerce setting?",
+      "What training signal is used to align query embeddings with product embeddings in a two-tower model?",
+      "How would you handle the cold-start problem for newly listed products with minimal text and no sales history?",
+      "Describe how you would combine semantic search with hard structured filters (e.g., price range, in-stock status) without sacrificing recall.",
+      "What are the latency and cost challenges of deploying LLM-based search at e-commerce scale, and how would you mitigate them?"
+    ],
+    "interview_answers": [
+      "BM25 scores documents by term frequency and inverse document frequency — it requires exact or stemmed token overlap and cannot bridge vocabulary gaps. Dense retrieval encodes query and document into fixed-dimension vectors and uses cosine or dot-product similarity; it handles synonyms and paraphrases but requires ANN infrastructure, is sensitive to embedding quality, and can retrieve plausible-sounding but irrelevant results if the training distribution is mismatched.",
+      "Two-tower models are trained with contrastive loss: positive pairs are (query, clicked/purchased product) and negatives are in-batch random products or hard negatives mined from products that were shown but not clicked. The loss pushes positive pairs closer and negative pairs apart in embedding space. Techniques like ANCE (Approximate Nearest Neighbor Negative Contrastive Estimation) iteratively refresh hard negatives using the current model checkpoint to avoid stale negatives.",
+      "Strategies include: (1) bootstrapping embeddings from product title and category taxonomy using a pre-trained LLM zero-shot; (2) using image embeddings from the product photo when text is sparse; (3) attribute imputation by prompting an LLM with partial metadata; and (4) falling back to popularity-weighted retrieval within the predicted category until sufficient interaction data accumulates to fine-tune the product tower.",
+      "A common pattern is retrieve-then-filter: run ANN retrieval with a larger candidate set (e.g., top-500) using semantic vectors, then apply structured filters as post-retrieval predicates. Alternatively, pre-filtering the product index at query time using inverted indexes on structured fields before running ANN on the remaining subset keeps latency bounded. Hybrid scores (linear combination of semantic similarity and BM25) can also be computed before applying hard constraints.",
+      "LLM inference adds hundreds of milliseconds per query, which is unacceptable at p99 for search. Mitigations include: (1) offline pre-computation of product embeddings stored in a vector index — only the query tower runs online; (2) distilling large LLMs into smaller bi-encoders via knowledge distillation; (3) quantization (INT8/FP16) and GPU batching; (4) caching embeddings for frequent queries; and (5) using LLMs only for query understanding upstream while lightweight models handle retrieval scoring."
+    ],
+    "generated_at": "2026-03-24T02:16:58Z"
+  }
+}

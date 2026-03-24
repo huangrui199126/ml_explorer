@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CIR-SQL is a dual-model framework for Chinese natural language to SQL translation that separates intent recognition from SQL generation using structured intermediate representations. It uses a seven-category intent classification system and a three-level hierarchical backtracking strategy to reduce semantic interference and structural errors in generated SQL.",
+    "key_idea": "Decoupling semantic understanding (intent recognition) from program synthesis (SQL generation) via structured intermediate representations prevents the interference that occurs when a single encoder handles both tasks simultaneously.",
+    "why_it_matters": "Industrial operators in Chinese-language environments need reliable NL2SQL systems for production monitoring and quality control, and this framework's error-correction backtracking and intent-first architecture directly reduces the structural and schema errors that make existing systems unreliable in production.",
+    "possible_use_cases": [
+      "Manufacturing floor operators querying production databases in Chinese without SQL knowledge",
+      "Quality control managers running ad-hoc queries on defect and metrics databases using natural language",
+      "Equipment maintenance teams querying sensor and status databases to diagnose issues via conversational interfaces"
+    ],
+    "generated_at": "2026-03-24T02:15:12Z"
+  },
+  "deep": {
+    "method_breakdown": "CIR-SQL splits the NL2SQL pipeline into two separate models: a first model performs intent classification into one of seven predefined categories and extracts structured intermediate representations (schema elements, filters, aggregations), while a second model uses this structured output to generate the final SQL. A three-level hierarchical backtracking strategy retries at the SQL level, then context level, then intent level when errors are detected, allowing targeted correction without restarting the full pipeline.",
+    "key_innovation": "The primary novelty is the explicit decoupling of semantic intent recognition from SQL program synthesis via structured intermediate representations, rather than the dominant single-encoder approach. The seven-category intent taxonomy for Chinese industrial NL2SQL and the hierarchical backtracking recovery strategy (operating at three distinct granularities) are also relatively novel for production NL2SQL systems.",
+    "technical_insight": "The most important design choice is using structured intermediate representations as the interface between the two models. By forcing intent and schema extraction into a structured format first, the SQL generation model receives clean, unambiguous input rather than raw natural language — this prevents the 'semantic-program interference' where a single encoder must simultaneously reason about meaning and syntax, which degrades both tasks.",
+    "limitations": "The seven-category intent taxonomy is rigid and may not generalize beyond industrial manufacturing queries — complex nested or multi-intent queries likely fall outside these categories. The system's robustness depends heavily on the accuracy of the first-stage intent classifier; misclassification propagates errors downstream and the backtracking may not recover. The paper appears to target Chinese industrial domains specifically, so generalizability to other languages or domains is unclear. No comparison against strong baselines like DAIL-SQL or DIN-SQL on standard benchmarks (Spider, BIRD) is evident from the abstract.",
+    "interview_questions": [
+      "Why does combining semantic and program information in a single encoder cause interference, and how does your intermediate representation solve this?",
+      "How did you design the seven intent categories — are they exhaustive, and what happens when a query spans multiple categories?",
+      "How does the three-level backtracking strategy decide which level to retry at, and what signals trigger each level of recovery?",
+      "How do you handle schema linking in the Chinese industrial context where table/column names may be in Chinese or domain-specific abbreviations?",
+      "How does CIR-SQL perform on standard NL2SQL benchmarks like Spider or BIRD compared to single-encoder baselines?"
+    ],
+    "interview_answers": [
+      "A single encoder must learn both natural language semantics and SQL program structure simultaneously, causing gradient conflicts and representational interference — the model's attention must serve two incompatible objectives. By using an intermediate structured representation, the first model only learns semantic-to-structure mapping, and the second model only learns structure-to-SQL generation, allowing each to specialize.",
+      "The seven categories were likely designed to cover the most frequent query patterns in industrial monitoring contexts (selection, counting, filtering, aggregation, sorting, joining, grouping). They are not exhaustive — complex analytical queries or multi-step aggregations would require either a catch-all category or decomposition. Cross-category queries are a known weakness of taxonomy-based approaches.",
+      "The backtracking strategy likely uses SQL execution feedback (syntax errors trigger SQL-level retry), semantic consistency checks (schema mismatch triggers context-level retry), and classification confidence scores (low confidence or repeated failure triggers intent-level re-classification). The specific signals and thresholds are key implementation details not fully described in the abstract.",
+      "Schema linking in Chinese industrial NL2SQL likely requires fuzzy matching between query terms and schema identifiers, possibly using character-level similarity or domain-specific entity dictionaries. Industrial schemas often use abbreviated or domain-specific naming conventions that require supplementary knowledge beyond the LLM's pretraining data.",
+      "This is unclear from the abstract — the system appears evaluated on proprietary industrial datasets rather than standard benchmarks, which makes comparison difficult. Standard benchmarks would reveal whether the dual-model decomposition generalizes or whether gains are specific to the industrial Chinese domain the authors targeted."
+    ],
+    "generated_at": "2026-03-24T02:15:36Z"
+  }
+}

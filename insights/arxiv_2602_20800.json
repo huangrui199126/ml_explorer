@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles evaluation bias in Generative Information Retrieval by formally separating the models used for training supervision from those used for evaluation, preventing 'preference leakage' that inflates reported performance. They build a culturally-grounded ranking benchmark and show that a bi-encoder distilled from a cross-encoder supervisor achieves strong, credible results under their leakage-free evaluation protocol.",
+    "key_idea": "Strictly using different LLM judges for supervision and evaluation—never overlapping them—is necessary to get honest performance estimates for normative ranking tasks like cultural relevance.",
+    "why_it_matters": "Practitioners using LLM-as-a-Judge pipelines for ranking or retrieval may be unknowingly inflating metrics through evaluator overlap; this framework provides a concrete methodology to detect and eliminate that leakage before deploying rankers in production.",
+    "possible_use_cases": [
+      "Culturally-aware content recommendation systems that must rank results by regional or ethical norms",
+      "Document retrieval pipelines where evaluation integrity is critical, such as legal or medical search",
+      "Knowledge distillation workflows for building efficient bi-encoders from expensive cross-encoder teachers with trustworthy offline evaluation"
+    ],
+    "generated_at": "2026-03-24T02:13:54Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper formalizes cultural relevance as a within-query ranking task and introduces a two-judge framework where Judge B (supervision) and Judge A (evaluation) are strictly non-overlapping models to prevent preference leakage. A Cross-Encoder is trained under Judge B supervision, then knowledge is distilled into a dense bi-encoder (BGE-M3) for efficient inference. The benchmark NGR-33k provides 33,052 culturally grounded stories to evaluate normative generative ranking.",
+    "key_innovation": "The strict estimator separation protocol — using disjoint LLMs for supervision and evaluation — is the core novelty. Prior LLM-as-a-Judge work allows the same or related models to both supervise training and evaluate outcomes, causing circular preference leakage that artificially inflates metrics. This paper formalizes this leakage problem and proposes a reproducible framework to eliminate it.",
+    "technical_insight": "The most important design choice is cross-encoder-to-bi-encoder distillation under leakage-free evaluation. The cross-encoder (expensive, attends to query-document pairs jointly) provides a strong supervision signal, but the distilled bi-encoder surprisingly outperforms it under Judge A evaluation. This works because distillation smooths out idiosyncratic preferences of Judge B, producing a ranker that generalizes better to an independent evaluator — essentially regularizing away leakage artifacts.",
+    "limitations": "The framework depends on having access to at least two sufficiently capable and meaningfully distinct LLMs; if available models share training data or RLHF preferences, leakage may persist. The NGR-33k benchmark is synthetically constructed, and cultural relevance judgments remain subjective and potentially biased by the LLMs used as judges. Scalability of the cross-encoder training step is expensive, and the approach has only been validated on story-format documents, limiting generalizability to other GenIR domains.",
+    "interview_questions": [
+      "What is preference leakage and why is it a critical problem in LLM-as-a-Judge evaluations?",
+      "Why does the distilled bi-encoder outperform the cross-encoder under leakage-free evaluation, and what does this tell us about distillation as regularization?",
+      "How do you ensure Judge A and Judge B are sufficiently independent to prevent implicit preference leakage through shared pretraining?",
+      "What design choices in the NGR-33k benchmark ensure cultural grounding, and how do you validate it against human norms?",
+      "How does formalizing cultural relevance as a within-query ranking task (rather than absolute scoring) mitigate preference leakage?"
+    ],
+    "interview_answers": [
+      "Preference leakage occurs when the model used to generate supervision labels and the model used to evaluate outputs share preferences — either because they are the same model, fine-tuned variants, or trained on overlapping RLHF data. This causes circular validation where the evaluator rewards the exact stylistic or normative biases baked in during training, inflating metrics beyond what a truly independent judge would assign.",
+      "The cross-encoder overfits to Judge B's specific preference distribution during training. Distillation into a bi-encoder acts as a form of implicit regularization — the student cannot perfectly replicate the teacher's full attention mechanism, so it learns only the most generalizable ranking signal. Under Judge A (a different preference distribution), this generalized signal transfers better than the teacher's overfitted scores.",
+      "This is a fundamental open challenge. The paper addresses it by selecting models from different vendors or training lineages, but shared pretraining corpora (e.g., Common Crawl) mean zero guarantee of full independence. Future work could involve training probes to detect shared preference dimensions or using adversarial disagreement between judges as a quality signal for independence.",
+      "NGR-33k is grounded by constructing stories that require culturally specific knowledge to rank correctly, with topics drawn from geographically and linguistically diverse sources. Validation against Moral Stories (a human-curated dataset) provides an external anchor — if the framework ranks stories in alignment with human moral norms on that dataset, it provides evidence the leakage-free setup captures genuine normative signal rather than model artifacts.",
+      "Absolute scoring allows a judge to assign high scores to outputs that match its own stylistic preferences regardless of query context, making leakage invisible in aggregate metrics. Within-query ranking forces the judge to make relative comparisons among candidates for the same query, which is more robust to absolute preference biases and aligns with the actual retrieval objective of returning the best document given a specific information need."
+    ],
+    "generated_at": "2026-03-24T02:14:20Z"
+  }
+}

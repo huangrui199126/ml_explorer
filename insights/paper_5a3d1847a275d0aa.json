@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LVVEP is a deep learning method that predicts how long users will watch long-form videos by modeling the gap between their pre-watch expectations (derived from storyline semantics via BERT and contrastive learning) and their perceived viewing experience (captured by a GRU with cross-attention). It outperforms standard recommendation baselines on real-world viewing data.",
+    "key_idea": "Frame viewing engagement prediction as an expectation-confirmation problem: encode user expectations from content semantics and weight them by watch history, then dynamically model perceived experience to predict mid-playback abandonment.",
+    "why_it_matters": "Click-through rate and ratings are poor proxies for actual user satisfaction in long-form video; predicting viewing engagement (watch time / abandonment) more accurately enables platforms to reduce churn, improve content ranking, and optimize retention-focused recommendation pipelines.",
+    "possible_use_cases": [
+      "Reducing mid-playback drop-off by reranking recommendations to surface content that matches user engagement patterns",
+      "Optimizing content acquisition strategies by predicting which new videos will sustain watch time for specific audience segments",
+      "Building early-abandonment signals into real-time streaming dashboards to trigger re-engagement nudges (e.g., skip intros, chapter suggestions)"
+    ],
+    "generated_at": "2026-03-24T02:09:54Z"
+  },
+  "deep": {
+    "method_breakdown": "LVVEP models viewing engagement by operationalizing Expectation-Confirmation Theory: user expectations are computed from BERT-encoded storyline semantics refined via contrastive learning and weighted by historical engagement levels, while perceived experience is dynamically constructed using a GRU encoder with cross-attention and a neural tensor kernel that captures evolving preferences over a viewing session. The model is trained with a joint loss combining prediction loss (for engagement estimation) and contrastive loss (to sharpen semantic representations). At inference, the gap between expectation and perceived experience drives the engagement prediction.",
+    "key_innovation": "The primary novelty is grounding video engagement prediction in Expectation-Confirmation Theory (ECT) from behavioral science, mapping its abstract constructs (expectation, perceived performance, confirmation, satisfaction) to concrete neural components. Prior work uses ratings or CTR; this work directly models mid-playback abandonment by learning the expectation-perception gap. The neural tensor kernel inside the GRU encoder for fine-grained semantic interaction is also novel for this domain.",
+    "technical_insight": "The cross-attention mechanism between storyline semantics and session-level GRU hidden states is the most important design choice: it allows the model to dynamically align what the user expected (content semantics) with what they are actually experiencing at each temporal step, enabling the model to detect the precise moment expectation diverges from experience — which is the theoretical cause of abandonment in ECT.",
+    "limitations": "The model relies on rich storyline text metadata, which may be absent, sparse, or low-quality for user-generated or niche content. The GRU-based sequential modeling assumes engagement evolves smoothly, which may break for non-linear viewing (scrubbing, skipping). Contrastive learning requires carefully designed negative sampling strategies that may not generalize across genres. The ECT framework is originally designed for post-consumption satisfaction, so its mapping to mid-session streaming behavior involves theoretical assumptions that are not empirically validated through user studies.",
+    "interview_questions": [
+      "How does LVVEP operationalize the 'confirmation' construct from Expectation-Confirmation Theory in neural network terms?",
+      "Why is contrastive learning used to refine storyline embeddings, and what constitutes a positive vs negative pair in this context?",
+      "What role does the neural tensor kernel play inside the GRU encoder, and how does it differ from standard attention?",
+      "How does the model handle cold-start users with little or no historical engagement data, given that expectations are weighted by historical engagement levels?",
+      "What is the target prediction variable — is it a continuous watch-time ratio, a binary completion flag, or something else — and how is that label constructed from raw logs?"
+    ],
+    "interview_answers": [
+      "Confirmation is implicitly modeled as the alignment between the expectation vector (BERT embeddings weighted by historical engagement) and the perceived experience vector (GRU output with cross-attention). The joint loss penalizes divergence between these representations when actual engagement is high, and enforces separation when engagement is low — approximating the confirmation gap without an explicit confirmation scalar.",
+      "Contrastive learning is used because BERT embeddings trained on general corpora may not distinguish videos that differ in user engagement but share similar surface-level descriptions. Positive pairs are likely storyline segments from the same video or videos with similar engagement outcomes; negatives are storyline segments from videos with divergent engagement profiles. This pulls semantically relevant but engagement-differentiated videos apart in embedding space.",
+      "A neural tensor kernel computes bilinear interactions between hidden states and semantic embeddings via multiple tensor slices, capturing multiplicative feature interactions that standard dot-product attention misses. This is important for detecting subtle semantic mismatches (e.g., a thriller advertised as a romance) that linear attention would underweight.",
+      "Cold-start is a meaningful weakness: the historical engagement weighting would collapse to a uniform weight for new users, effectively reducing the expectation representation to a raw BERT average of storyline semantics. The paper likely does not explicitly address this, and a fallback to content-only or popularity-based priors would be needed in practice.",
+      "The target is most likely a continuous viewing engagement ratio (watch time / total video duration), constructed from server-side playback logs. This avoids binary completion labels that lose granularity for long-form content, and sidesteps rating sparsity. The exact binning or normalization strategy and how early abandonment is distinguished from pause-and-resume behavior are implementation details that critically affect label quality."
+    ],
+    "generated_at": "2026-03-24T02:10:21Z"
+  }
+}

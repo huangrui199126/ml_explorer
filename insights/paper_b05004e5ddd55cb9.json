@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper demonstrates that the Central Limit Theorem explains why aggregated latency metrics (batch means, windowed averages) in AI inference systems behave in a stable, Gaussian-like manner even though individual request latencies follow heavy-tailed, non-normal distributions. The authors validate this through simulation using heavy-tailed distributions to show convergence of batch means to normality.",
+    "key_idea": "Even when individual AI inference latencies are heavily skewed due to jitter, contention, and nondeterministic scheduling, the CLT guarantees that aggregated batch means converge to a normal distribution, providing a rigorous statistical foundation for performance monitoring.",
+    "why_it_matters": "Practitioners can confidently apply Gaussian-based statistical tools—confidence intervals, anomaly detection thresholds, SLA estimation—to aggregated inference metrics without worrying about the underlying heavy-tailed nature of individual request latencies.",
+    "possible_use_cases": [
+      "AIOps anomaly detection: setting statistically principled alert thresholds on aggregated latency metrics for LLM serving and inference platforms",
+      "SLA and confidence-bound estimation: using normal approximations to compute p95/p99 latency bounds for capacity planning and service-level agreements",
+      "Inference system stability analysis: monitoring batch-level mean latency windows to detect gradual performance degradation in real-time recommendation engines or deep learning inference services"
+    ],
+    "generated_at": "2026-03-24T02:07:13Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper simulates AI inference latency using heavy-tailed distributions (e.g., log-normal, Pareto) to mimic real-world request latency behavior caused by network jitter, memory stalls, and scheduling noise. It then computes batch means over increasing batch sizes and empirically demonstrates convergence of the batch-mean distribution toward a Gaussian via histograms and statistical tests (e.g., Kolmogorov-Smirnov). The convergence is used to justify standard Gaussian-based anomaly detection and confidence interval methods in AIOps pipelines.",
+    "key_innovation": "There is no fundamental innovation; the CLT is a centuries-old theorem. The contribution is applied and pedagogical: it systematically validates that CLT holds in the specific context of AI inference latency (which is often heavy-tailed and correlated) and argues this justifies existing Gaussian-assumption monitoring tools. Prior AIOps and SRE literature largely assumed this without formal justification for the heavy-tailed case.",
+    "technical_insight": "The most important design choice is the selection of heavy-tailed source distributions (log-normal, Pareto) rather than mild distributions, because these are the adversarial cases where CLT convergence is slowest. Showing convergence even under these conditions strengthens the practical argument that batch-level metrics in production systems are safely Gaussian-approximable, validating the use of z-score and control-chart based alerting.",
+    "limitations": "CLT requires independence or weak dependence between samples, but real inference latency exhibits strong autocorrelation (e.g., thermal throttling, cache warming, correlated load spikes), which can invalidate the Gaussian approximation. The paper does not address batch sizes required for convergence under extreme tail indices (e.g., Pareto with alpha <= 2 where variance is infinite and CLT does not apply). It also does not validate on real production traces, limiting empirical credibility. The work is largely confirmatory with no new algorithmic contribution.",
+    "interview_questions": [
+      "Under what conditions does the CLT fail to apply to aggregated inference latency, and what alternative distributional models would you use?",
+      "If individual request latencies follow a Pareto distribution with tail index alpha=1.5, does the CLT hold for batch means? Why or why not?",
+      "How would you design an anomaly detection system for P99 latency (not mean latency) given that P99 does not benefit from CLT averaging?",
+      "What is the difference between the classical CLT and the Lindeberg-Feller CLT, and which is more relevant when inference latency has time-varying variance?",
+      "How does autocorrelation in request latency (e.g., due to cache state or GPU thermal throttling) affect the validity of Gaussian-based confidence intervals on batch means?"
+    ],
+    "interview_answers": [
+      "CLT fails when samples are strongly dependent (violating the i.i.d. or weak-dependence assumption), when the distribution has infinite variance (Pareto with alpha <= 2), or when batch sizes are too small relative to the heaviness of the tail. In those cases, stable distributions (Levy-stable family) or extreme value theory (GEV, GPD) are more appropriate.",
+      "No. For Pareto with alpha=1.5, the variance is infinite (alpha <= 2 means E[X^2] diverges). The classical CLT requires finite variance. Instead, the generalized CLT applies and batch means converge to a Levy-stable distribution with index alpha=1.5, which is heavy-tailed and non-Gaussian.",
+      "P99 is an order statistic and does not average out via CLT. Instead, use extreme value theory: model the tail with a Generalized Pareto Distribution (GPD) via peaks-over-threshold, estimate tail parameters, and build confidence bounds directly on the quantile. Alternatively, use bootstrap resampling for empirical confidence intervals on P99.",
+      "The classical CLT assumes i.i.d. samples with finite variance. The Lindeberg-Feller CLT relaxes the identical distribution requirement, allowing heterogeneous variances as long as no single term dominates the sum (Lindeberg condition). For time-varying inference latency (e.g., due to load shifts), Lindeberg-Feller is more appropriate as it accommodates non-stationary variance across the batch.",
+      "Autocorrelation reduces the effective sample size of a batch. The variance of the batch mean is not sigma^2/n but sigma^2 * (1 + 2*sum(rho_k)) / n, where rho_k are the autocorrelation coefficients at lag k. Ignoring this inflates confidence in Gaussian approximations, leading to under-estimated confidence intervals and missed anomalies. Correcting for this requires estimating the spectral density at zero frequency or using batch means with block-bootstrap."
+    ],
+    "generated_at": "2026-03-24T02:07:42Z"
+  }
+}
