@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "A real-time job recommendation system that uses Sentence Transformer embeddings and FAISS vector search to match candidates to jobs based on semantic understanding rather than keyword overlap. The system uses a hybrid scoring algorithm that weights skill overlap (55%), semantic similarity (20%), and title matching (15%) to produce explainable, personalized recommendations via a RESTful API.",
+    "key_idea": "Combining dense semantic embeddings with an explicit skills-first scoring heuristic allows a recommendation engine to capture both deep contextual meaning and precise competency alignment simultaneously.",
+    "why_it_matters": "Practitioners building talent platforms can adopt this modular approach to replace brittle keyword filters with semantically-aware matching that surfaces relevant jobs even when terminology differs, while keeping ranking logic transparent and tunable.",
+    "possible_use_cases": [
+      "Job board platforms seeking to improve match quality and reduce candidate drop-off from irrelevant results",
+      "HR tech tools that need to rank a large corpus of live job postings in real time for each candidate profile",
+      "Career coaching or resume-optimization products that explain to users which skills are driving or limiting their job matches"
+    ],
+    "generated_at": "2026-03-24T02:52:59Z"
+  },
+  "deep": {
+    "method_breakdown": "The system encodes both user profiles and job descriptions into dense semantic vectors using a Sentence Transformer model, then performs approximate nearest-neighbor search via FAISS to retrieve candidate jobs at low latency. Retrieved candidates are re-ranked using a hybrid scoring function that combines skill overlap (55%), semantic similarity (20%), title matching (15%), and auxiliary signals. The result is served through a RESTful API designed for modular integration into existing platforms.",
+    "key_innovation": "The primary contribution is the skills-first hybrid scoring algorithm that explicitly weights skill overlap above semantic similarity, rather than relying solely on embedding cosine similarity as in most prior retrieval systems. This reflects a practical insight that semantic proximity in embedding space does not always capture actionable skill alignment, and the explicit weighting makes ranking decisions more transparent and controllable.",
+    "technical_insight": "Decoupling retrieval (FAISS ANN search over embeddings) from ranking (the hybrid scorer) is the most important architectural choice. It allows the system to scale retrieval sub-linearly with corpus size while still applying fine-grained, interpretable business logic at re-rank time — a two-stage pipeline that trades off recall efficiency against precision without conflating the two concerns.",
+    "limitations": "The fixed weight allocation (55/20/15/...) is hand-tuned and not learned from user feedback or click data, making it brittle to domain shifts or different job markets. Sentence Transformer embeddings trained on general corpora may underperform on highly technical or niche job families with specialized terminology. The system has no temporal modeling, so it cannot account for trending skills or evolving job requirements. Cold-start for new users with sparse profiles is unaddressed. No offline or online evaluation metrics (NDCG, precision@k, A/B results) are reported, making it impossible to assess real-world effectiveness.",
+    "interview_questions": [
+      "Why is skill overlap weighted at 55% rather than letting the semantic embedding similarity dominate the ranking score?",
+      "How does FAISS handle updates to the job posting corpus in a real-time setting where new jobs are posted continuously?",
+      "What are the failure modes of Sentence Transformer embeddings for job recommendation, and how would you detect them in production?",
+      "How would you learn the hybrid scoring weights (55/20/15/...) from user interaction data instead of hand-tuning them?",
+      "How does this two-stage retrieve-then-rank architecture compare to a single end-to-end learned ranking model, and what are the trade-offs?"
+    ],
+    "interview_answers": [
+      "Semantic embeddings capture topical proximity but not executable skill match — a candidate with an MBA and a machine learning engineer share 'data-driven decision making' semantically but differ critically in hard skills. Prioritizing skill overlap ensures the top results are actionable matches, reducing the risk of recommending roles the candidate cannot qualify for even if descriptions sound similar.",
+      "FAISS supports both flat and IVF indexes; flat indexes require full rebuild on updates while IVF indexes support incremental adds, though with periodic re-clustering for accuracy. In practice, real-time systems typically maintain a rolling index with periodic full rebuilds (e.g., hourly) and an incremental buffer for very recent postings, accepting a small staleness window for the freshest jobs.",
+      "Failure modes include embedding collapse for highly specialized roles (e.g., niche compiler engineers), out-of-vocabulary acronyms, and domain shift if the transformer was pretrained on general text. In production you would monitor click-through rate and application rate per recommendation slot, track embedding norm distributions for anomalies, and run periodic human evaluation on sampled recommendations to catch silent quality degradation.",
+      "You would frame it as a learning-to-rank problem: collect implicit feedback (clicks, applications, rejections) as relevance signals, represent each candidate-job pair as a feature vector using the individual score components, and train a gradient-boosted or linear model to predict relevance. This turns the fixed weights into learned parameters optimized for downstream user outcomes rather than intuition.",
+      "A two-stage pipeline sacrifices some ranking quality at the retrieval stage (ANN recall is not 100%) but is far more computationally tractable — FAISS retrieval is sub-millisecond while a full cross-encoder over all jobs would be O(corpus size). An end-to-end model (e.g., a cross-encoder reranker over all pairs) achieves higher accuracy but cannot scale without the retrieval stage as a filter, so in practice both are combined: ANN retrieval → cross-encoder rerank on the top-K, which is what state-of-the-art industrial systems do."
+    ],
+    "generated_at": "2026-03-24T02:53:29Z"
+  }
+}

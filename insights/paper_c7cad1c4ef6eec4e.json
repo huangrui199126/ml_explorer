@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "BADGER is an interpretable model that predicts how gene expression changes when cancer cell lines interact with chemical compounds, using pathway knowledge and attention mechanisms to rank affected genes. It generalizes to unseen cell lines via similarity-based embeddings and outperforms baselines on novel drug-cell combinations.",
+    "key_idea": "Integrating drug target pathway priors with cascading attention blocks allows the model to mimic biological signal propagation and produce explainable gene expression rankings.",
+    "why_it_matters": "Drug repurposing pipelines need reliable, explainable gene-level predictions for untested combinations — BADGER enables this without retraining for every new cell line or compound.",
+    "possible_use_cases": [
+      "Identifying candidate drugs for rare or treatment-resistant diseases by matching genetic profiles",
+      "Prioritizing gene targets for further wet-lab validation in oncology drug discovery",
+      "Predicting drug efficacy in newly characterized cancer cell lines without prior experimental data"
+    ],
+    "generated_at": "2026-03-24T02:50:21Z"
+  },
+  "deep": {
+    "method_breakdown": "BADGER predicts differential gene expression from drug-cell line interactions using three sequential attention blocks that model the cascading downstream effects of chemical compounds on gene regulatory pathways. It incorporates prior biological knowledge by embedding drug targets through pathway information, and handles novel/unseen cell lines via similarity-based embeddings derived from known cell line profiles. The model is trained to rank genes by magnitude of expression change rather than purely predict absolute values.",
+    "key_innovation": "The primary novelty is the integration of pathway-level prior knowledge into the attention mechanism to make predictions biologically interpretable, combined with a similarity-based cell line embedding that generalizes to unseen cell lines — previous models were typically limited to cell lines seen during training and lacked mechanistic explainability.",
+    "technical_insight": "The three cascading attention blocks are the critical design choice: they structurally encode the biological assumption that drugs act through sequential pathway cascades (target → pathway → downstream gene effects), which both improves generalization by constraining the hypothesis space and enables post-hoc interpretation by inspecting attention weights to trace predicted effects back to known biology.",
+    "limitations": "The model's reliance on pathway databases means it inherits incompleteness and biases in curated knowledge (unknown targets or poorly annotated pathways will degrade performance). Similarity-based cell line embedding may fail for genuinely novel cancer subtypes with no close neighbors in the training set. The ranking objective may not capture absolute magnitude of expression changes well, limiting use cases that require quantitative predictions beyond relative ordering.",
+    "interview_questions": [
+      "How does BADGER handle drugs with unknown or poorly characterized targets, given that the pathway-based embedding relies on known drug-target interactions?",
+      "What specific similarity metric is used for the cell line embeddings, and how sensitive is performance to the choice of reference cell lines in the training set?",
+      "The three attention blocks are described as mimicking cascading drug effects — how is this cascade structure enforced architecturally, and could a single attention block with deeper layers achieve the same?",
+      "How does the model perform on cell lines from cancer types severely underrepresented in CCLE or GDSC, where similarity-based embedding would find only distant neighbors?",
+      "The paper claims superior performance on unseen cell and unseen pair splits — what baselines were compared, and were those baselines also given access to the same pathway prior knowledge?"
+    ],
+    "interview_answers": [
+      "This is a genuine weakness: the model likely falls back to less informative generic drug representations for poorly annotated compounds, and the paper's evaluation on well-characterized drugs may overstate real-world applicability for novel chemical scaffolds with sparse target data.",
+      "Typically cosine similarity or Pearson correlation over gene expression profiles (e.g., basal expression or mutation profiles from CCLE) is used; performance would degrade for rare cancers since the embedding averages over neighbors that may not share the relevant biological context.",
+      "The cascade is enforced by feeding the output of each attention block as input to the next, with each block attending over a different biological level (drug target, pathway, gene); a single deeper block lacks the inductive bias that separates these levels, likely hurting interpretability and potentially generalization.",
+      "Performance would likely degrade significantly — similarity-based embedding assumes the new cell line lies near training examples in expression space, which fails for rare or synthetic/engineered lines, making this an important gap for practical rare-disease applications.",
+      "Standard baselines in this space include DeepCDR, GDSC-based regression models, and sometimes transformer baselines without pathway priors; if baselines lacked pathway information, the comparison conflates architectural contributions with the benefit of additional biological data, making ablations critical for fair attribution."
+    ],
+    "generated_at": "2026-03-24T02:50:45Z"
+  }
+}
