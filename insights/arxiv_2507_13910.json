@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PARK is a personalized academic search system that combines neural language models with knowledge graph embeddings to better capture researcher interests. It converts citation graphs into knowledge graphs and aligns them with text representations in a shared semantic space, outperforming baselines by up to 10% MAP@100.",
+    "key_idea": "By embedding citation-graph knowledge graphs into the same semantic space as a neural retrieval model using translational embeddings, user profiles can capture both explicit citation relationships and latent structural patterns to personalize academic search.",
+    "why_it_matters": "Researchers and academic search engines can use this approach to move beyond keyword matching and simple user history, delivering more relevant paper recommendations tailored to individual scholarly interests without requiring extensive manual curation.",
+    "possible_use_cases": [
+      "Personalized paper recommendation in academic search engines like Semantic Scholar or Google Scholar",
+      "Building researcher-specific literature discovery tools that surface relevant work outside a user's direct citation network",
+      "Improving automated literature review systems by ranking papers according to a specific researcher's domain focus and publication history"
+    ],
+    "generated_at": "2026-03-24T01:23:02Z"
+  },
+  "deep": {
+    "method_breakdown": "PARK uses a two-stage pipeline: first, a neural language model (e.g., dense retriever like BERT-based bi-encoder) is trained for academic document retrieval to produce document embeddings. Second, the citation graph is converted into a knowledge graph (with entities like papers, authors, venues and relations like cites, authored-by) and embedded into the same semantic space as the language model using translational embedding techniques (e.g., TransE/TransR). At inference, a user's profile — built from their authored/cited papers — is represented as a knowledge graph embedding that re-ranks or biases retrieval scores.",
+    "key_innovation": "Prior personalized academic search models either use citation graphs as collaborative filtering signals or use neural language models for retrieval, but not both in a unified semantic space. PARK's novelty is projecting the knowledge graph into the same embedding space as the neural retriever via translational embeddings, so the user model captures both latent semantic content and explicit structural relationships (citations, authorship) jointly rather than as separate reranking signals.",
+    "technical_insight": "The critical design choice is using translational embedding (e.g., h + r ≈ t) to bridge the knowledge graph structure with the language model's representation space. This works because translational methods preserve relational asymmetry (paper A cites paper B is directional) and allow the user profile vector to be composable with query vectors in the same space — enabling dot-product similarity to naturally incorporate both topical relevance and citation proximity without a separate fusion module.",
+    "limitations": "The model underperforms on one of four domains, suggesting it is sensitive to graph sparsity or domain-specific citation patterns. Translational embeddings (TransE family) are known to struggle with one-to-many and many-to-many relations, which are common in citation graphs. Cold-start is a fundamental issue: new researchers with few authored papers will have weak user profiles. The two-stage training is not end-to-end, so errors in the language model stage are not corrected by the graph embedding stage.",
+    "interview_questions": [
+      "How does PARK project the knowledge graph into the same space as the language model, and what loss function is used for the translational embedding?",
+      "Why did the model fail on one of the four domains, and what properties of that domain likely caused the degradation?",
+      "How is the user profile constructed at query time, and how is it combined with the query embedding for final ranking?",
+      "What are the failure modes of TransE-style embeddings for citation graphs specifically, and how might you address them?",
+      "How would you extend PARK to handle cold-start users who have no authored papers or citation history?"
+    ],
+    "interview_answers": [
+      "The knowledge graph embeddings are trained with a margin-based translational loss (e.g., max(0, γ + d(h+r,t) - d(h'+r,t'))) that enforces h+r≈t for valid triples and penalizes corrupted triples. The shared space is achieved by initializing or fine-tuning entity embeddings using the language model's document representations as anchors, so the two spaces are aligned dimensionally and semantically.",
+      "The failure case likely involves a domain with either very sparse citation graphs (few edges per paper) or highly interdisciplinary citations where citation proximity is a poor proxy for topical relevance. In sparse graphs, translational embeddings underfit because there are too few training triples; in interdisciplinary domains, the citation structure misleads the user model toward off-topic papers the user cited incidentally.",
+      "The user profile is the aggregate (mean or weighted sum) of the knowledge graph embeddings of papers in the user's profile set (authored/cited papers). At query time, this user vector is combined with the query embedding — either by adding it to the query vector or using it as a re-ranking bias — and cosine or dot-product similarity against document embeddings produces the final ranking score.",
+      "TransE fails with symmetric relations (A cites B and B cites A implies A=B) and one-to-many relations (a highly-cited paper has many tail entities for the same head+relation). For citation graphs this means hub papers (highly cited surveys) are poorly embedded. Solutions include TransR (relation-specific projection spaces), RotatE (rotation in complex space handles symmetry), or replacing translational methods with graph neural network encoders like CompGCN.",
+      "For cold-start, one approach is to use the paper content embeddings from the language model as a proxy user profile when no graph-based history exists — essentially treating the user as if they authored the query paper itself. Alternatively, demographic or institutional metadata (same lab, same venue submissions) can seed the knowledge graph profile. A meta-learning approach (MAML-style) trained to generalize from few-shot user profiles would be the most principled extension."
+    ],
+    "generated_at": "2026-03-24T01:23:32Z"
+  }
+}

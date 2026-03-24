@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PCNP introduces negative interest signals into graph-based recommendation by building an auxiliary contrastive graph that propagates 'what users dislike' alongside positive embeddings, using two-level contrastive learning to sharpen user interest modeling.",
+    "key_idea": "Explicitly encoding negative interest signals through a separate graph propagation channel and contrasting them against positive embeddings produces richer, less biased user/item representations than relying solely on positive interactions.",
+    "why_it_matters": "Recommendation systems trained only on observed clicks suffer from sparsity and implicit bias; leveraging negative signals as first-class embeddings (not just loss terms) meaningfully improves ranking quality without requiring additional user data.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where sparse purchase histories make interest modeling unreliable",
+      "Content platforms (news, video) needing to distinguish genuine interest from incidental clicks",
+      "Cold-start user scenarios where negative signals help bound the interest space even with few positive interactions"
+    ],
+    "generated_at": "2026-03-24T01:15:09Z"
+  },
+  "deep": {
+    "method_breakdown": "PCNP constructs an auxiliary negative interest channel by sampling negative interactions and building a contrastive graph, then propagating embeddings through this graph to encode what users dislike alongside the standard positive interaction graph. A two-level contrastive learning objective contrasts: (1) positive vs. negative embeddings within the negative propagation channel, and (2) perturbed augmented views of the positive graph to handle interaction sparsity. The combined signal forces the model to simultaneously encode what users prefer and explicitly what they reject, sharpening interest boundaries.",
+    "key_innovation": "Prior graph-based recommenders (LightGCN, SGL, SimGCL) use negative samples only as loss supervision signals during backpropagation but never propagate information through a negative-interaction graph. PCNP is the first to build a dedicated negative-interest propagation channel — treating negatives as structural graph signals rather than mere training labels — and contrasts these complementary embeddings against positive embeddings to refine user preference boundaries.",
+    "technical_insight": "The critical design choice is propagating through a negative-sampled graph rather than just negatively supervising the loss. Graph propagation aggregates neighborhood context, so negative propagation encodes not just 'user disliked item X' but 'users similar to this user disliked this cluster of items,' providing richer complementary signal. This works because contrastive learning is most effective when the negative view carries structured, informative signal rather than being a random noise contrast.",
+    "limitations": "Negative sampling quality is critical — randomly sampled negatives may include false negatives (items users actually like but haven't interacted with), poisoning the negative propagation channel. The method adds a full second graph propagation pipeline, roughly doubling memory and compute costs. Performance likely degrades in extremely sparse settings where even negative signals are unreliable. The approach also inherits all standard graph CF limitations: static graphs, no temporal dynamics, and cold-start users/items with no interaction history cannot benefit from either propagation channel.",
+    "interview_questions": [
+      "Why does propagating through a negative graph provide richer signal than simply using negative samples in the loss function?",
+      "How does PCNP handle the false negative problem, where a sampled 'negative' item might actually be relevant to the user?",
+      "What is the two-level contrastive learning objective in PCNP and what does each level capture?",
+      "How does graph perturbation in the positive channel complement the negative propagation channel?",
+      "In what recommendation scenarios would PCNP be least effective, and why?"
+    ],
+    "interview_answers": [
+      "Graph propagation aggregates multi-hop neighborhood information, so a negative graph encodes community-level disinterest patterns rather than isolated item-level signals. When user A's negative neighbors overlap with user B's, the propagated embeddings capture shared disinterest structure. A loss-only negative is a point signal; a propagated negative is a relational signal that encodes the topology of what similar users avoid, providing much denser supervision.",
+      "The paper relies on standard negative sampling heuristics (popularity-based or uniform) and does not explicitly address false negatives beyond the general contrastive learning assumption that false negatives are rare enough to be noise-tolerable. This is a real weakness — a more robust approach would use confidence-weighted negatives or exposure-based filtering to exclude items with high likelihood of being true positives that were simply never exposed to the user.",
+      "Level 1 contrasts positive-channel embeddings against negative-channel embeddings for the same user/item, teaching the model to maximize the distance between what a user likes and dislikes. Level 2 contrasts two perturbed augmentations of the positive interaction graph (graph dropout or feature masking), which is a standard self-supervised CL objective that regularizes embeddings against interaction sparsity and makes representations robust to missing edges.",
+      "Graph perturbation on the positive channel generates augmented views that are slightly different subgraphs of observed interactions, training embeddings to be invariant to sparse/noisy observation — addressing the undercoverage bias problem. The negative propagation channel then adds explicit disinterest structure. Together they attack two distinct problems: perturbation handles 'we don't observe enough positives,' while negative propagation handles 'positives alone are ambiguous about preference boundaries.'",
+      "PCNP would be least effective in cold-start scenarios where new users or items have no interaction history, since both positive and negative propagation channels require graph edges to propagate through. It also degrades in extremely dense interaction settings where the distinction between positive and negative signals becomes noisier and harder to separate. Domains with highly implicit or noisy feedback (e.g., view duration vs. explicit ratings) would also hurt the negative channel since the semantics of 'negative' interaction are ambiguous."
+    ],
+    "generated_at": "2026-03-24T01:15:39Z"
+  }
+}
