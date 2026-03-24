@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes using Cobweb, a hierarchical clustering framework, to organize document embeddings into a prototype tree and perform coarse-to-fine retrieval instead of flat vector search. It demonstrates competitive or superior performance over standard kNN/dot-product search, especially when embedding quality is poor.",
+    "key_idea": "Structuring a corpus as a hierarchy of concept prototypes enables multi-granular, interpretable retrieval that degrades more gracefully than flat nearest-neighbor search when embeddings are weak.",
+    "why_it_matters": "Practitioners gain a retrieval system that is more robust to low-quality embeddings (e.g., from decoder-only models), provides human-readable retrieval rationales via traversal paths, and scales without needing exhaustive vector comparisons.",
+    "possible_use_cases": [
+      "Retrieval-augmented generation (RAG) pipelines where explainability of document retrieval is required",
+      "Low-resource or domain-specific search where encoder quality is unreliable and robustness matters",
+      "Hierarchical document organization and semantic search in enterprise knowledge bases"
+    ],
+    "generated_at": "2026-03-24T02:35:22Z"
+  },
+  "deep": {
+    "method_breakdown": "Cobweb organizes sentence embeddings into a prototype tree where internal nodes represent concept prototypes (centroids of child clusters), enabling coarse-to-fine document retrieval. Two inference strategies are proposed: a best-first search that traverses the tree greedily by relevance score, and a path-sum ranker that aggregates similarity scores along root-to-leaf paths. Retrieval is thus a tree traversal rather than exhaustive nearest-neighbor search over flat vector space.",
+    "key_innovation": "Unlike flat kNN or HNSW-style approximate search, Cobweb explicitly builds a semantic hierarchy where each internal node is an interpretable concept prototype. This provides multi-granular relevance signals (coarse-to-fine) and a human-readable retrieval rationale (the traversal path), while also decoupling retrieval quality from raw embedding fidelity — the tree structure provides a regularizing scaffold that kNN lacks.",
+    "technical_insight": "The most important design choice is using internal prototype nodes as intermediate relevance anchors rather than only comparing queries to leaf documents. This works because a cluster centroid filters irrelevant subtrees early, reducing noise from poor embeddings (e.g., GPT-2 causal LM vectors) and preventing the collapse seen in flat dot-product search when embedding quality degrades — the hierarchy acts as a structural prior that compensates for embedding weaknesses.",
+    "limitations": "The tree structure is built offline and is static, so it cannot adapt to query-time distribution shifts or new documents without re-indexing. Cobweb's clustering quality is sensitive to the initial embedding quality during tree construction — if embeddings are globally poor, the prototype hierarchy may be poorly organized even if retrieval is more robust than kNN. The approach is also evaluated only on sentence-level encodings of MS MARCO and QQP, leaving open questions about scalability to million-scale corpora and very long documents.",
+    "interview_questions": [
+      "How does Cobweb's prototype tree differ structurally from HNSW or other graph-based approximate nearest neighbor indexes?",
+      "Why does dot-product search collapse with GPT-2 embeddings but Cobweb remains robust?",
+      "How is the path-sum ranker computed, and what are its computational trade-offs vs best-first search?",
+      "What makes the retrieval 'interpretable' in this framework, and how would you present that rationale to a user?",
+      "What are the key failure modes of hierarchical prototype retrieval, and how would you mitigate them in production?"
+    ],
+    "interview_answers": [
+      "HNSW is a proximity graph built for fast approximate kNN with no explicit semantic hierarchy — nodes are connected by distance, not concept membership. Cobweb is a classification tree where each internal node is a prototype (centroid) representing a semantic concept cluster; traversal is top-down and purposeful, not graph-hop based. HNSW optimizes for recall@k speed; Cobweb optimizes for interpretable, multi-granular relevance.",
+      "GPT-2 is a causal decoder not trained for semantic similarity, so its vectors are poorly distributed in metric space — dot product finds near-random neighbors. Cobweb's tree was built using those same vectors, but the hierarchical clustering imposes a structural prior: internal prototypes aggregate local cluster geometry, smoothing out individual embedding noise. A query matched to a subtree prototype retrieves that subtree's documents even if no single leaf embedding is close.",
+      "The path-sum ranker scores each leaf document by summing query similarity to every prototype along its root-to-leaf path, then ranks by total score. It is non-adaptive (no branching decisions) and can be parallelized across all paths, making it simpler and more cache-friendly. Best-first search is adaptive — it maintains a priority queue and expands the highest-scoring node first — offering better precision when the tree is deep but with sequential, harder-to-parallelize traversal.",
+      "The retrieval path (sequence of prototype nodes traversed from root to the retrieved document) forms a natural explanation: each prototype node has a label or representative terms from its cluster, so the path reads as a hierarchy of topic categories narrowing to the result. A user sees 'Science → Machine Learning → Retrieval Models → [document]' rather than a raw similarity score, making relevance transparent and debuggable.",
+      "Key failure modes: (1) Imbalanced trees where one subtree dominates — mitigate with balanced splitting criteria or depth limits. (2) Concept drift — new document types may not fit existing prototypes; mitigate with online re-clustering or incremental insertion. (3) Query-cluster mismatch — if a query straddles multiple subtrees, best-first search may miss relevant documents in unpursued branches; mitigate with beam search or multi-path expansion. (4) Cold-start for very small clusters — prototypes are unreliable with few members; mitigate with minimum cluster size constraints."
+    ],
+    "generated_at": "2026-03-24T02:35:52Z"
+  }
+}
