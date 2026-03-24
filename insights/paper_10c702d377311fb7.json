@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "TSR-RSD is a three-stage framework for detecting the origin of misinformation in social networks, combining GNN-based candidate ranking, entropy-based uncertainty filtering, and selective LLM reasoning to improve both accuracy and efficiency.",
+    "key_idea": "By routing only high-uncertainty cases to an LLM for semantic reasoning—after a GNN narrows the candidate space—the system avoids redundant computation while preserving interpretability where it matters most.",
+    "why_it_matters": "Practitioners building content moderation or misinformation response systems can achieve state-of-the-art source localization accuracy with 35–50% lower inference costs by selectively applying expensive LLM calls only where the model is uncertain.",
+    "possible_use_cases": [
+      "Automated misinformation triage on social media platforms to quickly identify and quarantine rumor origins",
+      "Journalist and fact-checker tools that prioritize investigation starting points during fast-moving news events",
+      "Platform trust-and-safety pipelines that need scalable, interpretable rumor source attribution without prohibitive LLM API costs"
+    ],
+    "generated_at": "2026-03-24T02:28:43Z"
+  },
+  "deep": {
+    "method_breakdown": "TSR-RSD operates in three sequential stages: (1) a GNN encodes the social network propagation graph to rank candidate rumor sources, narrowing the search space; (2) an entropy-based uncertainty filter selects only high-uncertainty predictions (those the GNN is unsure about) for further processing; (3) an LLM reasons over the semantic content of filtered high-uncertainty cases to refine the final source ranking. This cascade design ensures expensive LLM calls are reserved only for cases where structural modeling alone is insufficient.",
+    "key_innovation": "The entropy-based uncertainty filtering mechanism that acts as a selective gate between GNN and LLM stages. Unlike prior end-to-end methods that either use GNNs alone or apply LLMs uniformly to all samples, TSR-RSD dynamically decides which samples need LLM reasoning based on prediction confidence, reducing LLM invocations by 40–60% while preserving or improving accuracy.",
+    "technical_insight": "The critical design insight is that GNNs are reliable for structurally unambiguous propagation patterns but fail on semantically complex or structurally similar subgraphs. Routing only high-entropy (uncertain) GNN predictions to the LLM exploits each model's complementary strength — structural inductive bias from GNNs for the easy majority, semantic understanding from LLMs for the hard minority — achieving a Pareto improvement on both accuracy and efficiency.",
+    "limitations": "The entropy threshold for uncertainty filtering is likely a tuned hyperparameter that may not generalize across different social network topologies or rumor domains without re-tuning. The method assumes the GNN candidate ranking is reliable enough to shortlist the true source; if the true source is excluded in stage one, later stages cannot recover it. LLM reasoning quality depends on the availability and richness of textual content in propagation nodes, which may be sparse or noisy in real deployments. Scalability to extremely large graphs (millions of nodes) is not demonstrated.",
+    "interview_questions": [
+      "How does the entropy-based filtering decide the threshold between 'high-uncertainty' and 'low-uncertainty', and how sensitive is the system to this threshold?",
+      "What specifically does the LLM receive as input during the semantic reasoning stage — raw post text, graph-derived summaries, or both?",
+      "If the true rumor source is ranked outside the GNN's top-K candidates, the tri-stage pipeline has no mechanism to recover it. How does the paper address this error propagation?",
+      "How does TSR-RSD handle multilingual or low-resource social network scenarios where LLM semantic reasoning may degrade?",
+      "Could the entropy filtering be replaced by a learned confidence calibration module, and what would be the trade-offs compared to using Shannon entropy directly?"
+    ],
+    "interview_answers": [
+      "The threshold is typically determined empirically on a validation set. High sensitivity to this value is a real concern — too low a threshold floods the LLM stage defeating efficiency gains, too high excludes samples that genuinely need semantic reasoning. The paper reports 40–60% reduction in LLM calls suggesting the threshold is tuned per dataset, which limits zero-shot generalization.",
+      "The LLM likely receives a structured prompt combining the textual content of candidate source nodes and their propagation neighborhood (post text, timestamps, user metadata). The exact prompt format is a key implementation detail — if only graph-structural summaries are passed, the LLM advantage over the GNN is diminished; rich post content is needed to justify semantic reasoning.",
+      "This is the fundamental cascading error problem. If the GNN top-K ranking excludes the true source, the pipeline has a hard upper bound on recall equal to the GNN's top-K coverage. The paper likely mitigates this by setting K large enough (e.g., top-10 or top-20), but this trades off efficiency. The paper does not fully resolve this structural limitation.",
+      "TSR-RSD's LLM reasoning stage would degrade on non-English content unless a multilingual LLM is used. The GNN stage is language-agnostic and would be unaffected, but the semantic enrichment that justifies the LLM's inclusion would be compromised. The paper evaluates only English datasets (GossipCop, PolitiFact, PHEME), leaving cross-lingual robustness unaddressed.",
+      "Yes — learned calibration (e.g., temperature scaling or Platt scaling on GNN logits) could replace entropy filtering and might better capture model-specific uncertainty. The trade-off is that entropy is parameter-free and model-agnostic, while learned calibration requires a calibration set and adds training complexity. For distribution-shifted test sets, learned calibration may overfit while entropy remains stable."
+    ],
+    "generated_at": "2026-03-24T02:29:10Z"
+  }
+}

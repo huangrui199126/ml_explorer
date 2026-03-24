@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SearchLLM is the first LLM designed for open-ended generative search on large content platforms, trained with a hierarchical reward system that enforces safety constraints while optimizing for user alignment. It was deployed on RedNote's AI search and demonstrated measurable improvements in user engagement and search quality.",
+    "key_idea": "A gated aggregation strategy over a multi-dimensional reward vector — separating hard constraints (factual grounding, safety) from soft behavioral objectives (noise robustness, user preference alignment) — enables GRPO-based fine-tuning of an LLM for real-world generative search.",
+    "why_it_matters": "This is one of the first production deployments of an open-ended generative search LLM at scale, providing a concrete blueprint for how to balance safety guarantees with user preference optimization in a retrieval-augmented generation setting.",
+    "possible_use_cases": [
+      "Building AI-powered search features on social media or content platforms that must handle noisy, user-generated retrieval corpora",
+      "Designing reward models for RAG systems that need to enforce factual grounding while adapting to diverse user intents",
+      "Applying GRPO-style RLHF pipelines to search and QA tasks where both hard safety constraints and soft quality objectives must coexist"
+    ],
+    "generated_at": "2026-03-24T02:27:20Z"
+  },
+  "deep": {
+    "method_breakdown": "SearchLLM is an LLM fine-tuned for open-ended generative search using Group Relative Policy Optimization (GRPO), guided by a hierarchical multi-dimensional reward system. The reward model evaluates responses along multiple dimensions conditioned on user query, session history, and retrieved evidence, combining rule-based checks with LLM-as-judge scores. A Gated Aggregation Strategy converts this multi-dimensional score vector into a scalar training reward, enforcing hard constraints (safety, factual grounding) before optimizing soft behavioral objectives (robustness to noisy retrieval, user alignment).",
+    "key_innovation": "The key innovation is the hierarchical separation of bottom-line constraints from behavioral optimization objectives via the Gated Aggregation Strategy — constraints act as gates that block reward from behavioral dimensions if violated, rather than being naively summed. This is novel compared to prior RLHF work that typically uses a single scalar reward or simple weighted combinations, and distinguishes from e-commerce ranking LLMs by targeting open-ended generative synthesis on noisy, large-scale content platforms.",
+    "technical_insight": "The Gated Aggregation Strategy is the most critical design choice: it ensures safety and factual grounding are non-negotiable by zeroing out behavioral reward signals whenever constraint dimensions are violated. This prevents reward hacking where a model might sacrifice safety for higher engagement scores, which is especially important in a production search system serving diverse users on a large content platform like RedNote.",
+    "limitations": "The reward model relies on LLM judges that may themselves be biased or inconsistent, propagating errors into training. The approach is evaluated on a single platform (RedNote/Xiaohongshu) with a specific content domain, limiting generalizability claims. The gating thresholds for constraint satisfaction are likely tuned empirically and may not transfer to other deployment contexts. Open-ended generative search quality is inherently hard to evaluate offline, so the offline metrics may not fully capture real-world performance variance.",
+    "interview_questions": [
+      "How does the Gated Aggregation Strategy work mechanically, and why is it preferable to a weighted linear combination of reward dimensions?",
+      "What specific challenges does noisy retrieval pose for generative search, and how does SearchLLM address robustness to it?",
+      "Why is GRPO chosen over PPO for this setting, and what are the practical advantages in a production LLM fine-tuning pipeline?",
+      "How does the hierarchical reward structure distinguish between bottom-line constraints and behavioral objectives, and how are the boundaries determined?",
+      "What does the Re-search Rate metric capture, and why is a 2.81% reduction significant from a user experience perspective?"
+    ],
+    "interview_answers": [
+      "The Gated Aggregation Strategy first evaluates constraint dimensions (safety, factual grounding, format compliance); if any constraint is violated, the final training reward is zeroed or heavily penalized regardless of behavioral scores. This prevents the optimizer from trading safety for engagement, which a weighted sum would allow — a model could learn to be highly engaging while occasionally unsafe if the behavioral reward outweighs the safety penalty.",
+      "Noisy retrieval means the retrieved evidence set contains irrelevant, contradictory, or low-quality documents. A naive model may hallucinate, over-trust noisy documents, or fail to synthesize coherent answers. SearchLLM addresses this by including a robustness dimension in the reward that rewards answers grounded in high-quality evidence while being appropriately skeptical of noise, incentivizing selective evidence use rather than uniform retrieval trust.",
+      "GRPO (Group Relative Policy Optimization) avoids the need for a separate value/critic network by computing relative advantages within a group of sampled responses, reducing memory and compute overhead versus PPO. In production LLM fine-tuning this is practically significant as it simplifies the training infrastructure while still providing stable policy gradient estimates from comparative reward signals.",
+      "Bottom-line constraints are binary or near-binary requirements — the response must be safe, must not fabricate facts, must meet format standards. Behavioral objectives are continuous quality signals — how well does the response align with user intent, how robustly does it handle noisy retrieval. The boundary is determined by what constitutes an unacceptable response versus a suboptimal one; constraints gate whether a response is even eligible for behavioral reward.",
+      "Re-search Rate measures the fraction of users who perform another search query shortly after receiving a generated answer, implying the answer was unsatisfactory. A 2.81% reduction means significantly fewer users are forced to reformulate or retry their queries, directly indicating improved answer completeness and relevance. This is a strong behavioral signal because it captures real dissatisfaction rather than proxy quality metrics."
+    ],
+    "generated_at": "2026-03-24T02:27:51Z"
+  }
+}

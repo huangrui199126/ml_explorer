@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MoEless is a serverless serving framework for Mixture-of-Experts LLMs that tackles the expert load imbalance problem, where some experts get overwhelmed while others sit idle during inference. It uses lightweight predictors to forecast load distributions and proactively scales experts using serverless compute, reducing latency by 43% and cost by 84% over prior approaches.",
+    "key_idea": "By predicting expert load imbalance ahead of time and elastically scaling hot experts via serverless functions, MoEless avoids the fixed-resource bottlenecks of traditional expert parallelism deployments.",
+    "why_it_matters": "Teams serving large MoE models like Mixtral or DeepSeek in production face unpredictable latency spikes and high GPU costs due to load skew; MoEless offers a practical path to elastic, cost-efficient MoE inference without sacrificing output quality.",
+    "possible_use_cases": [
+      "Cost-efficient production serving of open-source MoE models (e.g., Mixtral, DeepSeek) at scale",
+      "Cloud inference APIs that need to handle bursty or skewed traffic without over-provisioning GPUs",
+      "Research infrastructure requiring flexible, elastic scaling of large sparse models during experimentation"
+    ],
+    "generated_at": "2026-03-24T02:30:03Z"
+  },
+  "deep": {
+    "method_breakdown": "MoEless uses lightweight layer-aware predictors to forecast expert load distributions before inference, proactively identifying which experts will become stragglers. When stragglers are predicted, it dynamically scales out those specific experts as serverless functions, applying optimized placement strategies that maximize function locality and GPU utilization. This contrasts with reactive approaches by front-running the imbalance rather than responding after latency has already degraded.",
+    "key_innovation": "The first serverless computing paradigm applied to MoE serving, enabling elastic expert scaling without static resource pre-allocation. Prior work assumed fixed serverful infrastructure and handled load imbalance via either costly real-time expert swapping (disrupting in-flight requests) or auxiliary load-balancing loss during training (which degrades model quality). MoEless decouples expert capacity from fixed GPU allocations, allowing fine-grained, per-expert elasticity on demand.",
+    "technical_insight": "The layer-aware predictor design is the critical insight: different transformer layers exhibit different expert activation patterns, so a single global predictor would be inaccurate. By training lightweight per-layer predictors, MoEless achieves accurate straggler anticipation with negligible overhead, enabling proactive scaling that avoids the latency spike window entirely — the serverless function is warm and ready before the bottleneck materializes.",
+    "limitations": "Prediction accuracy is bounded by workload stationarity — highly non-stationary or adversarial request distributions could cause mispredictions, leading to either over-provisioned cold serverless functions or missed stragglers. Serverless cold-start latency, while mitigated by proactive scaling, remains a risk for sudden load spikes. The system is prototyped on only eight GPUs, leaving large-scale (hundreds of GPUs) behavior unvalidated. Expert parallelism communication overhead between serverful and serverless tiers is not deeply analyzed.",
+    "interview_questions": [
+      "How do the layer-aware predictors estimate expert load distributions, and what features do they use as input?",
+      "How does MoEless handle the serverless cold-start problem given that proactive scaling depends on prediction accuracy?",
+      "What placement strategy is used to maximize function locality, and how does it interact with the expert parallelism topology?",
+      "How does MoEless compare to auxiliary load-balancing loss approaches in terms of generation quality, and why does it preserve quality better?",
+      "What happens when the predictor mispredicts — does the system have a fallback, and what is the latency penalty of a missed straggler?"
+    ],
+    "interview_answers": [
+      "The predictors are lightweight models (likely small neural nets or regression models) trained on historical routing statistics per layer. Input features are derived from incoming token distributions and recent expert activation histograms at each layer, allowing the system to estimate which experts will receive disproportionate load in the next inference batch before routing decisions are finalized.",
+      "MoEless mitigates cold-start by predicting stragglers ahead of time and pre-warming serverless expert instances before they are needed. The prediction window must exceed the serverless initialization latency; the layer-aware predictors provide sufficient lead time because load patterns are estimated at the start of a request batch, giving the system time to provision functions before the compute reaches that layer.",
+      "The placement strategy prioritizes co-locating serverless expert replicas on GPUs that already hold the base expert weights, minimizing data movement and inter-GPU communication. This locality-aware scheduling reduces the effective overhead of expert parallelism by keeping hot expert copies close to their activation sites, improving memory bandwidth utilization and reducing network contention.",
+      "Auxiliary load-balancing loss forces the router to distribute tokens more uniformly during training, which changes the model's learned routing behavior and can reduce accuracy on tasks requiring specialized expert activation. MoEless operates purely at inference time without modifying the trained model, so routing decisions remain faithful to the original model's learned representations, preserving generation quality.",
+      "If a straggler is missed, the system falls back to the baseline expert parallelism behavior — the overloaded expert processes its queue sequentially, incurring the same latency as prior solutions for that batch. The paper likely shows this is a tail-case scenario. For false positives (predicted straggler that doesn't materialize), the cost is a briefly idle serverless instance, which is economically cheap given serverless pay-per-use billing."
+    ],
+    "generated_at": "2026-03-24T02:30:29Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a hybrid HR chatbot that combines Sentence-BERT embeddings with TF-IDF to retrieve relevant policy documents, achieving 92% top-3 accuracy using cosine similarity ranking. A logistic regression intent classifier routes queries to predefined HR domains, cutting retrieval latency by 25%.",
+    "key_idea": "Combining dense neural embeddings (Sentence-BERT) with sparse lexical representations (TF-IDF) and a lightweight intent classifier produces faster, more accurate domain-specific document retrieval than either approach alone.",
+    "why_it_matters": "Practitioners building internal knowledge-base chatbots can adopt this lightweight hybrid retrieval pattern to get near-state-of-the-art accuracy without large generative models, keeping latency and infrastructure costs low.",
+    "possible_use_cases": [
+      "HR policy Q&A bots that surface leave, payroll, or benefits documents on demand",
+      "Customer support systems that route tickets and retrieve relevant SOPs or FAQs automatically",
+      "Legal or compliance assistants that match employee queries to the correct regulatory documents"
+    ],
+    "generated_at": "2026-03-24T02:32:40Z"
+  },
+  "deep": {
+    "method_breakdown": "The system creates document and query representations by combining Sentence-BERT embeddings (capturing semantic meaning) with TF-IDF vectors (capturing lexical importance), then ranks candidates via cosine similarity. A logistic regression classifier first predicts query intent to route it to a domain-specific subset (leave, payroll, policies), narrowing the retrieval search space before similarity computation. The top-3 documents by cosine score are returned as the chatbot response.",
+    "key_innovation": "The primary novelty is the hybrid embedding strategy fusing dense neural embeddings (SBERT) with sparse symbolic features (TF-IDF) for HR-domain retrieval, combined with an intent-routing preprocessing step that reduces candidate set size to cut latency. This is an applied integration rather than a fundamentally new algorithm.",
+    "technical_insight": "The intent classification gate is the most impactful design choice: by predicting HR subdomain before retrieval, it converts a full-corpus similarity search into a scoped sub-corpus search, yielding ~25% latency reduction without sacrificing recall — exploiting the strong domain structure of HR documents where queries rarely span categories.",
+    "limitations": "Evaluation is on internal test scenarios only with no public benchmark, making reproducibility and generalization claims unverifiable. The 92% top-3 accuracy metric is lenient and hides precision@1 quality. Logistic regression intent classification will fail on ambiguous or cross-domain queries. The hybrid SBERT+TF-IDF fusion lacks learned weighting — a fixed concatenation may underperform learned late-fusion. System does not handle out-of-domain or adversarial queries.",
+    "interview_questions": [
+      "Why combine TF-IDF with SBERT embeddings instead of using SBERT alone?",
+      "How does the intent classification module reduce retrieval latency by 25%?",
+      "What are the failure modes of cosine similarity for ranking in this domain?",
+      "How would you extend this system to handle multi-turn HR conversations?",
+      "What are the trade-offs of using logistic regression vs a neural classifier for intent detection here?"
+    ],
+    "interview_answers": [
+      "SBERT captures semantic similarity but can miss exact keyword matches critical in HR (e.g., specific policy codes or leave types). TF-IDF compensates by weighting domain-specific rare terms highly. The combination covers both semantic and lexical relevance, improving robustness over either alone.",
+      "The intent classifier partitions the document corpus into HR subdomains (leave, payroll, policies). At query time, the classifier first predicts which subdomain applies, then similarity search runs only over that subset rather than the full corpus. With N subdomains, this reduces average comparisons by roughly 1/N, translating to ~25% wall-clock latency savings.",
+      "Cosine similarity measures directional alignment in vector space but is sensitive to embedding quality and dimensionality. It treats all dimensions equally, so noise dimensions hurt ranking. It also cannot model complex relevance signals like query-document interaction or position effects, and performs poorly when relevant documents use different vocabulary than the query despite semantic equivalence.",
+      "You would need a dialogue state tracker to maintain conversation history, a context encoder that conditions the retrieval query on prior turns (e.g., prepending conversation history to the current query before encoding), and possibly a re-ranking step that uses dialogue context to up-weight documents consistent with the conversation thread.",
+      "Logistic regression is fast, interpretable, and data-efficient — ideal when labeled intent examples are limited and inference speed matters. However, it assumes linear separability in feature space and struggles with ambiguous or multi-intent queries. A neural classifier (e.g., fine-tuned BERT) would handle nuance better but requires more data, is slower, and less interpretable — a poor trade-off for a lightweight routing module where speed is the primary goal."
+    ],
+    "generated_at": "2026-03-24T02:33:04Z"
+  }
+}
