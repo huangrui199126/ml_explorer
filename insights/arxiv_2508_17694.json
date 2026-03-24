@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey traces the evolution of information retrieval from classic lexical methods (BM25, TF-IDF) to modern neural approaches including dense bi-encoders (DPR), late-interaction models (ColBERT), sparse neural retrieval (SPLADE), and cross-encoder rerankers (MonoT5). It provides a structured overview of architectures, evaluation methods, and open challenges in the field.",
+    "key_idea": "Different neural retrieval architectures trade off between efficiency and accuracy by encoding queries and documents at varying levels of interaction granularity—from independent bi-encoders to token-level late interaction to full cross-attention rerankers.",
+    "why_it_matters": "Practitioners building search, RAG pipelines, or recommendation systems need to choose the right retriever architecture for their latency and accuracy constraints; this survey maps the landscape so engineers can make informed design decisions.",
+    "possible_use_cases": [
+      "Building hybrid search systems that combine BM25 with dense retrievers for enterprise knowledge bases",
+      "Selecting and fine-tuning retrieval components in RAG (Retrieval-Augmented Generation) pipelines for LLM applications",
+      "Benchmarking and improving document retrieval quality in domain-specific search engines (legal, medical, academic)"
+    ],
+    "generated_at": "2026-03-24T01:45:39Z"
+  },
+  "deep": {
+    "method_breakdown": "This survey traces the evolution of information retrieval from sparse lexical methods (BM25, TF-IDF) to neural semantic approaches. It covers bi-encoder architectures like DPR that encode queries and documents independently into dense vectors for efficient retrieval, late-interaction models like ColBERT that defer token-level interaction to retrieval time, neural sparse models like SPLADE that learn sparse representations in vocabulary space, and cross-encoder rerankers like MonoT5 that perform full joint query-document attention for high-precision scoring.",
+    "key_innovation": "The survey's contribution is framing the progression as a latency-accuracy tradeoff spectrum: BM25 (fast, lexical) → bi-encoders (fast, semantic) → late-interaction (intermediate) → cross-encoders (slow, highest accuracy). SPLADE bridges sparse and dense paradigms by learning sparse neural representations that retain BM25-style inverted-index compatibility while capturing semantic generalization.",
+    "technical_insight": "The most critical design choice is the decoupling of encoding from matching in bi-encoders (DPR): pre-computing document embeddings offline enables sub-linear retrieval via ANN search, making semantic retrieval practical at scale. ColBERT's MaxSim operator extends this by storing per-token embeddings and computing max-similarity at query time, recovering fine-grained interaction without full cross-attention cost.",
+    "limitations": "Bi-encoders suffer from the representational bottleneck — compressing full document semantics into a single vector loses fine-grained signals. Cross-encoders are computationally prohibitive for first-stage retrieval. SPLADE requires expensive learned sparse regularization to avoid vocabulary collapse. All neural retrievers require large labeled training data (e.g., MS MARCO) and struggle with out-of-domain generalization. Evaluation is typically limited to English benchmarks like BEIR, masking multilingual and low-resource failures.",
+    "interview_questions": [
+      "Why does BM25 remain a strong baseline despite being purely lexical, and when would you still prefer it over a neural retriever?",
+      "What is the fundamental architectural difference between a bi-encoder (DPR) and a cross-encoder (MonoT5), and how does this affect their use in a retrieval pipeline?",
+      "How does ColBERT's late interaction differ from full cross-attention, and what tradeoff does MaxSim introduce?",
+      "SPLADE produces sparse neural representations — why is sparsity desirable here, and how does it differ from TF-IDF sparsity?",
+      "If you were building a production retrieval system for a new domain with no labeled data, how would you combine these models and address the cold-start problem?"
+    ],
+    "interview_answers": [
+      "BM25 is strong because exact term matching is unbeatable when query and document share the same vocabulary (e.g., named entities, product codes). It requires no training data, has zero latency overhead from GPU inference, and is highly interpretable. Prefer BM25 in low-resource domains, latency-critical systems, or as a hard-negative mining component for training neural models.",
+      "A bi-encoder encodes query and document independently through separate (or shared) encoders, producing vectors whose similarity is computed via dot product — enabling offline document indexing. A cross-encoder concatenates query and document as a single input, allowing full self-attention between them for richer interaction but requiring online inference per candidate. In practice: bi-encoder for first-stage recall, cross-encoder for reranking a small candidate set.",
+      "ColBERT retains per-token embeddings for both query and document rather than pooling to a single vector. At retrieval time, MaxSim computes the maximum cosine similarity between each query token and all document tokens, then sums across query tokens. This recovers token-level alignment signals lost in bi-encoders but requires storing O(L) vectors per document and more expensive ANN search, trading storage/latency for accuracy.",
+      "SPLADE learns to activate only a small subset of vocabulary dimensions per document via FLOPS regularization, producing sparse vectors compatible with inverted indexes. Unlike TF-IDF, these activated dimensions are not literal term frequencies but learned semantic weights — the model can activate 'automobile' for a document containing only 'car'. This gives both the efficiency of sparse retrieval and the semantic generalization of dense models.",
+      "Start with BM25 + a zero-shot cross-encoder reranker (e.g., MonoT5 fine-tuned on MS MARCO) as the baseline. Generate pseudo-labels via GPL (Generative Pseudo Labeling) using a generative model to create synthetic queries for domain documents. Fine-tune a bi-encoder on these pseudo-labels with hard negatives mined from BM25. Evaluate on held-out domain queries using NDCG@10, iterating with active learning on low-confidence retrievals. Ensemble BM25 and the fine-tuned bi-encoder for robust recall."
+    ],
+    "generated_at": "2026-03-24T01:46:09Z"
+  }
+}

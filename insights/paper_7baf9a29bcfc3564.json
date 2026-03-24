@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a multi-modal lost-and-found matching system that combines SBERT for text similarity and a Siamese network with MobileNetV2 for image similarity, fused with location and time features to rank matches. The system is deployed as a progressive web application supporting both English and Sinhala languages.",
+    "key_idea": "Fusing sentence embeddings (SBERT) with visual similarity (Siamese/MobileNetV2) and spatio-temporal signals into a unified ranking model yields more accurate lost-and-found item matches than unimodal approaches.",
+    "why_it_matters": "Practitioners building retrieval or matching systems can take away the fusion pattern—combining semantic text embeddings, visual similarity networks, and contextual metadata—as a practical blueprint for any domain requiring cross-modal item matching at low data scale.",
+    "possible_use_cases": [
+      "Airport or transit lost-and-found portals that match reported missing items against found items using photos and descriptions",
+      "E-commerce or marketplace duplicate listing detection combining product images and text descriptions",
+      "Insurance claim verification by matching claimant descriptions and photos of damaged/lost property against historical records"
+    ],
+    "generated_at": "2026-03-24T01:44:22Z"
+  },
+  "deep": {
+    "method_breakdown": "The system combines three deep learning components: SBERT fine-tuned on 2,600 lost/found description pairs (English and Sinhala) for text similarity, a Siamese network built on MobileNetV2 trained on 848 bag images for visual similarity, and a fusion model that combines both similarity scores with location and time features via a neural network. The fusion layer learns to weight textual, visual, temporal, and spatial signals to produce a final match score, which is used to rank and alert users about potential item matches.",
+    "key_innovation": "The primary novelty is the multilingual (English + Sinhala) fine-tuned SBERT for domain-specific lost/found descriptions, combined with a cross-modal fusion that explicitly incorporates spatio-temporal proximity as learnable features rather than hard filters — allowing the ranking to smoothly trade off semantic similarity against recency and location relevance.",
+    "technical_insight": "Using a Siamese network with shared MobileNetV2 weights for image similarity is the critical design choice: it enables learning a metric space where bag images are compared by appearance rather than classified into rigid categories, which is essential because lost item images are highly varied, user-submitted, and don't map cleanly to predefined classes.",
+    "limitations": "The visual training set of only 848 bag images is very small, likely causing poor generalization to real-world photo diversity (lighting, angle, occlusion). The system appears category-limited (bags), reducing generalizability. Sinhala NLP support depends on the quality and size of the bilingual fine-tuning corpus. The fusion model's effectiveness is hard to evaluate without a large labeled ground-truth matching dataset, and spatio-temporal features may be unreliable if users report incorrect locations or times.",
+    "interview_questions": [
+      "How does the Siamese network handle the case where two visually similar bags (same brand/color) belong to different owners — what features distinguish them?",
+      "Why was MobileNetV2 chosen as the backbone for the Siamese network over alternatives like ResNet or EfficientNet, especially given the small training set?",
+      "How did you construct the 2,600 description pairs for SBERT fine-tuning — were they real lost/found reports or synthetically generated, and how was label quality ensured?",
+      "How are the text similarity score, image similarity score, and spatio-temporal features combined in the fusion layer — is it a learned weighted sum, MLP, or something else?",
+      "What evaluation metric did you use to measure end-to-end matching performance, and how did you handle the imbalanced nature of match vs. no-match pairs in your dataset?"
+    ],
+    "interview_answers": [
+      "The Siamese network learns a general visual similarity metric based on appearance features like color, texture, and shape, but cannot distinguish identical-looking items belonging to different people. This is a fundamental limitation — the system treats visual similarity as a soft signal rather than ground truth, relying on the fusion with text and spatio-temporal cues to reduce false positives.",
+      "MobileNetV2 was likely chosen for its lightweight architecture suitable for deployment in a PWA context and its strong transfer learning performance on small datasets due to depthwise separable convolutions. However, with only 848 images, any pretrained backbone would require careful regularization, and EfficientNet may have offered better accuracy-efficiency tradeoffs.",
+      "This is a critical quality concern — if pairs were synthetically constructed or crowd-sourced without strict validation, the fine-tuned SBERT may learn spurious correlations. Real lost/found report pairs would be ideal but hard to obtain in sufficient quantity, especially for Sinhala. The answer depends on whether positive pairs were actual confirmed matches or just plausible co-occurring descriptions.",
+      "The paper describes a neural network fusion model, suggesting an MLP that takes concatenated or element-wise combined features as input. The exact architecture matters: a learned MLP can capture nonlinear interactions between modalities, whereas a fixed weighted sum cannot adapt to cases where one modality is more reliable than another.",
+      "Standard retrieval metrics like Precision@K, Recall@K, or MRR would be appropriate here. The class imbalance problem is severe in lost/found matching since most item pairs do not match, so relying on accuracy alone would be misleading. Proper evaluation requires a held-out set of confirmed match/no-match pairs and metrics robust to imbalance."
+    ],
+    "generated_at": "2026-03-24T01:44:47Z"
+  }
+}

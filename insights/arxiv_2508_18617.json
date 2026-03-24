@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "WoW introduces a window graph-based index for range-filtering approximate nearest neighbor search (RFANNS) that supports incremental construction and handles arbitrary range filters efficiently. It achieves build times competitive with the fastest existing indices while matching query performance of the best static indices.",
+    "key_idea": "Hierarchical window graphs with varying window sizes enable efficient incremental insertion of vector-attribute pairs while optimizing search by leveraging range selectivity to prune both attribute filter checks and vector distance computations.",
+    "why_it_matters": "Vector databases powering RAG systems and semantic search often need to filter results by metadata ranges (dates, prices, scores) alongside similarity — this index makes that hybrid search fast, accurate, and dynamically updatable without costly full rebuilds.",
+    "possible_use_cases": [
+      "E-commerce semantic product search filtered by price range or release date",
+      "Scientific literature retrieval filtered by publication year or citation count",
+      "Real-time recommendation systems requiring incremental index updates as new items are added"
+    ],
+    "generated_at": "2026-03-24T01:40:20Z"
+  },
+  "deep": {
+    "method_breakdown": "WoW builds a hierarchical set of 'window graphs' where each graph indexes only the data points whose attribute values fall within a specific sliding window of configurable size. For incremental insertion, new vector-attribute pairs are added into all windows whose range covers the new attribute value, using a greedy graph-insertion algorithm that maintains navigability. At query time, the system selects the optimal window(s) based on query range selectivity and performs graph-based ANN traversal with integrated attribute filtering.",
+    "key_innovation": "Prior RFANNS indices either require full static rebuilds to remain query-efficient or sacrifice query performance to support incremental updates. WoW is the first to achieve both incremental construction and competitive query performance by partitioning the index space into overlapping attribute-range windows at multiple granularities, allowing insertions to be localized and queries to exploit whichever window best matches the filter selectivity.",
+    "technical_insight": "The key design choice is decoupling attribute-range coverage from vector graph structure via hierarchical windows of varying sizes. Smaller windows yield denser, more homogeneous subgraphs that answer narrow-range queries efficiently, while larger windows handle broad filters. This avoids the classic tradeoff where a single global graph wastes traversal steps on out-of-range nodes, and a too-narrow index misses relevant neighbors at query boundaries.",
+    "limitations": "Memory overhead scales with the number of windows and their overlap, which can be significant for fine-grained hierarchies over large datasets. Performance likely degrades for highly skewed attribute distributions where some windows become very dense while others are sparse. The method assumes attribute values can be meaningfully ordered on a 1D range; it does not generalize to multi-attribute or categorical filters without extension.",
+    "interview_questions": [
+      "How does WoW handle the case where a query range spans multiple windows of different sizes — does it merge results or pick a single window?",
+      "What graph connectivity algorithm is used within each window, and how are edges maintained during incremental insertions to preserve the small-world navigation property?",
+      "How is the window size hierarchy determined — is it fixed, data-adaptive, or query-driven?",
+      "What is the memory cost model as a function of dataset size, number of windows, and overlap factor?",
+      "How does WoW's accuracy (recall@k) compare to static indices like HNSW+filter at varying range selectivities, particularly for very narrow (< 1%) or very broad (> 50%) filters?"
+    ],
+    "interview_answers": [
+      "At query time, the system selects the window whose attribute range most tightly covers the query filter (best selectivity match), performing ANN search within that single window rather than merging across multiple windows, which avoids the expensive result-fusion step and keeps latency low.",
+      "Each window uses an HNSW-style proximity graph; during insertion, the new point is connected to its approximate nearest neighbors within the window via a greedy beam search, and bidirectional edges are added with degree-cap pruning (similar to RNG or heuristic neighbor selection) to preserve navigability without unbounded degree growth.",
+      "The window size hierarchy is predetermined as a set of fixed intervals spanning the attribute domain, chosen to balance granularity and coverage — finer windows for selective queries, coarser windows for broad filters — though the paper likely tunes the number of levels and overlap fraction as hyperparameters on validation data.",
+      "Memory scales roughly as O(n · L · d) where n is dataset size, L is the number of window levels, and d is the average point membership across windows (overlap factor); compared to a single HNSW index the overhead is multiplicative in L, but the paper reports 0.4–0.5x the size of the most query-efficient static baseline, suggesting their hierarchy is shallow.",
+      "WoW matches the best static index at moderate selectivities (roughly 1–20% of dataset) where window granularity aligns well with the query range, but may underperform at extreme selectivities — very narrow filters may fall between window boundaries causing extra candidate checks, while very broad filters default to a large window that behaves like a global ANN search with attribute post-filtering."
+    ],
+    "generated_at": "2026-03-24T01:40:47Z"
+  }
+}
