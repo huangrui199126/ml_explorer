@@ -62,7 +62,13 @@ actor InsightService {
     // MARK: - Paper key (stable filename)
 
     /// Stable filename for a paper: arXiv ID if available, else SHA256 of title.
-    func paperKey(for paper: Paper) -> String {
+    /// nonisolated so views can call it synchronously without await.
+    nonisolated func paperKey(for paper: Paper) -> String {
+        Self.paperKey(for: paper)
+    }
+
+    /// Static version callable from anywhere (views, free functions).
+    static func paperKey(for paper: Paper) -> String {
         if let url = paper.url,
            let range = url.range(of: #"\d{4}\.\d{4,5}"#, options: .regularExpression) {
             return "arxiv_" + String(url[range]).replacingOccurrences(of: ".", with: "_")
