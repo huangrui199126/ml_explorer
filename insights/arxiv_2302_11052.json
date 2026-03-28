@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Que2Engage is an embedding-based retrieval system for Facebook Marketplace that bridges the gap between retrieval and ranking stages by jointly optimizing for both semantic relevance and user engagement signals. It uses a multimodal and multitask learning approach to infuse contextual information at retrieval time, improving end-to-end search quality.",
+    "key_idea": "By training the retrieval embeddings with multitask objectives that include engagement signals (not just relevance), the system retrieves candidates that are both semantically relevant and likely to drive high-quality user interactions, reducing the mismatch between retrieval and downstream ranking.",
+    "why_it_matters": "Most production search systems treat retrieval and ranking as separate optimization problems, leading to a gap where highly relevant but low-engagement items get retrieved while rankers have limited candidate pools to work with — this work shows how to close that gap at scale with measurable A/B improvements.",
+    "possible_use_cases": [
+      "E-commerce search engines wanting to jointly optimize retrieval for relevance and conversion/engagement metrics",
+      "Marketplace or classified-ad platforms needing multimodal product retrieval that accounts for both text and image signals",
+      "Any two-stage retrieval-ranking pipeline where the retrieval stage needs to be aware of downstream ranking objectives to improve end-to-end metrics"
+    ],
+    "generated_at": "2026-03-28T23:42:37Z"
+  },
+  "deep": {
+    "method_breakdown": "Que2Engage uses a dual-encoder EBR architecture where query and product embeddings are trained jointly with a multitask objective that combines semantic relevance signals with engagement signals (e.g., clicks, purchases). The model incorporates multimodal inputs — text, images, and contextual user/session features — into both query and product towers. At inference, approximate nearest neighbor search retrieves candidates that score high on the combined relevance-engagement embedding space.",
+    "key_innovation": "Prior EBR systems optimize purely for semantic relevance at retrieval, leaving engagement optimization entirely to downstream ranking stages. Que2Engage is the first production system to explicitly co-optimize retrieval for both relevance and engagement via multitask learning, effectively collapsing part of the retrieval-ranking gap into the embedding space itself.",
+    "technical_insight": "The critical design choice is the multitask training framework that uses engagement-derived labels alongside relevance labels as separate task heads sharing a common embedding backbone. This works because engagement labels carry implicit quality signals (user intent, product desirability) that pure query-product text matching misses, and injecting them at retrieval avoids the coverage loss that occurs when ranking re-orders a relevance-only candidate set.",
+    "limitations": "Engagement labels introduce popularity and position bias from historical click data, which can cause the model to under-retrieve novel or long-tail products regardless of relevance. The multimodal and multitask complexity increases training cost and latency risk at serving scale. The approach is also tightly coupled to Facebook Marketplace's specific engagement distribution, making generalization to other domains or sparser marketplaces non-trivial. A/B test duration of two weeks may not capture longer-term effects like query distribution shift.",
+    "interview_questions": [
+      "How does Que2Engage handle the tension between relevance and engagement when they conflict — e.g., a highly engaging but loosely relevant product?",
+      "What specific engagement signals are used as training labels, and how do you mitigate position/popularity bias introduced by click data?",
+      "How does the multitask loss weighting between relevance and engagement tasks get determined, and is it tuned per query type or globally?",
+      "In a multi-stage pipeline, how do you prevent the retrieval stage from 'over-optimizing' for engagement and inadvertently hurting precision at the ranking stage?",
+      "How does the multimodal fusion work in the product tower — are image and text embeddings fused early (input level) or late (embedding level), and why?"
+    ],
+    "interview_answers": [
+      "The multitask objective learns a shared embedding space where both signals contribute, but the final retrieval score is a weighted combination. In practice, a relevance floor constraint or hard negative mining from irrelevant-but-engaging items can be used to prevent pure engagement optimization from dominating.",
+      "Signals likely include clicks, add-to-cart, and purchases. Bias is typically mitigated via inverse propensity scoring (IPS), position-debiased training labels, or by using long-dwell/purchase signals that are less position-sensitive than clicks.",
+      "Loss weights are typically tuned via grid search on offline multitask evaluation metrics. Per-query-type weighting is more powerful but harder to maintain; a global weight with query-type embeddings injected into the model is a common production compromise.",
+      "Guard rails include a relevance recall metric tracked independently in A/B tests, hard negative training to keep the embedding space relevance-aware, and downstream ranking models that can partially correct retrieval errors — the key is monitoring the full funnel, not just retrieval metrics.",
+      "Late fusion (separate towers merged at embedding level) is standard in production EBR because it allows independent indexing of product modalities and avoids the combinatorial query-product cross-attention cost at retrieval time. Early fusion is reserved for re-ranking where candidate sets are small enough to afford it."
+    ],
+    "generated_at": "2026-03-28T23:43:01Z"
+  }
+}

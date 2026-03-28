@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CIGF is a recommendation framework that handles multiple types of user behaviors (clicks, cart additions, purchases) by using a graph convolution network to model high-order relationships between users and items, then applying a multi-expert network to learn from these behaviors simultaneously without conflicting gradients.",
+    "key_idea": "Compress multi-behavior interaction graphs into dense representations via CIGCN, then route them through separate expert inputs in a multi-task network to prevent gradient interference between different behavior types.",
+    "why_it_matters": "Most e-commerce systems have abundant implicit signals (clicks) but sparse purchase data; this framework lets practitioners leverage all behavior types together to improve purchase prediction without the common pitfall of one behavior's gradients undermining another's learning.",
+    "possible_use_cases": [
+      "E-commerce product ranking that uses browse and cart signals to improve purchase conversion predictions",
+      "Sequential recommendation systems that model the full user journey from discovery to transaction",
+      "Multi-objective recommendation where engagement metrics (clicks) and business metrics (purchases) must be jointly optimized"
+    ],
+    "generated_at": "2026-03-28T23:49:18Z"
+  },
+  "deep": {
+    "method_breakdown": "CIGF builds a Compressed Interaction Graph Convolution Network (CIGCN) that explicitly models high-order user-item relations across multiple behavior types by compressing cross-behavior interaction signals into a unified graph structure, avoiding the information loss of treating behaviors merely as feature weights. On top of CIGCN, a Multi-Expert with Separate Input (MESI) module performs multi-task learning where each behavior-specific expert receives its own dedicated input representation, preventing gradient interference between tasks with asymmetric data distributions. The two components jointly address both the feature-modeling and label-modeling challenges of multi-behavior recommendation.",
+    "key_innovation": "Prior work either flattens multi-behavior data into feature vectors (losing high-order cross-behavior structure) or naively applies multi-task learning with shared inputs (causing gradient conflict when target behavior is sparse). CIGF's dual contribution is (1) explicit instance-level high-order relation modeling via graph convolution over compressed cross-behavior interactions, and (2) decoupled expert inputs in MESI that isolate gradient flows per behavior task, which is a more targeted fix than generic gradient surgery or loss weighting approaches.",
+    "technical_insight": "The most important design choice is 'separate input' in MESI: by feeding each expert a behavior-specific subgraph embedding rather than a shared representation, the model prevents dominant auxiliary behaviors (e.g., clicks) from overwhelming gradients for the sparse target behavior (e.g., purchases). This works because the gradient conflict in multi-task recommendation stems not just from loss magnitudes but from the shared encoder receiving conflicting update directions — decoupling the input breaks this coupling at its root.",
+    "limitations": "The compression step in CIGCN may discard fine-grained interaction signals if the compression ratio is too aggressive, potentially hurting cold-start users with few behaviors. The MESI architecture increases parameter count linearly with the number of behavior types, reducing scalability to platforms with many heterogeneous behaviors. The approach assumes behavior types are known and fixed at training time, making it brittle to new behavior types emerging post-deployment. Evaluation is limited to three datasets in e-commerce contexts, so generalization to other domains (e.g., streaming, social) is unverified.",
+    "interview_questions": [
+      "Why does treating multi-behavior data 'as features' lead to inadequate high-order relation modeling?",
+      "What specifically causes gradient conflict in standard multi-task learning for multi-behavior recommendation, and how does MESI address it?",
+      "How does CIGCN differ from standard GCN or LightGCN in modeling multi-behavior interactions?",
+      "What are the trade-offs of the graph compression step — what is gained and what might be lost?",
+      "How would you extend CIGF to handle a new behavior type that emerges after the model is already trained?"
+    ],
+    "interview_answers": [
+      "When behaviors are concatenated or weighted as input features, the model sees a flat vector and must implicitly learn cross-behavior high-order relations through dense layers. This is statistically inefficient because the sparse target behavior signal is drowned out by abundant auxiliary behavior signals, and high-order (2+ hop) user-item-user or item-user-item patterns are never explicitly computed.",
+      "In standard multi-task learning with a shared encoder, the gradient from the sparse purchase task and the dense click task flow back through the same parameters. The click task produces larger, more frequent gradients that dominate updates, pushing the shared representation toward click prediction at the expense of purchase prediction. MESI breaks this by giving each expert its own input projection, so behavior-specific gradients update disjoint parameters and cannot directly interfere.",
+      "Standard GCN aggregates neighbor embeddings on a single interaction graph. CIGCN constructs a cross-behavior interaction graph that captures how behaviors co-occur at the instance level (e.g., items clicked-then-purchased by similar users), then compresses this richer graph to make convolution tractable. The key difference is that edges encode behavioral co-occurrence patterns rather than just raw interaction existence.",
+      "Compression reduces computational cost and can act as a denoising step by pruning weak or noisy cross-behavior edges, which may improve signal quality for sparse target behaviors. The risk is that aggressive compression discards legitimate weak signals, particularly harming cold-start users whose interaction subgraphs are already sparse and cannot afford further edge removal.",
+      "The cleanest extension would be to add a new expert branch in MESI for the new behavior type and construct a new behavior-specific subgraph in CIGCN, then fine-tune only the new components while freezing the pretrained shared graph encoder. A more principled approach would reformulate CIGCN to use behavior-type embeddings as edge attributes, making the architecture inherently open-vocabulary to new behavior types without structural changes."
+    ],
+    "generated_at": "2026-03-28T23:49:46Z"
+  }
+}

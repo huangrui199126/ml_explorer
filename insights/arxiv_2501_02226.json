@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "K-RagRec is a framework that augments LLM-based recommender systems by retrieving structured information from knowledge graphs, addressing hallucination and knowledge staleness issues in vanilla RAG approaches. It leverages KG structural relationships to provide higher-quality context for LLM recommendation generation.",
+    "key_idea": "Replacing flat document retrieval with structured knowledge graph traversal gives LLMs richer, noise-reduced relational context for generating recommendations.",
+    "why_it_matters": "LLM recommenders hallucinate and go stale; KG-grounded RAG provides a practical path to accurate, up-to-date, domain-aware recommendations without full model retraining.",
+    "possible_use_cases": [
+      "E-commerce product recommendation using product-attribute-brand KGs to surface relevant items with explainable reasoning",
+      "Media/content platforms leveraging genre, actor, and topic graphs to recommend movies or articles with reduced hallucination",
+      "Enterprise knowledge management where internal ontologies ground LLM suggestions to verified, current organizational data"
+    ],
+    "generated_at": "2026-03-28T23:47:57Z"
+  },
+  "deep": {
+    "method_breakdown": "K-RagRec builds a retrieval-augmented framework that queries an external knowledge graph to extract structured relational information (entities, relations, paths) relevant to a user's history and candidate items. The retrieved KG subgraphs are serialized into text and injected into the LLM prompt to provide domain-specific, up-to-date structural context. This allows the LLM to reason over relational signals (e.g., item-attribute-item chains) rather than relying solely on parametric knowledge.",
+    "key_innovation": "Unlike vanilla RAG which retrieves flat text chunks and ignores structural relationships, K-RagRec explicitly retrieves and encodes graph structure (entity-relation triples, multi-hop paths) from a KG. This preserves the relational topology of domain knowledge — e.g., 'User liked Item A → Item A shares Director X → Item B also has Director X' — providing the LLM with higher-quality, lower-noise context that directly supports recommendation reasoning.",
+    "technical_insight": "The most important design choice is structure-aware retrieval: instead of treating KG facts as independent documents, the method retrieves connected subgraphs anchored to user/item entities. This works because recommendation quality depends on relational reasoning (collaborative signals, attribute chains), which flat retrieval discards. By preserving graph topology in the prompt, the LLM can perform multi-hop inference that would otherwise require memorized world knowledge or be hallucinated.",
+    "limitations": "The method's quality is tightly coupled to KG completeness and freshness — sparse or noisy KGs directly degrade retrieval quality. Serializing large subgraphs into text can hit LLM context length limits and introduce its own noise if too many hops are included. The approach also inherits LLM prompt sensitivity: small changes in how triples are verbalized can significantly affect output. Evaluation is likely on standard benchmarks (MovieLens, Amazon) which may not reflect cold-start or long-tail scenarios well.",
+    "interview_questions": [
+      "How does K-RagRec decide which KG subgraph to retrieve for a given user-item pair, and how is relevance scored?",
+      "How do you handle the tension between retrieving enough graph context for multi-hop reasoning and staying within the LLM's context window?",
+      "Vanilla RAG retrieves from unstructured text; what specific structural properties of KGs does your method exploit, and how are they represented in the prompt?",
+      "How does the framework handle knowledge graphs that are incomplete or contain stale/incorrect facts, especially for cold-start items?",
+      "How do you measure and mitigate the risk that the LLM ignores or misinterprets the retrieved KG triples, effectively hallucinating anyway?"
+    ],
+    "interview_answers": [
+      "Retrieval is typically anchored to seed entities extracted from user interaction history and candidate items. Relevance scoring uses embedding similarity (e.g., KGE embeddings like TransE/RotatE) or BFS/beam search over the KG to find paths connecting user-side and item-side entities within a bounded number of hops, then ranks subgraphs by path score or entity overlap.",
+      "The framework limits retrieval depth (e.g., 1-2 hops) and applies top-k pruning on retrieved triples ranked by relevance score. Some designs compress subgraphs by merging redundant paths or summarizing repeated relation types. There is a fundamental trade-off here that the paper likely ablates — more hops vs. noise — without fully resolving the context length bottleneck for very large KGs.",
+      "KGs encode typed, directional relations between entities, enabling the system to inject 'Item A → genre → Sci-Fi → genre ← Item B' style reasoning chains. These are verbalized as structured triples or natural-language sentences. The key property exploited is transitivity: the LLM can follow the retrieved path rather than needing to recall or infer the relationship from parametric memory.",
+      "Incomplete KGs are partially addressed by relying on the LLM's parametric knowledge as a fallback when retrieval returns few triples. Cold-start items with sparse KG coverage are a genuine weakness — the method likely degrades to standard LLM recommendation in these cases. Stale facts are mitigated by design (KGs can be updated independently of the LLM), but the paper likely doesn't deeply evaluate temporal consistency.",
+      "This is mitigated through prompt engineering that explicitly instructs the LLM to ground its recommendation in the provided triples, and through evaluation metrics (hit rate, NDCG) that indirectly penalize hallucination. A more rigorous mitigation would be faithfulness scoring or chain-of-thought verification, which this framework likely does not include — a meaningful open limitation."
+    ],
+    "generated_at": "2026-03-28T23:48:25Z"
+  }
+}

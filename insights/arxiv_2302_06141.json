@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DCMT is a multi-task learning framework that simultaneously addresses selection bias and data sparsity in CVR prediction by combining causal debiasing with entire-space training. It introduces a counterfactual mechanism that predicts both factual and counterfactual CVR, improving model accuracy across the full inference space rather than just the clicked subset.",
+    "key_idea": "By modeling a counterfactual CVR under soft prior constraints alongside the factual CVR, DCMT corrects for the not-missing-at-random bias introduced when training only on clicked samples.",
+    "why_it_matters": "CVR models trained only on clicked data systematically underestimate conversion probability for unclicked items; DCMT closes this gap with measurable lifts (+1.07% AUC offline, +0.75% PV-CVR online) that translate directly to significant revenue gains in production recommender systems.",
+    "possible_use_cases": [
+      "E-commerce product ranking where CVR must be estimated for all exposed items, not just clicked ones",
+      "Ad bidding systems that need unbiased CVR estimates to correctly price impressions",
+      "Search ranking in financial/payment apps (e.g. Alipay) where purchase conversion is sparse and heavily selection-biased"
+    ],
+    "generated_at": "2026-03-28T23:50:43Z"
+  },
+  "deep": {
+    "method_breakdown": "DCMT jointly trains CTR and CVR tasks across the entire exposure space D rather than restricting CVR training to the clicked subspace O, directly eliminating the train-serve distribution mismatch. It introduces a counterfactual mechanism that simultaneously predicts the factual CVR (what happens given the observed click signal) and a counterfactual CVR (what would happen absent that signal), regularized by a soft counterfactual prior derived from user decision-process assumptions. The two CVR estimates are combined under a causal constraint so the model learns to attribute conversion intent separately from the click selection mechanism.",
+    "key_innovation": "Prior MTL work (ESMM, ESM2) addresses data sparsity by training in the full exposure space but does not debias selection bias; prior causal work (DR, IPS) debiases within the click space O but cannot fully correct for the NMAR distribution shift to inference space D. DCMT is the first to simultaneously operate in the entire space D AND apply counterfactual causal debiasing, using a learnable counterfactual prior as a soft regularizer rather than a hard propensity correction, making it robust to propensity misestimation.",
+    "technical_insight": "The soft counterfactual prior is the critical design choice: instead of requiring an accurate propensity score (which is notoriously hard to estimate and causes high variance in hard IPS corrections), DCMT uses a learned prior over counterfactual CVR as a regularization term. This lets the model be guided by causal structure without being destabilized by propensity estimation error, balancing bias reduction against variance increase — a practical trade-off that explains the consistent gains across both offline and online settings.",
+    "limitations": "The counterfactual prior must be hand-designed based on assumptions about the user decision process, which may not hold across different domains or user populations. The framework is validated primarily on Alipay Search (a single industrial platform), so generalization to other recommendation contexts (e.g., feed ranking, cold-start settings) is unverified. The 1.07% AUC improvement, while industrially significant, is modest and could be sensitive to hyperparameter tuning of the soft constraint weight. Finally, the entire-space training requires access to impression-level logs, which many smaller platforms do not retain.",
+    "interview_questions": [
+      "What is the exposure space D vs. click space O distinction, and why does training CVR only in O cause problems?",
+      "How does DCMT's counterfactual mechanism differ from standard IPS-based debiasing methods like DR or ESCM2?",
+      "Why is the counterfactual prior implemented as a soft constraint rather than a hard one, and what are the trade-offs?",
+      "ESMM also trains in the full exposure space — what does DCMT add over ESMM, and why isn't ESMM sufficient?",
+      "How would you extend DCMT to handle position bias in addition to selection bias, and what causal assumptions would need to change?"
+    ],
+    "interview_answers": [
+      "Space D is all exposed items; space O is the subset the user clicked. CVR labels only exist in O, so naive CVR training optimizes P(conversion|click, exposure) but at inference time we need P(conversion|exposure). This NMAR mismatch means the model is systematically overconfident on items similar to historically clicked ones and underestimates conversion for items that are rarely clicked but would convert if shown.",
+      "IPS/DR methods reweight samples in O by 1/P(click|x) to simulate unbiased estimates, but this requires accurate propensity scores and suffers from high variance when propensities are small (common for tail items). DCMT instead models the counterfactual outcome directly — it predicts what CVR would be if the click had not occurred — and uses this as a regularizer in the full space D, avoiding explicit propensity estimation altogether.",
+      "A hard constraint (e.g., forcing factual CVR minus counterfactual CVR to equal exactly zero for non-clicked items) would over-constrain the model and ignore genuine signal from the auxiliary tasks. A soft constraint allows the model to violate the prior when evidence strongly supports it, balancing causal regularization against fitting observed data. The trade-off is that the soft weight λ becomes a tunable hyperparameter whose optimal value may shift across data distributions.",
+      "ESMM decomposes P(CTR×CVR) = P(CTR) × P(CVR|CTR) and trains both tasks jointly in D, which addresses data sparsity but does not debias selection bias — it still conditions on click in the CVR branch. DCMT adds the causal counterfactual term that explicitly models and removes the selection mechanism, so the CVR estimate reflects user purchase intent independent of click propensity.",
+      "Position bias could be incorporated by adding a third causal variable — position — into the structural causal model, using a separate propensity network to estimate P(click|position, item) and adjusting the counterfactual to ask 'what would CVR be if the item were shown at a neutral position and not selected by position bias?' This requires logging position data and likely a position-aware propensity head, but the soft-constraint training objective would remain the same in structure."
+    ],
+    "generated_at": "2026-03-28T23:51:19Z"
+  }
+}

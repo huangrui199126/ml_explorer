@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Extensible Embedding enhances standard token embeddings so each embedding unit captures a larger context scope, letting LLMs effectively access long contexts without expanding their context window. The method is optimized for flexibility, training efficiency, and plug-in compatibility with existing LLMs.",
+    "key_idea": "Replace single-token embeddings with higher-density embeddings that encode extended context spans, compressing long input into a small number of rich tokens the LLM can process within its fixed window.",
+    "why_it_matters": "It offers a cost-effective, architecture-agnostic way to give any existing LLM long-context capabilities without expensive full-context retraining or positional encoding overhauls.",
+    "possible_use_cases": [
+      "Retrieval-augmented generation over long documents without chunking artifacts",
+      "Plug-in context extension for deployed LLMs to handle book-length or codebase-scale inputs",
+      "Efficient summarization and QA over lengthy transcripts or legal/medical documents"
+    ],
+    "generated_at": "2026-03-28T23:41:14Z"
+  },
+  "deep": {
+    "method_breakdown": "Extensible Embedding replaces standard single-token embeddings with compact representations that encode an entire variable-length span of context, allowing an LLM with a fixed small context window to effectively 'see' much longer inputs by consuming these dense summary tokens. The embedding model is trained to compress multi-token spans into single embedding vectors that are inserted into the LLM's input sequence as plug-in tokens. At inference, the LLM attends to these extensible embeddings alongside its normal token stream, gaining access to far more context than its window nominally allows.",
+    "key_innovation": "Prior context-extension methods either fine-tune positional encodings (RoPE scaling, ALiBi) or use retrieval-augmented chunking that discards cross-chunk context. Extensible Embedding is chunking-free: it learns a continuous, dense compression of arbitrary-length spans and injects them directly into the residual stream as first-class tokens, avoiding both the positional OOD problem and the hard boundary artifacts of chunked RAG.",
+    "technical_insight": "The critical design choice is training the embedding model with a contrastive-style objective that forces span-level representations to be predictive of the LLM's next-token distribution over that span, not just retrieval relevance. This aligns the embedding space with the LLM's internal representation geometry, making the plug-in tokens semantically compatible without requiring any modification to the frozen LLM weights.",
+    "limitations": "The embedding model must be re-trained or fine-tuned whenever the backbone LLM changes, limiting true plug-and-play portability. Compression of very long or highly heterogeneous spans into a single vector inevitably loses fine-grained detail, which may hurt tasks requiring precise verbatim recall. The approach also adds inference-time overhead from the embedding model forward pass, and its behavior on extremely long documents (100k+ tokens) compressed into few vectors has not been thoroughly stress-tested.",
+    "interview_questions": [
+      "How does Extensible Embedding differ from chunked RAG in terms of information preservation and boundary handling?",
+      "What training signal is used to align the extensible embedding space with the target LLM, and why is that signal chosen?",
+      "How does the method handle variable-length spans — is span length fixed, adaptive, or hierarchical?",
+      "What are the computational trade-offs at inference time compared to simply extending positional encodings (e.g., RoPE scaling)?",
+      "How would you evaluate whether the LLM is actually using the extensible embedding tokens rather than ignoring them?"
+    ],
+    "interview_answers": [
+      "Chunked RAG splits documents at hard boundaries and retrieves discrete chunks, losing cross-chunk dependencies and requiring a separate retrieval step that can miss relevant passages. Extensible Embedding encodes spans continuously and injects them inline into the token sequence, preserving relative ordering and allowing the LLM's attention to integrate compressed past context with current tokens without any retrieval gap.",
+      "The embedding model is trained so that its output vectors, when fed to the LLM, minimize the language modeling loss over the spanned tokens — essentially a distillation signal from the LLM itself. This is chosen because it directly optimizes for what the LLM needs from the compressed representation, rather than optimizing a proxy like contrastive retrieval similarity which may not align with generative use.",
+      "Span boundaries are typically set at fixed stride intervals (analogous to landmark positions in the BGE variant), but the architecture supports variable granularity. A hierarchical variant can stack coarse and fine embeddings, though the core paper focuses on uniform stride for simplicity and cost-effectiveness.",
+      "RoPE/ALiBi scaling requires no extra model but degrades on inputs far outside training length and is hard to control precisely. Extensible Embedding adds one forward pass through the embedding encoder per span but keeps the LLM's effective sequence length bounded and constant regardless of document length, making generation latency predictable and memory usage O(1) in document length rather than O(n).",
+      "Ablation studies should mask or replace extensible embedding tokens with random vectors and measure perplexity/task accuracy degradation. Attention weight analysis can show whether the LLM's heads attend to the plug-in tokens. A controlled experiment where the extensible token contains information unavailable elsewhere in context (e.g., a unique fact) and measuring whether the LLM can retrieve it is the most direct probe."
+    ],
+    "generated_at": "2026-03-28T23:41:43Z"
+  }
+}
