@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FUM improves news recommendation by treating a user's clicked articles as one long document, enabling word-level interactions across articles rather than encoding each independently. It uses Fastformer, an efficient transformer, to handle the resulting long-document modeling efficiently.",
+    "key_idea": "Concatenate all clicked news into a single long document and apply an efficient transformer to capture fine-grained cross-article word interactions for richer user interest modeling.",
+    "why_it_matters": "Existing news recommenders lose detail by aggregating article embeddings independently; FUM captures subtle interest signals from cross-article context without the quadratic cost of standard transformers, making it both more accurate and production-feasible.",
+    "possible_use_cases": [
+      "Personalized news feed ranking in large-scale news platforms",
+      "Content recommendation in article aggregators or RSS readers",
+      "User interest profiling for any sequential document consumption system (e.g., research paper feeds, blog platforms)"
+    ],
+    "generated_at": "2026-03-28T23:30:16Z"
+  },
+  "deep": {
+    "method_breakdown": "FUM concatenates a user's clicked news articles into a single long document, then applies Fastformer (an additive attention-based efficient transformer) to capture both intra-news (within a single article) and inter-news (across articles) word-level interactions simultaneously. This transforms the user modeling problem into a long-document modeling task, producing a unified user embedding that encodes fine-grained cross-article signals. The final user embedding is used for candidate news scoring via dot-product similarity.",
+    "key_innovation": "Prior work encodes each clicked news article independently and aggregates the resulting embeddings, discarding word-level cross-article signals. FUM's key novelty is treating the entire click history as one document, enabling direct token-level attention across article boundaries — capturing fine-grained co-occurrence patterns (e.g., specific entities or phrases appearing across multiple clicked articles) that aggregation-based methods structurally cannot model.",
+    "technical_insight": "The most important design choice is using Fastformer instead of vanilla Transformer for the long-document encoding. Fastformer's additive attention reduces complexity from O(n²) to O(n), making it feasible to process concatenated click histories (which can be thousands of tokens) at training and inference speed comparable to standard news encoders. Without this efficiency trick, the concatenation idea would be computationally prohibitive at scale.",
+    "limitations": "Concatenating all clicked news into one long sequence creates a fixed-length bottleneck — very active users with many clicks will require aggressive truncation, potentially losing older interest signals. The model also lacks explicit positional or temporal structure between articles, so it may conflate outdated interests with current ones. Additionally, Fastformer's additive attention approximation may under-represent rare but high-signal cross-article word interactions compared to full self-attention.",
+    "interview_questions": [
+      "Why does treating clicked news as a single document help compared to encoding each article independently and aggregating?",
+      "What is the computational bottleneck that makes applying a standard Transformer to concatenated click histories impractical, and how does Fastformer address it?",
+      "How would you handle users with very long click histories in FUM, and what trade-offs does truncation introduce?",
+      "What inductive bias does FUM introduce by removing explicit article boundaries, and could this ever be harmful?",
+      "How would you extend FUM to incorporate temporal dynamics — for example, to down-weight interests from clicks made weeks ago?"
+    ],
+    "interview_answers": [
+      "Independent encoding treats each article in isolation, so the aggregation step only sees article-level representations. Word-level signals — like a specific person's name appearing across multiple clicked articles — are lost before aggregation. Concatenation allows the transformer to attend directly from a token in one article to a token in another, capturing these cross-article co-occurrences that are strong evidence of focused user interest.",
+      "Standard Transformer self-attention is O(n²) in sequence length; concatenating e.g. 50 articles of 30 tokens each yields a 1500-token sequence, making training and inference ~56x more expensive than encoding a single article. Fastformer replaces pairwise attention with a global context vector computed via additive attention, reducing complexity to O(n) while retaining a global receptive field across the full sequence.",
+      "Common strategies are recency-based truncation (keep the most recent k tokens) or importance-based selection (rank articles by relevance to a candidate). Truncation discards older clicks, which can hurt users whose interests are stable over long periods. Importance-based selection introduces a chicken-and-egg dependency on the candidate and may bias toward filter-bubble behavior.",
+      "Removing explicit article boundaries means the model can attend across the artificial join between two articles, potentially creating spurious token-level associations that have no semantic meaning (e.g., the last word of article A attending to the first word of article B). In practice this is usually harmless because the model learns to ignore such noise, but it could degrade performance on users with highly heterogeneous click histories where cross-article noise is high.",
+      "One approach is to prepend a learned temporal embedding to each article's token span before concatenation, encoding recency as a continuous scalar or discrete bucket. Another is to apply an exponential decay mask on the attention weights between tokens from distant-in-time articles. A simpler baseline is to sort articles by recency and rely on positional embeddings to implicitly encode time, though this conflates position with time and may not generalize across users with different click frequencies."
+    ],
+    "generated_at": "2026-03-28T23:30:41Z"
+  }
+}

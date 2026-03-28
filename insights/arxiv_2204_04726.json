@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a candidate-aware user modeling approach for news recommendation that incorporates the candidate news item directly into the user interest modeling process, rather than modeling user interest independently of what is being recommended. It introduces three complementary networks—candidate-aware self-attention, CNN, and attention aggregation—to capture global, local, and weighted user interests relative to the candidate.",
+    "key_idea": "By using the candidate news as a query/clue when modeling user history, the system can selectively surface the most relevant facet of a user's multi-faceted interests for each specific recommendation candidate.",
+    "why_it_matters": "Most production recommenders model user interest as a single static vector, which poorly handles users with diverse interests; this approach shows that conditioning user representations on the candidate at inference time yields more precise interest matching without requiring separate user profiles per interest cluster.",
+    "possible_use_cases": [
+      "Personalized news feed ranking where users have broad, heterogeneous reading histories",
+      "Candidate re-ranking in two-stage recommendation pipelines to improve precision at the final stage",
+      "Any multi-interest retrieval scenario (e-commerce, video) where a user's past behavior spans multiple distinct interest domains"
+    ],
+    "generated_at": "2026-03-28T23:27:35Z"
+  },
+  "deep": {
+    "method_breakdown": "The method introduces three candidate-aware components: (1) a candidate-aware self-attention network that uses candidate news as a query to attend over all clicked news for global interest modeling, (2) a candidate-aware CNN that incorporates candidate news into local context windows of click sequences to capture short-term interest, and (3) a candidate-aware attention network that reweights clicked news by relevance to the candidate for final user representation. These three representations are combined to produce a candidate-conditioned user embedding that is matched against the candidate news for scoring.",
+    "key_innovation": "Prior news recommendation models (e.g., NRMS, NAML, LSTUR) build a single static user representation independent of the candidate, then score via dot-product — this conflates multiple user interests. This paper makes user modeling explicitly conditioned on the candidate news at inference time, allowing the model to surface the specific facet of user interest most relevant to each candidate rather than averaging across all interests.",
+    "technical_insight": "The most important design choice is using the candidate news representation as a dynamic query in self-attention and attention-weighting over clicked history. This works because users have heterogeneous interests and a single pooled representation loses discriminative signal; by routing attention through the candidate, the model can selectively activate the relevant interest cluster, reducing noise from unrelated click history and sharpening the match signal.",
+    "limitations": "Candidate-aware modeling introduces inference-time dependency on each candidate, making the user representation non-cacheable — this significantly increases online serving cost at scale since user embeddings must be recomputed per candidate. The method is also evaluated on standard benchmark datasets (likely MIND) which may not capture cold-start users, highly dynamic news cycles, or cross-lingual settings. Additionally, the approach may overfit to surface-level topic overlap between candidate and history rather than capturing deeper semantic interest.",
+    "interview_questions": [
+      "Why is candidate-independent user modeling problematic for users with diverse interests, and how does candidate-aware modeling address this?",
+      "What are the three candidate-aware components in this model and what aspect of user interest does each capture?",
+      "What is the key computational trade-off introduced by candidate-aware user modeling compared to standard two-tower architectures?",
+      "How does the candidate-aware self-attention differ from standard self-attention in transformer-based news recommendation models like NRMS?",
+      "How would you extend this approach to handle the cold-start problem for new users or new candidate news items?"
+    ],
+    "interview_answers": [
+      "Users click news across multiple topics (e.g., sports, politics, tech), so averaging their history into one vector blurs distinct interests. When a sports article is the candidate, interest in politics adds noise. Candidate-aware modeling uses the candidate as a query to selectively attend to the relevant subset of history, producing a user vector tailored to the candidate's topic.",
+      "The three components are: (1) candidate-aware self-attention for global interest — attends across the full click history using the candidate as query; (2) candidate-aware CNN for short-term/local interest — injects candidate context into convolutional filters over recent click sequences; (3) candidate-aware attention aggregation — reweights all clicked articles by their similarity to the candidate to build the final user representation.",
+      "Standard two-tower models pre-compute user embeddings offline and retrieve them at query time (O(1) per user). Candidate-aware models require recomputing the user embedding for each candidate (O(C) per user where C is candidate set size), making approximate nearest-neighbor retrieval inapplicable and requiring full re-scoring at serving time — a major scalability bottleneck.",
+      "In NRMS, self-attention computes query, key, and value all from the clicked news sequence itself, capturing inter-article relationships. Here, the query is derived from the candidate news representation while keys and values come from the clicked history, so attention weights reflect how much each clicked article is relevant to the specific candidate rather than how articles relate to each other.",
+      "For new users, one could initialize with demographic or contextual signals as a proxy history, or use a meta-learning objective (e.g., MAML) to generalize from few clicks. For new candidate news, pre-trained language model embeddings (e.g., from a fine-tuned BERT) provide a semantic representation even without engagement history, allowing the attention mechanism to still compute meaningful relevance scores against existing user history."
+    ],
+    "generated_at": "2026-03-28T23:28:00Z"
+  }
+}

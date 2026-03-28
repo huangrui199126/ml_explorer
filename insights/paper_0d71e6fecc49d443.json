@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a hybrid model that combines fast linear models with deep neural networks in a streaming setup to predict user responses (e.g., ad clicks) in near real-time. A 'metamodel' learns to predict the next linear model's parameters from the sequence of past models, enabling adaptation to temporal drift while preserving user privacy.",
+    "key_idea": "Train a neural metamodel on a sequence of sliding-window linear models to predict the next model's weights, turning static CTR prediction into a continual learning problem without storing raw user data.",
+    "why_it_matters": "Ad systems face constant distribution shift as user behavior evolves; this approach handles that drift efficiently without retraining from scratch or retaining privacy-sensitive data, and it shares patterns across advertisers to improve cold-start performance.",
+    "possible_use_cases": [
+      "Real-time CTR/CVR prediction in programmatic advertising under concept drift",
+      "Privacy-preserving federated learning across multiple advertisers sharing only model weights",
+      "Streaming recommendation systems that must adapt to rapidly shifting user interests"
+    ],
+    "generated_at": "2026-03-28T23:34:13Z"
+  },
+  "deep": {
+    "method_breakdown": "The method uses a sliding time window to train a sequence of linear models on streaming ad click data, compressing historical state into model parameters rather than raw data. A deep neural network metamodel is then trained to predict the next time window's linear model weights given the current model's parameters, effectively learning temporal dynamics of user response patterns. At inference time, the metamodel generates a 'predicted' linear model for the upcoming window, enabling near real-time CTR/CVR prediction without waiting for sufficient new data.",
+    "key_innovation": "The core novelty is treating linear model weights as a time series and using a neural metamodel to predict future model parameters — essentially 'predicting the predictor'. This differs from prior streaming approaches (e.g., FTRL, online gradient descent) that update a single model incrementally; here the model architecture itself is predicted ahead of time, decoupling the fast inference (linear model) from the slow adaptation (DNN metamodel). It also enables cross-advertiser generalization by training the metamodel across multiple data streams.",
+    "technical_insight": "The most critical design choice is the two-level decomposition: linear models provide interpretable, privacy-preserving compressed summaries of each time window (only weights are retained, not user data), while the DNN operates on weight sequences rather than raw user features. This works because linear model weights encode aggregate behavioral shifts in a compact, differentiable form that a sequence model can learn to extrapolate — analogous to learning the dynamics of a low-dimensional state space rather than raw high-dimensional inputs.",
+    "limitations": "The metamodel's prediction quality degrades under sudden distribution shifts (e.g., campaign launches, major events) since it extrapolates from historical weight trajectories. The sliding window granularity introduces a tradeoff between responsiveness and stability — too short and weights are noisy, too long and the model misses rapid trends. Cross-advertiser generalization assumes some stationarity in user response dynamics across advertisers, which may not hold for niche verticals. Evaluation is limited to iPinYou, a relatively old and small benchmark, making it unclear how the method scales to modern industrial CTR systems with billions of features.",
+    "interview_questions": [
+      "Why use linear model weights as the input to the metamodel rather than feeding raw features directly into a recurrent DNN?",
+      "How does the sliding window size affect the bias-variance tradeoff in this framework, and how would you tune it in production?",
+      "The paper claims privacy preservation — what exactly is preserved and what are the residual privacy risks from exposing model weights?",
+      "How would this approach handle a cold-start scenario for a new advertiser with no historical weight trajectory?",
+      "What is the computational overhead of the metamodel relative to FTRL or other online linear baselines, and how would you justify this in a latency-sensitive ad serving system?"
+    ],
+    "interview_answers": [
+      "Linear model weights act as a compressed, fixed-dimensional summary of the time window's data distribution. Feeding raw features into a DNN directly would require retaining user-level data (privacy violation) and would not scale across windows of varying size. The weight representation is also invariant to sample count within a window, making it a stable input for the metamodel.",
+      "A shorter window makes each linear model noisier (fewer samples per fit) but more temporally fine-grained, giving the metamodel more data points to learn from but with higher variance. A longer window yields stable weights but coarser temporal resolution, potentially missing intra-day patterns. In production, you'd tune window size by cross-validating AUC or log-loss on held-out future windows, and possibly learn it adaptively per advertiser.",
+      "Privacy is preserved in the sense that raw user interaction records are discarded after each window — only aggregate weight vectors are retained. However, model inversion attacks on linear weights are possible in principle, especially if the feature space is sparse and identifiable (e.g., user ID features). The residual risk depends heavily on the feature engineering; hashed or anonymized features reduce but do not eliminate this risk.",
+      "Cold-start is a genuine weakness. With no weight history, the metamodel cannot extrapolate. Mitigations include: (1) using the cross-advertiser mean weight trajectory as a prior, (2) falling back to a global linear model until sufficient history accumulates, or (3) using a hypernetwork conditioned on advertiser metadata to generate an initial weight estimate.",
+      "The metamodel runs offline on historical weight sequences, so its training cost is amortized. At inference time only the predicted linear model is used, which is O(d) per example — identical to standard linear CTR scoring. The overhead relative to FTRL is primarily the periodic metamodel inference to generate the next window's weights, which is a one-time batch cost per window transition and is negligible compared to online serving throughput."
+    ],
+    "generated_at": "2026-03-28T23:34:41Z"
+  }
+}

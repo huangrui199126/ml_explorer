@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses a modality bias problem in video retrieval where bi-encoder models over-rely on text matching and ignore visual/audio signals. They propose MBVR with modality-shuffled training samples and dynamic margin based on visual relevance to force balanced attention across modalities.",
+    "key_idea": "By randomly shuffling or masking text modalities during training and applying larger contrastive margins when visual similarity is high, the video encoder is forced to learn meaningful visual and audio representations rather than defaulting to easy text matching shortcuts.",
+    "why_it_matters": "Production video search systems trained on real user logs suffer from silent modality collapse where visual content is effectively ignored — this provides a practical, deployed fix that improved metrics in A/B testing at scale without architectural overhaul.",
+    "possible_use_cases": [
+      "Multi-modal video search on short-form platforms (TikTok, Reels, YouTube Shorts) where visual content drives discovery",
+      "Video recommendation systems that need to surface visually distinct content beyond title/caption matching",
+      "Cross-modal retrieval benchmarks where training data is text-heavy but inference requires visual understanding"
+    ],
+    "generated_at": "2026-03-28T23:31:35Z"
+  },
+  "deep": {
+    "method_breakdown": "MBVR trains a query-video bi-encoder using two interventions to counter modality bias: (1) modality-shuffled (MS) samples where text metadata is randomly removed or swapped during training, forcing the video encoder to rely on visual/audio signals; (2) a dynamic margin loss where the contrastive margin is scaled by visual relevance scores, penalizing the model more when it ignores visually-relevant content. Together these reshape the gradient signal so all modalities contribute meaningfully to the learned embedding.",
+    "key_innovation": "Prior bi-encoder work for video retrieval did not explicitly address modality collapse — the phenomenon where the video encoder degenerates into a text-only matcher because text-to-text similarity dominates training signal. MBVR is the first to (a) formally characterize modality bias in search logs and (b) propose a data augmentation + margin-shaping combination specifically designed to rebalance modality attention without requiring new annotation.",
+    "technical_insight": "The dynamic margin is the most critical design choice: by tying the contrastive margin to visual relevance, the loss surface forces the model to correctly rank visually-similar pairs even when text signals are weak. This avoids the trivial solution of text-only matching while staying differentiable and requiring no architectural changes — making it easy to deploy on top of existing bi-encoders.",
+    "limitations": "Visual relevance scores used to compute the dynamic margin are themselves imperfect proxies (likely from another model), introducing label noise into the margin. The modality-shuffled augmentation assumes text removal is a realistic counterfactual, but the distribution of shuffled samples may not match real queries where text metadata is genuinely absent. The approach is evaluated on a single platform's short-video domain, limiting generalizability to long-form video or multilingual retrieval settings.",
+    "interview_questions": [
+      "What is modality bias in video retrieval and why does it arise during training on search logs?",
+      "How do modality-shuffled samples force the encoder to attend to visual and audio signals?",
+      "What is the dynamic margin and how is it computed in the contrastive loss?",
+      "Why is modality imbalance particularly problematic at the first retrieval stage compared to re-ranking?",
+      "What are the risks of using visual relevance scores as supervision for the dynamic margin?"
+    ],
+    "interview_answers": [
+      "Modality bias occurs when the video encoder learns to match queries almost purely through text metadata (titles, tags) because: (a) text-query to text-metadata similarity is trivially easy to learn given shared modality, and (b) most positive training pairs in search logs can be explained by text overlap alone, so the gradient signal from visual/audio channels is drowned out.",
+      "During training, text fields (title, ASR, tags) are randomly dropped or replaced with text from a different video. This forces contrastive loss to push relevant pairs together using only visual/audio features when text is absent, generating gradient signal that directly trains the non-text towers of the encoder.",
+      "The dynamic margin replaces the fixed margin in a contrastive or triplet loss with a value proportional to the visual relevance between the query and the positive video. When visual relevance is high, the model is required to achieve a larger separation from negatives, directly penalizing failure to use visual features for visually-grounded relevance judgments.",
+      "At retrieval stage the model must score millions of candidates efficiently with a single embedding per item; modality bias means visually-relevant but text-weak videos are never surfaced for re-ranking. Re-rankers only operate on the retrieved set, so they cannot compensate for systematic misses caused by text-only first-stage embeddings.",
+      "Visual relevance scores are produced by a separate model (e.g., a vision-language model or human labels) and carry their own errors. If that model is itself biased or inaccurate, the dynamic margin will amplify those errors into the training objective. Additionally, the scores may not generalize across video categories where visual relevance is inherently subjective or culturally dependent."
+    ],
+    "generated_at": "2026-03-28T23:31:59Z"
+  }
+}
