@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a receding horizon bid optimization method for online advertising that periodically solves a linear programming formulation using open-loop feedback control, combined with neural network-based auction scale prediction to handle changing market conditions.",
+    "key_idea": "By decomposing bid optimization into a periodically-updated LP solved over a receding time horizon with efficient downsampling, the method achieves both theoretical optimality and practical scalability for large e-commerce platforms.",
+    "why_it_matters": "Advertisers and ad platform engineers can deploy a principled, adaptive bidding system that handles both budget-constrained and multi-constraint bidding without the convergence or adaptation failures of existing learning or control methods, as validated at billion-scale on Taobao.",
+    "possible_use_cases": [
+      "Automated budget pacing and bid management for sponsored search campaigns",
+      "Real-time bidding optimization under ROI and budget constraints in e-commerce ad platforms",
+      "Adaptive auction participation strategies for performance advertisers facing volatile market conditions"
+    ],
+    "generated_at": "2026-03-29T00:19:09Z"
+  },
+  "deep": {
+    "method_breakdown": "The method formulates bid optimization as a receding horizon control problem, periodically solving a linear program (LP) that encodes budget and ROI constraints with updated market estimates. At each optimization window, the LP is reconstructed using recent auction data and a neural network prediction of future auction scale/distribution, then solved to produce optimal bid multipliers. The open-loop feedback control loop closes the gap between planned and actual spend/performance by re-solving the LP at fixed intervals rather than relying on a single offline solution.",
+    "key_innovation": "The genuine novelty is the combination of receding horizon (model predictive control) philosophy with LP-based bid optimization, replacing both purely offline LP solvers and purely reactive PID-style feedback controllers. Prior work either solved a global LP once (offline, brittle to market shifts) or used feedback control without a principled forward-looking optimization structure. The addition of a neural-network auction scale predictor to forecast the LP's right-hand-side constraints is also novel for industrial bid optimization.",
+    "technical_insight": "The most important design choice is the down-sampling scheme for large-scale LPs: rather than solving over billions of auction opportunities, they sample a representative subset that preserves the statistical structure of the auction landscape. This makes the LP tractable at billion-scale while retaining solution quality, which is the core engineering insight that enables the theoretical optimality guarantees to translate into real production systems.",
+    "limitations": "The receding horizon approach assumes market conditions are relatively stationary within each optimization window — sudden demand shocks or competitor strategy changes between re-solve intervals can cause suboptimal bidding. The neural network auction scale predictor introduces a learned component whose errors propagate into LP constraints, potentially causing constraint violations. The down-sampling scheme may lose rare but high-value auction opportunities. The method is validated on Taobao's search ads specifically, and generalizability to display ads, non-search contexts, or platforms with different auction mechanisms (e.g., first-price) is not established.",
+    "interview_questions": [
+      "How does the receding horizon formulation differ from solving the budget-constrained bidding LP offline once at the start of a campaign?",
+      "What theoretical guarantees does the paper provide about the structure of the optimal bidding strategy, and what assumptions are required?",
+      "How does the down-sampling scheme preserve solution quality while reducing LP size — what statistical properties must the sample maintain?",
+      "Why is a neural network used for auction scale prediction rather than a simpler time-series model, and what features does it consume?",
+      "How does the open-loop feedback control mechanism handle the case where actual spend significantly undershoots or overshoots the target mid-period?"
+    ],
+    "interview_answers": [
+      "Offline LP solvers use a fixed forecast of the entire campaign's auction landscape and solve once, making them brittle to market drift. The receding horizon approach re-solves the LP at each interval using fresh market observations and updated predictions, so the bid strategy continuously adapts to actual conditions rather than stale forecasts — analogous to MPC vs. open-loop optimal control.",
+      "The paper derives that the optimal bid for each auction follows a threshold/multiplier structure dependent on a Lagrange multiplier corresponding to the budget constraint. This holds under the assumption of a known, stationary value distribution and a specific auction mechanism (typically GSP or second-price). Stationarity and independence across auctions are the key required assumptions.",
+      "The down-sample must preserve the empirical joint distribution of (value, cost, conversion probability) across auction types. A stratified or importance-weighted sample achieves this — if the sample is i.i.d. from the auction population, the LP's feasible region and optimal dual variables converge to those of the full problem as sample size grows, by LP duality and the law of large numbers.",
+      "A neural network captures non-linear temporal patterns, cross-feature interactions (e.g., day-of-week × promotion event × category), and can generalize across advertisers. Simpler ARIMA-style models lack the capacity to model these interactions at scale across millions of advertisers simultaneously, and the NN can be trained end-to-end to minimize downstream LP constraint error rather than raw prediction error.",
+      "The open-loop feedback control adjusts the LP's budget constraint for the next window based on cumulative spend deviation — if underspent, the remaining budget allocated to future windows is compressed to increase aggression; if overspent, it is expanded. This pacing correction is applied as a modified right-hand-side in the next LP solve, effectively redistributing the remaining budget across the residual campaign horizon."
+    ],
+    "generated_at": "2026-03-29T00:19:39Z"
+  }
+}

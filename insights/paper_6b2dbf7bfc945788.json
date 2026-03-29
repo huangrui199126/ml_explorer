@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a pipeline for retrieving and ranking CT (DICOM) images similar to a query image by combining deep learning embeddings with DICOM metadata similarity scores, indexed via FAISS for efficient search. Results are evaluated using Mean Reciprocal Rank (MRR) to measure retrieval quality.",
+    "key_idea": "Fusing visual embeddings from pretrained neural networks with structured DICOM metadata into a joint similarity score produces more relevant and interpretable medical image retrieval than embedding similarity alone.",
+    "why_it_matters": "Radiologists and clinicians could use this to find visually and semantically similar past cases at query time, supporting cross-diagnosis and decision-making without requiring manual search through large imaging archives.",
+    "possible_use_cases": [
+      "Cross-diagnosis support: retrieve historical CT scans with similar pathology to aid radiologist interpretation of ambiguous findings",
+      "Training data curation: find labeled examples similar to a target image to build or augment datasets for downstream ML models",
+      "Quality assurance: identify near-duplicate or inconsistent scans in large DICOM repositories by flagging high-similarity but metadata-mismatched results"
+    ],
+    "generated_at": "2026-03-29T00:20:32Z"
+  },
+  "deep": {
+    "method_breakdown": "The pipeline extracts deep learning embeddings from CT DICOM images using pretrained neural networks, applies PCA for dimensionality reduction, and indexes them in FAISS for efficient approximate nearest-neighbor search. Retrieved candidates are initially ranked by embedding cosine/L2 similarity, then re-ranked using a joint similarity score that fuses visual features with DICOM metadata tag comparisons. Final ranking quality is measured via Mean Reciprocal Rank (MRR).",
+    "key_innovation": "The primary novelty is the fusion of image-level embedding similarity with structured DICOM metadata similarity into a single joint score for re-ranking, enabling semantic context (e.g., modality, body part, acquisition parameters) to refine purely visual retrieval — a lightweight late-fusion approach rather than end-to-end learned multimodal embeddings.",
+    "technical_insight": "The two-stage retrieval design — fast FAISS ANN search followed by metadata-informed re-ranking — is the critical design choice. It decouples scalability (FAISS handles millions of vectors efficiently) from precision (metadata re-ranking corrects visually similar but clinically irrelevant matches), avoiding the computational cost of encoding metadata into the embedding space while still leveraging structured clinical context.",
+    "limitations": "The pretrained networks are not fine-tuned on medical imaging tasks, so embeddings may not capture clinically meaningful features. DICOM metadata quality is inconsistent across institutions, making the fusion score sensitive to missing or erroneous tags. PCA compression may discard discriminative features. MRR evaluation requires ground-truth relevance labels which are expensive to obtain in radiology, and the study appears small-scale without large public benchmark validation.",
+    "interview_questions": [
+      "How is the joint similarity score computed — what is the weighting between image embedding similarity and DICOM metadata similarity, and how were those weights chosen?",
+      "Why use PCA for dimensionality reduction rather than learned compression methods like an autoencoder or product quantization within FAISS?",
+      "How do you handle DICOM metadata that is missing, inconsistently populated, or vendor-specific across different scanner manufacturers?",
+      "What pretrained backbone was used for feature extraction, and was any domain adaptation or fine-tuning performed on medical imaging data?",
+      "How were relevance judgments for MRR computed — who labeled the ground truth, and what definition of 'relevant' was used clinically?"
+    ],
+    "interview_answers": [
+      "The joint score is likely a weighted linear combination of normalized image similarity and metadata similarity scores; in practice, weights are often tuned on a validation set or set heuristically, but the paper does not specify a principled learned weighting, which is a weakness.",
+      "PCA is simpler, deterministic, and requires no training data beyond the index corpus; however, it is a linear method and may not preserve nonlinear structure in embedding space as well as learned compression, making it a pragmatic but suboptimal choice.",
+      "Missing DICOM tags would degrade the metadata similarity score; robust handling requires imputation strategies or soft masking of absent fields, but the paper likely does not address cross-institutional variability rigorously — a significant real-world deployment concern.",
+      "Standard pretrained CNNs (e.g., ResNet trained on ImageNet) are the most common choice in such pipelines; without fine-tuning on CT data, embeddings encode natural image statistics rather than radiological features, limiting sensitivity to pathology-relevant patterns.",
+      "Ground truth relevance in medical image retrieval is typically defined by same diagnosis code, same body region, or expert radiologist judgment; labeling is expensive and subjective, and MRR only measures rank of the first relevant result, ignoring overall recall across the ranked list."
+    ],
+    "generated_at": "2026-03-29T00:20:52Z"
+  }
+}

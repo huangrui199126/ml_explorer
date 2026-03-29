@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper applies a two-tower neural network (dual encoder) to large-scale app recommendation retrieval and introduces Mixed Negative Sampling (MNS), which combines batch negatives with uniformly sampled negatives to reduce selection bias in implicit feedback data. Offline and online A/B experiments show MNS improves retrieval quality over standard sampling baselines.",
+    "key_idea": "Mixing in-batch negatives with uniform random negatives corrects the popularity bias inherent in batch-only sampling, giving the model exposure to a more representative distribution of non-interacted items.",
+    "why_it_matters": "Selection bias in implicit feedback (users only see a filtered slice of items) silently degrades retrieval models; MNS is a simple, low-cost fix that directly improves top-k recall in production two-tower systems without architectural changes.",
+    "possible_use_cases": [
+      "Large-scale app/content recommendation retrieval where implicit click data dominates",
+      "E-commerce product search using dual-encoder models trained on purchase or click logs",
+      "Video or music streaming candidate generation where popular items dominate batch negatives and long-tail items are underrepresented"
+    ],
+    "generated_at": "2026-03-29T00:24:30Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper applies a two-tower neural network (dual encoder) architecture where a query tower encodes user context and an item tower encodes app features into a shared low-dimensional embedding space, enabling efficient approximate nearest neighbor retrieval at inference time. The core contribution is Mixed Negative Sampling (MNS), which combines batch negatives (other items in the same training mini-batch, drawn from the impression distribution) with uniformly sampled negatives from the full item catalog. This mixture is designed to correct for selection bias in implicit feedback data, where observed impressions are not representative of the full item distribution.",
+    "key_innovation": "Prior work uses either batch negatives (fast but biased toward popular/impressed items) or unigram/uniform negatives (unbiased but noisy and computationally expensive). MNS is the first to explicitly combine both in a principled mixture to simultaneously correct selection bias from implicit feedback while retaining the computational efficiency of batch negatives. The insight is that batch negatives alone over-represent already-impressed items, causing the model to under-differentiate between truly irrelevant items and unimpressed-but-relevant items.",
+    "technical_insight": "The most important design choice is using uniform random negatives from the full catalog (not just the impression log) as a corrective signal. Implicit feedback like clicks/installs is biased because the user only sees items the existing system surfaces; batch negatives sampled from this distribution inherit the same bias. Uniform negatives break this feedback loop by forcing the model to distinguish positive items from truly random catalog items, which better approximates the ideal contrastive objective and improves recall for long-tail items.",
+    "limitations": "The mixing ratio between batch and uniform negatives is a hyperparameter requiring tuning, and its optimal value likely varies across domains and catalog sizes. Uniform sampling from a very large catalog may still be noisy since truly hard negatives (semantically similar but not relevant) are rarely sampled. The approach does not address position bias or exposure bias beyond the sampling correction. Results are shown on a single proprietary app recommendation dataset, limiting generalizability claims.",
+    "interview_questions": [
+      "Why do batch negatives introduce selection bias in implicit feedback settings, and how does MNS address it?",
+      "How does the two-tower architecture enable efficient retrieval at scale, and what is the key trade-off compared to cross-attention models?",
+      "What is the relationship between the negative sampling distribution and the ideal contrastive loss objective in metric learning?",
+      "How would you tune the mixing ratio in MNS, and what metrics would you optimize?",
+      "What are the failure modes of uniform negative sampling alone, and why is it insufficient without batch negatives?"
+    ],
+    "interview_answers": [
+      "Batch negatives are drawn from the same mini-batch, which is sampled from the impression log — items the production system already chose to show users. This means the model learns to distinguish positives only from items the system already considers relevant, never seeing truly random catalog items. MNS injects uniform negatives sampled independently from the full catalog, forcing the model to also score random items low, which corrects this distributional mismatch.",
+      "The two-tower architecture factorizes the scoring function into independent query and item embeddings, enabling offline pre-computation of all item embeddings and online ANN search (e.g., ScaNN, FAISS) at query time. The trade-off is that query-item interaction is limited to a dot product or cosine similarity — no cross-attention or feature crossing — which sacrifices expressiveness for scalability to billion-item catalogs.",
+      "The ideal contrastive loss would use negatives sampled from the true marginal item distribution p(item). Batch negatives approximate the impression distribution p(item | shown), while uniform negatives approximate the uniform catalog distribution. Neither is exactly p(item), but their mixture better approximates the true marginal by reducing the gap between what is shown and what exists in the catalog.",
+      "The mixing ratio is a hyperparameter tunable via offline recall@k and precision@k on a held-out set. In practice, you would sweep ratios (e.g., 25/75, 50/50, 75/25 batch/uniform) and monitor both ranking metrics and coverage of long-tail items. Online A/B testing on downstream install rate provides the final validation signal, since offline metrics may not capture position or novelty effects.",
+      "Uniform negatives alone are too easy — most random catalog items are obviously irrelevant to any given query, so the gradient signal is weak and the model learns coarse-grained distinctions. Hard negatives require items that are semantically close but not relevant. Without batch negatives, the model also loses the implicit curriculum that comes from training on items the production system finds plausible, which helps learn fine-grained distinctions among competitive candidates."
+    ],
+    "generated_at": "2026-03-29T00:24:56Z"
+  }
+}
