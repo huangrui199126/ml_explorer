@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GoaT is an Elasticsearch-powered search engine that indexes genomic and sequencing project metadata for ~1.5 million eukaryotic species, filling gaps in direct measurements by interpolating missing values through phylogenetic comparison. It serves the Earth BioGenome Project by providing a unified API, web UI, and CLI for querying genome sizes, karyotypes, and sequencing project statuses.",
+    "key_idea": "By combining curated empirical metadata with phylogenetic interpolation in a scalable search index, GoaT enables both exact and estimated genome-relevant attribute retrieval across the entire eukaryotic tree of life.",
+    "why_it_matters": "Large-scale biodiversity genomics projects need reliable metadata (e.g., expected genome size for sequencing cost estimation) even for unstudied species; GoaT provides a single authoritative source that reduces duplicated curation effort and accelerates project planning and coordination.",
+    "possible_use_cases": [
+      "Estimating sequencing costs and coverage requirements for unstudied species by retrieving phylogenetically interpolated genome size estimates",
+      "Coordinating among regional EBP-affiliated projects to avoid duplication by checking sequencing status and target priorities across taxa",
+      "Exploring karyotype and ploidy distributions across taxonomic groups to identify candidates for comparative genomics studies"
+    ],
+    "generated_at": "2026-03-29T00:00:01Z"
+  },
+  "deep": {
+    "method_breakdown": "GoaT uses Elasticsearch as its core indexing and search engine to store and query genome-relevant metadata (genome sizes, karyotypes, sequencing statuses) for ~1.5 million eukaryotic species. Missing attribute values are interpolated via phylogenetic comparison — propagating known values up/down the taxonomic tree to estimate unknowns for related taxa. The system exposes data through a REST API, web front end with visualizations, and a CLI, all backed by frequent curated updates.",
+    "key_innovation": "The phylogenetic interpolation of missing metadata is the primary novel contribution: rather than leaving gaps for the ~99% of taxa without direct measurements, GoaT estimates values by leveraging evolutionary relatedness, enabling practical project planning at scale. Prior resources (NCBI, Ensembl) are static repositories without active gap-filling or EBP coordination layers.",
+    "technical_insight": "Using Elasticsearch as the backbone enables flexible, faceted querying across 100+ mixed-type attributes (continuous, categorical, taxonomic) at million-species scale without custom database engineering. The tree-aware interpolation layer on top transforms a metadata store into an active planning tool, since sequencing project coordinators can query 'which unstudied taxa are phylogenetically similar to well-characterized ones' to prioritize effort.",
+    "limitations": "Phylogenetic interpolation introduces systematic bias — estimates inherit errors from ancestral nodes and assume trait conservation that may not hold (e.g., genome size varies enormously within some clades). Data provenance is heterogeneous and curation quality is uneven across taxonomic groups. The system depends on external taxonomy (NCBI/OTT) so taxonomic conflicts or synonymies can propagate errors. Coverage is still sparse for many invertebrate and fungal lineages.",
+    "interview_questions": [
+      "How does GoaT handle conflicts when multiple sources report different genome size values for the same species?",
+      "What algorithmic approach is used for phylogenetic interpolation, and how is uncertainty quantified for estimated values?",
+      "How does Elasticsearch's inverted-index architecture handle continuous numerical range queries over phylogenetically structured data?",
+      "What are the consistency guarantees when GoaT data is updated — can API queries return partially-updated states mid-refresh?",
+      "How would you extend GoaT's interpolation to account for horizontal gene transfer or hybridization events that violate the tree model?"
+    ],
+    "interview_answers": [
+      "GoaT assigns precedence tiers to sources (direct measurement > curated database > literature) and stores all values with provenance metadata, surfacing the highest-confidence value as primary while retaining alternatives. Conflicts are flagged for curator review rather than silently resolved.",
+      "The paper does not specify a precise algorithm (e.g., BM/OU model vs simple ancestral state reconstruction); values are propagated from the nearest measured ancestor or descendant. Uncertainty is represented implicitly via an 'estimated' flag rather than a formal confidence interval, which is a known limitation.",
+      "Elasticsearch stores numeric attributes as standard numeric fields supporting range filters, while taxonomic hierarchy is encoded via nested taxon IDs enabling subtree queries. The tree structure is flattened into lineage arrays per document so subtree searches become efficient term queries rather than graph traversals.",
+      "Elasticsearch's near-real-time indexing means there is a brief window (~1s) where refreshed documents coexist with stale ones, but GoaT's update cadence (periodic bulk refreshes) means mid-refresh API inconsistency is possible at fine granularity — the system prioritizes availability over strict consistency.",
+      "Reticulate evolution would require a DAG rather than tree representation, which Elasticsearch doesn't natively support for lineage queries. A practical extension would flag taxa known to be hybrids, exclude them from interpolation, and treat them as independent data points requiring direct measurement — or apply network-based ancestral reconstruction methods offline before indexing."
+    ],
+    "generated_at": "2026-03-29T00:00:28Z"
+  }
+}

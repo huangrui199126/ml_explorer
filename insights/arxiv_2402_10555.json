@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SPAR is a personalized recommendation framework that encodes long user engagement histories using pretrained language models combined with poly-attention layers and sparse attention mechanisms in a session-based approach, enhanced by LLM-extracted global interest profiles.",
+    "key_idea": "Session-based sparse attention over user history, combined with LLM-distilled global interest summaries, enables efficient and expressive user-item matching without sacrificing standalone encodability.",
+    "why_it_matters": "Recommendation systems often fail when user histories are long or sparse; SPAR addresses both by compressing history efficiently and enriching user profiles with LLM-extracted signals, making it practical for real-world deployment at scale.",
+    "possible_use_cases": [
+      "Personalized article or news feed ranking based on reading history",
+      "E-commerce product recommendations for users with long browsing histories",
+      "Video or podcast recommendations leveraging session-level engagement patterns"
+    ],
+    "generated_at": "2026-03-28T23:53:33Z"
+  },
+  "deep": {
+    "method_breakdown": "SPAR encodes long user engagement histories in a session-based manner using a pretrained language model (PLM) combined with poly-attention layers, which compress session-level representations into a fixed set of attention vectors. Attention sparsity mechanisms reduce computational cost when attending over many sessions. User and item representations are fused for click-through rate prediction while keeping standalone embeddings for efficient retrieval/deployment.",
+    "key_innovation": "The combination of session-based history segmentation with poly-attention (multi-vector) compression allows SPAR to handle arbitrarily long engagement histories without the quadratic cost of full self-attention over all tokens. Additionally, using an LLM to extract global interest summaries from raw history provides a complementary coarse-grained user profile that PLM-encoded sessions alone would miss.",
+    "technical_insight": "Poly-attention layers are the critical design choice: instead of collapsing a session into one vector (lossy) or attending over all tokens globally (expensive), they learn K attention heads that each pull out a different facet of interest from a session. This preserves intra-session diversity while keeping the per-session footprint fixed at K vectors, making cross-session attention tractable and enabling the model to capture multi-faceted user interests.",
+    "limitations": "Session boundary definition is heuristic and may not align with true interest shifts. The LLM-derived global profile adds inference latency and cost and may hallucinate interests not grounded in actual behavior. The framework is evaluated on only two benchmarks, limiting generalization claims. Cold-start users with sparse histories are not explicitly addressed, and the sparsity mechanism's hyperparameters likely require careful tuning per domain.",
+    "interview_questions": [
+      "How does SPAR handle the quadratic complexity of attending over very long user histories?",
+      "What role do poly-attention layers play, and how do they differ from standard mean/CLS pooling of a session?",
+      "How is the LLM-derived global interest profile integrated with the PLM-encoded session representations?",
+      "How does SPAR maintain efficiency for online serving while still fusing user and item features?",
+      "What are the key failure modes of session-based history encoding for recommendation?"
+    ],
+    "interview_answers": [
+      "SPAR segments the full history into sessions and encodes each session independently with the PLM, then applies sparse attention across sessions rather than attending over all tokens jointly. This reduces complexity from O(N²) over all tokens to O(S·L²) per session plus sparse cross-session attention, where S is number of sessions and L is session length.",
+      "Poly-attention learns K query vectors that each attend over the token representations in a session, producing K output vectors per session. Unlike mean pooling (single lossy vector) or CLS (biased toward positional/syntactic features), each of the K heads captures a distinct semantic facet of that session's interests, preserving intra-session diversity in a fixed-size representation.",
+      "The LLM processes raw engagement history text and outputs a natural-language summary of the user's global interests, which is then encoded by the PLM into an embedding. This global profile vector is concatenated or fused with the aggregated poly-attention session representations, providing a high-level prior that compensates for recency bias in session-level encodings.",
+      "SPAR maintains separate standalone user and item embeddings that can be pre-computed and indexed for approximate nearest-neighbor retrieval. The deeper user-item fusion (e.g., cross-attention or MLP on concatenated features) is used during re-ranking, not retrieval, so the system is split into an efficient candidate generation stage and a more expressive scoring stage.",
+      "Session boundary heuristics can misgroup items, causing interest bleed between sessions. Short or noisy sessions produce poor poly-attention representations. The model may overweight recent sessions and underweight long-term stable interests. Domain shift between pretraining corpus and recommendation content degrades PLM encoding quality, and users with highly diverse interests are hard to compress into K poly-attention vectors per session."
+    ],
+    "generated_at": "2026-03-28T23:53:56Z"
+  }
+}

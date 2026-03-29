@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LinkedIn built a small decoder-only language model for semantic job search that achieves 10x throughput improvement through model pruning (40% size reduction) and context compression (10x input length reduction). The paper shares practical lessons on GPU serving infrastructure optimized for millions of requests per second.",
+    "key_idea": "Combining aggressive model pruning with context compression lets you deploy LLM-quality semantic search at industrial scale without sacrificing accuracy.",
+    "why_it_matters": "Practitioners building search or ranking systems with LLMs can use these techniques to dramatically cut inference costs and latency while staying within quality thresholds required for production.",
+    "possible_use_cases": [
+      "Semantic job/talent matching at scale",
+      "Cost-efficient LLM-powered e-commerce or content ranking",
+      "Low-latency document retrieval in enterprise search systems"
+    ],
+    "generated_at": "2026-03-28T23:57:24Z"
+  },
+  "deep": {
+    "method_breakdown": "The system combines model compression (structured pruning reducing model size by 40%) with context compression (reducing input sequence length by up to 10x) to deploy a decoder-only SLM for semantic job search at LinkedIn. Pruning removes redundant attention heads and feed-forward neurons while fine-tuning recovers accuracy. Context compression distills long job/profile text into shorter representations, reducing the computational cost of both prefill and decode phases.",
+    "key_innovation": "The combination of orthogonal compression axes — model size reduction via pruning AND context length reduction via input compression — applied jointly to a production semantic search system. Prior work typically addresses one axis; this paper shows both can be stacked with minimal accuracy loss, achieving 10x throughput gains in a real deployment serving millions of requests per second.",
+    "technical_insight": "Context compression is the higher-leverage insight: reducing input length by 10x cuts the quadratic attention cost dramatically and shrinks KV-cache memory, enabling much larger batch sizes on GPU. This is more impactful than model pruning alone because inference cost in autoregressive models is heavily dominated by the prefill step for long contexts in retrieval/ranking workloads.",
+    "limitations": "Results are specific to LinkedIn's job-search domain and may not generalize to other semantic search tasks with different text distributions. Pruning requires careful retraining to recover accuracy, adding engineering overhead. Context compression likely loses fine-grained signals that could matter for edge-case relevance judgments. The paper focuses on decoder-only architecture, leaving open whether similar gains hold for encoder or cross-encoder ranking models.",
+    "interview_questions": [
+      "Why use a decoder-only (GPT-style) SLM for semantic search rather than a bi-encoder or cross-encoder architecture?",
+      "How does structured pruning differ from unstructured pruning, and why is it preferred for GPU deployment?",
+      "What are the trade-offs between context compression and simply truncating input text?",
+      "How do you maintain ranking quality when reducing input context by 10x — what information is most critical to preserve?",
+      "What are the key bottlenecks when serving LLM-based rankers at millions of requests per second, and how does this system address them?"
+    ],
+    "interview_answers": [
+      "Decoder-only models can score relevance as a generation probability (e.g., P('yes'|query, document)) without requiring separate query/document towers, allowing richer query-document interaction. They also benefit from the same pretraining scaling laws as generative LLMs, giving strong zero-shot and few-shot semantic understanding out of the box.",
+      "Structured pruning removes entire neurons, attention heads, or layers, producing a smaller dense model that runs efficiently on standard GPU kernels without sparse math support. Unstructured pruning creates irregular sparsity that requires specialized hardware or software to realize speedups; on commodity GPUs it often provides little wall-clock benefit despite high sparsity ratios.",
+      "Naive truncation discards content from a fixed position (usually the end), which can remove critical information like required skills or job titles that appear later in a document. Context compression learns to distill the most relevance-predictive tokens or spans, retaining semantic signal more faithfully than positional truncation while achieving greater length reduction.",
+      "The most critical information is typically entity-level signals: job title, required skills, location, and seniority. Compression methods that use attention or learned importance scores tend to preserve noun phrases and named entities over function words and boilerplate text, which aligns well with what semantic matching relies on.",
+      "The dominant bottlenecks are KV-cache memory (limiting batch size), prefill latency for long contexts (quadratic in sequence length), and GPU memory bandwidth during the decode phase. This system addresses them by shrinking both model size (reducing parameter memory and compute) and context length (reducing KV-cache size and prefill cost), enabling larger batches and higher GPU utilization."
+    ],
+    "generated_at": "2026-03-28T23:57:48Z"
+  }
+}
