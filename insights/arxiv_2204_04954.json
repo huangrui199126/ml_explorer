@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Panel-MDP reformulates 2D grid-based recommendation layout as a Markov decision process, where an RL agent (trained with PPO) sequentially decides which items to include and which grid slots to assign them to. This addresses the mismatch between traditional ranked-list outputs and the unordered nature of 2D panel slots.",
+    "key_idea": "Model grid placement as a sequential two-sub-action MDP — first filter items by predicted user preference, then assign accepted items to grid slots — enabling user-aware spatial arrangement beyond naive row-major ordering.",
+    "why_it_matters": "E-commerce and content platforms increasingly use 2D grid UIs (app stores, shopping feeds), but all standard ranking models assume a 1D list; Panel-MDP provides a principled, trainable way to exploit spatial layout for higher engagement without redesigning upstream retrieval/ranking pipelines.",
+    "possible_use_cases": [
+      "E-commerce product grids where item placement in rows/columns affects click-through based on user scan patterns",
+      "App store or marketplace category pages that display items in multi-column panels",
+      "Content recommendation carousels on streaming or news platforms where horizontal and vertical positions carry different visibility weights"
+    ],
+    "generated_at": "2026-03-29T00:15:16Z"
+  },
+  "deep": {
+    "method_breakdown": "Panel-MDP formulates 2D grid placement as a Markov Decision Process where time steps correspond to ranks in an initial 1D ranking list. At each step, two sequential sub-actions are taken: a binary preference prediction (keep or skip the item) and a slot selection from the 2D grid if the item is kept. PPO (Proximal Policy Optimization) is used to train the policy end-to-end, with the reward signal derived from user engagement on the resulting grid layout.",
+    "key_innovation": "Prior re-ranking work assumes a 1D sequential output structure, implicitly treating slot position as ordered. Panel-MDP is the first to explicitly model 2D grid slot selection as a discrete action space within RL, capturing user-specific spatial browsing patterns (e.g., left-to-right vs. top-to-bottom scanning) that vary across users and contexts — something a fixed row-major or column-major grid mapping cannot learn.",
+    "technical_insight": "Decomposing each time step into two sub-actions (preference judgment then slot assignment) is the critical design choice. This avoids a combinatorially explosive joint action space (items × slots) by first gating whether an item should appear at all, then routing it to the best available slot — making the problem tractable for PPO while still allowing the policy to jointly optimize item selection and spatial placement.",
+    "limitations": "The action space for slot selection still grows with grid size, limiting scalability to larger panels. The MDP processes items in the order of the upstream ranker, so errors or biases in the initial ranking propagate through the sequential decision process. Reward design relies on observed engagement which may be noisy or sparse, and the simulation experiments may not fully capture real user spatial attention dynamics. Generalization to variable-size grids (e.g., adaptive layouts) is not addressed.",
+    "interview_questions": [
+      "Why is a fixed row-major conversion of a 1D ranking to a 2D grid suboptimal, and what specific user behavior does Panel-MDP capture that this misses?",
+      "How does Panel-MDP handle the credit assignment problem in RL given that the reward is observed at the panel level, not per slot?",
+      "What are the two sub-actions at each MDP time step and why are they decomposed rather than treated as a single joint action?",
+      "What are the scalability limitations of Panel-MDP as grid size increases, and how might you address them?",
+      "How does Panel-MDP differ from listwise re-ranking methods like PRM or DLCM, and under what conditions would those baselines be competitive?"
+    ],
+    "interview_answers": [
+      "Fixed row-major conversion ignores that users have heterogeneous 2D scanning patterns — some scan horizontally first, others vertically, and attention varies by position within the grid. Panel-MDP learns a user-specific slot assignment policy so high-affinity items are placed in positions the particular user is most likely to attend to, not just the top-left corner.",
+      "PPO optimizes a trajectory-level reward (e.g., click rate or CTR over the filled panel), relying on the value function to propagate credit back to individual slot placement decisions. The sequential structure of the MDP — processing items one at a time — provides natural time step boundaries for temporal difference learning, though sparse rewards for non-clicked panels remain a practical challenge.",
+      "The first sub-action is a binary preference gate (include or skip the item from the initial list), and the second is slot selection from remaining open slots. Decomposition reduces the joint action space from O(items × slots) to O(items) + O(slots) per step, making policy gradient estimation more stable and computationally feasible with PPO.",
+      "The slot selection action space is discrete with size equal to remaining open slots, so it grows linearly with grid size; larger panels increase variance in policy gradient estimates. Potential mitigations include pointer-network style attention over slots, factorized row/column actions, or hierarchical policies that first select a row then a column.",
+      "Listwise re-rankers like PRM optimize a global permutation score but output a 1D list and rely on a fixed mapping to fill the grid, ignoring spatial layout. Panel-MDP is competitive whenever user attention is genuinely position-dependent in 2D space; if users scan strictly top-to-bottom and ignore horizontal position, the fixed mapping baseline would close most of the gap."
+    ],
+    "generated_at": "2026-03-29T00:15:41Z"
+  }
+}

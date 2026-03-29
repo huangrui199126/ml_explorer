@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ReLSum is a reinforcement learning framework that trains an LLM to generate concise, query-relevant summaries of verbose product descriptions, optimizing them specifically for search ranking quality. By using relevance scores as RL rewards, it bridges the gap between summarization and ranking objectives to improve e-commerce search.",
+    "key_idea": "Use relevance scores from a cross-encoder ranker as RL reward signals to fine-tune an LLM summarizer, so generated summaries are optimized directly for ranking quality rather than generic text quality.",
+    "why_it_matters": "It offers a practical way to inject rich product description content into latency-constrained ranking pipelines without increasing inference cost, yielding measurable gains in both offline metrics (NDCG, recall) and live user engagement.",
+    "possible_use_cases": [
+      "Improving product search ranking in e-commerce platforms by summarizing long descriptions into ranking-friendly snippets",
+      "Generating query-specific product snippets for display in search result pages",
+      "Adapting the framework to document retrieval or RAG pipelines where verbose source documents need to be condensed for a downstream reranker"
+    ],
+    "generated_at": "2026-03-29T00:17:52Z"
+  },
+  "deep": {
+    "method_breakdown": "ReLSum trains an LLM to generate query-relevant summaries of product descriptions using reinforcement learning, where the reward signal comes from a cross-encoder ranking model's relevance scores. The summarizer learns to compress verbose product descriptions into concise inputs that maximize downstream ranking quality. At inference, the LLM generates a summary conditioned on both the query and product description, and this summary replaces the raw description as input to the cross-encoder.",
+    "key_innovation": "Prior summarization-for-search methods used supervised learning with heuristic or human-labeled targets that are misaligned with the actual ranking objective. ReLSum closes this gap by directly optimizing the summarizer using ranking relevance scores as RL rewards, making the summarization objective identical to the downstream task objective rather than a proxy.",
+    "technical_insight": "Using the cross-encoder's relevance score as the RL reward creates end-to-end alignment between summarization and ranking without needing intermediate supervision. This works because the reward directly measures what matters — ranking quality — so the LLM learns to surface query-relevant attributes (e.g., material, size, compatibility) that the title omits but the ranker needs, rather than learning generic abstractive compression.",
+    "limitations": "The framework adds LLM inference latency to the pipeline, which must be handled offline or via caching, limiting adaptability to novel queries at serving time. The reward model (cross-encoder) may have its own biases that get baked into the summarizer. RL training instability and reward hacking (summaries that game the ranker rather than reflecting true product relevance) are potential failure modes. Coverage of tail queries or niche product categories with sparse training signal may be weak.",
+    "interview_questions": [
+      "How does ReLSum handle the latency constraint if the LLM must generate summaries at query time?",
+      "What prevents the LLM from reward-hacking — generating summaries that score high on the cross-encoder but are factually unfaithful to the product?",
+      "Why is a cross-encoder used as the reward model rather than a lighter bi-encoder?",
+      "How is the RL training stabilized given the non-differentiable reward from the ranking model?",
+      "How does ReLSum generalize to queries unseen during training, especially long-tail or seasonal queries?"
+    ],
+    "interview_answers": [
+      "Summaries are generated offline for the product catalog and cached, so at serving time the cross-encoder receives the pre-computed summary rather than the raw description, keeping online latency comparable to title-only input.",
+      "Faithfulness can be encouraged through a combined reward that includes a factual consistency term (e.g., NLI-based entailment score against the original description) alongside the ranking reward, though the paper's primary signal is relevance — this remains a real risk if not explicitly constrained.",
+      "Cross-encoders model fine-grained query-document interaction jointly, making their relevance scores a higher-quality reward signal than bi-encoder dot products. The richer reward better guides the summarizer toward capturing query-specific nuances that matter for ranking.",
+      "Standard policy gradient methods (e.g., REINFORCE or PPO) are used since the reward is treated as a scalar signal applied to sampled token sequences. A baseline (e.g., greedy decode score) is subtracted to reduce variance, and the pre-trained LLM provides a stable initialization.",
+      "Generalization relies on the LLM's pretrained language understanding to transfer across query types. However, for truly novel or rare queries the summarizer may default to generic compression. Query-conditional training and diverse query sampling during RL help, but tail coverage remains a known weak point."
+    ],
+    "generated_at": "2026-03-29T00:18:14Z"
+  }
+}

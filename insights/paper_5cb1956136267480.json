@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PS-SA replaces standard O(n²) self-attention in recommender systems with a learnable progressive sampling strategy that identifies only the most valuable items in a user behavior sequence, computing attention scores solely for those selected items. This reduces computational cost while maintaining recommendation quality, and was deployed at Alibaba with measurable CTR and RPM gains.",
+    "key_idea": "Attention scores over user behavior sequences are sparse, so a learnable sampler can identify a small subset of valuable items and compute attention only among them, approximating full self-attention at a fraction of the cost.",
+    "why_it_matters": "Long user behavior sequences are common in industrial recommenders but full self-attention is prohibitively expensive at scale; PS-SA offers a practical path to sub-quadratic attention that is trainable end-to-end and proven in production.",
+    "possible_use_cases": [
+      "Accelerating transformer-based ranking models in large-scale e-commerce recommendation",
+      "Reducing inference latency for real-time ad click-through rate prediction on long behavior histories",
+      "Enabling deployment of attention-based sequential models on resource-constrained or latency-sensitive serving infrastructure"
+    ],
+    "generated_at": "2026-03-29T00:12:33Z"
+  },
+  "deep": {
+    "method_breakdown": "PS-SA replaces full O(n²) self-attention with a learnable progressive sampling strategy that identifies a sparse subset of 'valuable' items from the user behavior sequence. For each query item, instead of attending to all n items, the model samples a small representative set using a differentiable sampler trained end-to-end, then computes attention only over this reduced set. This reduces computational complexity from O(n²) to approximately O(n·k) where k << n is the sampled subset size.",
+    "key_innovation": "The core novelty is treating item selection as a learnable sampling problem rather than using fixed heuristics (e.g., recency, frequency) or post-hoc pruning (e.g., top-k after computing full attention). Progressive sampling means the selection is hierarchical or staged — coarse-to-fine — so the model can efficiently narrow down candidates without computing all pairwise scores first. This is distinct from prior sparse attention work (Longformer, BigBird) which uses fixed structural patterns, and from DIN/DIEN which use handcrafted attention rather than learned sparse selection.",
+    "technical_insight": "The most important design choice is making the sampling differentiable so it can be trained jointly with the recommendation objective. If sampling were non-differentiable (e.g., hard top-k), gradients would not flow through the selection step and the sampler would not learn which items are truly valuable for the downstream task. By using a soft/relaxed sampling approximation during training and hard sampling at inference, PS-SA learns item importance in a task-aware manner rather than relying on generic signals.",
+    "limitations": "The sampled subset size k must be fixed or heuristically chosen as a hyperparameter, which may not generalize well across sequences of varying length or density. The progressive sampling adds its own overhead (extra forward passes or scoring stages), so the net efficiency gain depends heavily on the sequence length and k ratio. The approach is validated primarily on CTR/recommendation tasks — its effectiveness on tasks requiring global sequence context (e.g., long-range dependency modeling) is unclear. Online A/B results (2.6% CTR) reflect Alibaba's specific traffic distribution and may not transfer to other platforms.",
+    "interview_questions": [
+      "Why does sparsity in attention scores motivate a sampling-based approach rather than simply pruning low-weight entries after computing full attention?",
+      "How does PS-SA make the sampling step differentiable, and what approximation is used during training vs. inference?",
+      "What is the 'progressive' aspect of the sampling — does it refer to multi-stage selection, curriculum during training, or something else?",
+      "How does PS-SA compare empirically to other efficient attention variants like Linformer, Performer, or sparse attention on recommendation benchmarks?",
+      "What are the failure modes when the sampled subset misses a critical item — how does the model recover, and how often does this occur in practice?"
+    ],
+    "interview_answers": [
+      "Computing full attention first and then pruning still incurs the full O(n²) cost — the savings only materialize at inference if the sparse pattern is cached. PS-SA avoids computing unnecessary scores entirely by predicting which items are valuable before the attention computation, achieving savings at both training and inference time.",
+      "The paper likely uses a continuous relaxation such as Gumbel-softmax or a straight-through estimator to approximate discrete sampling as a differentiable operation during the forward/backward pass. At inference, hard discrete sampling (argmax or top-k) is used for efficiency, exploiting the train-inference gap that these relaxations are designed to bridge.",
+      "Progressive likely refers to a coarse-to-fine multi-stage process: an initial lightweight scorer narrows the candidate pool, and subsequent stages refine the selection. This avoids the chicken-and-egg problem of needing attention scores to select items but needing selected items to compute attention scores efficiently.",
+      "Direct comparisons to Linformer/Performer are likely favorable on recall and AUC for short-to-medium sequences typical in industrial recommenders (tens to low hundreds of items), but those methods target much longer sequences (thousands of tokens in NLP). The more relevant baselines are DIN, DIEN, SIM, and ETA — PS-SA likely shows better efficiency-accuracy tradeoff than SIM's hard retrieval and better accuracy than simple truncation.",
+      "If a critical item is missed by the sampler, the attention output for that query position will be suboptimal — the model has no recovery mechanism within a single forward pass. In practice, the sampler is trained to minimize this risk via the end-to-end loss, but for tail users with sparse histories or novel items, sampling errors are more likely. The production 2.6% CTR gain suggests the failure rate is low enough to be net positive, but per-user analysis of high-value users with complex histories would be an important ablation."
+    ],
+    "generated_at": "2026-03-29T00:13:00Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LAST (Learning At Serving Time) is a re-ranking method for e-commerce recommenders that updates the model on-the-fly for each request using a surrogate model instead of waiting for delayed user feedback like purchases. The modification is request-specific and discarded after each request to prevent error accumulation.",
+    "key_idea": "Use a surrogate model to generate training signal at inference time, applying a transient, per-request model update before producing recommendations — eliminating dependency on delayed user feedback.",
+    "why_it_matters": "Feedback delay (hours to days) creates a blind spot in online learning systems; LAST fills that gap by enabling immediate model adaptation at serving time, and it integrates as a drop-in complement to existing feedback-based online learning pipelines.",
+    "possible_use_cases": [
+      "E-commerce product re-ranking where purchase signals are delayed, enabling real-time adaptation to user session context",
+      "Cold-start or low-feedback scenarios where explicit user signals are sparse and surrogate-guided learning compensates",
+      "Augmenting existing online learning systems (e.g., those using click/purchase logs) with a faster adaptation layer that operates between feedback cycles"
+    ],
+    "generated_at": "2026-03-29T00:13:54Z"
+  },
+  "deep": {
+    "method_breakdown": "LAST (Learning At Serving Time) performs request-specific model updates on-the-fly at inference time without waiting for user feedback. When a request arrives, it uses a surrogate model (trained on available signals) to generate pseudo-labels and computes a transient gradient update that modifies the re-ranking model only for that single request. After the recommendation is served, the modification is discarded entirely, keeping the base model unchanged.",
+    "key_innovation": "Prior online learning methods for re-ranking require delayed feedback (clicks, purchases) before updating the model, creating a temporal lag. LAST decouples the update signal from real user feedback by using a surrogate model as the teacher, and critically makes updates request-scoped and ephemeral — each request gets a personalized model snapshot that is never persisted, avoiding error accumulation from potentially noisy surrogate predictions.",
+    "technical_insight": "The most important design choice is the discard-after-use (transient modification) mechanism. By not persisting updates, LAST prevents compounding errors from the surrogate model's inaccuracies — a problem that would plague standard online learning with pseudo-labels. This also makes LAST a safe complement to existing feedback-based online learning systems since it cannot corrupt the base model state, enabling clean integration.",
+    "limitations": "The surrogate model quality is a hard ceiling on LAST's effectiveness — if the surrogate is poorly calibrated or shifts distribution, the transient updates may consistently push in wrong directions. The per-request gradient computation adds inference latency overhead, which may be prohibitive at high-QPS e-commerce scale. The approach is also validated primarily in e-commerce re-ranking; generalizability to cold-start scenarios or sparse interaction domains is unclear. Finally, discarding updates means no cumulative learning from serving-time signals, so it cannot replace feedback-based methods.",
+    "interview_questions": [
+      "Why does LAST discard the model modification after each request instead of accumulating them?",
+      "How does LAST differ from meta-learning approaches like MAML that also perform fast adaptation at inference time?",
+      "What makes a good surrogate model for LAST, and how is it trained?",
+      "How does LAST handle the latency constraint of real-time e-commerce serving given it computes gradient updates per request?",
+      "Can LAST be applied to the initial ranking stage, or is it specific to re-ranking, and why?"
+    ],
+    "interview_answers": [
+      "Discarding modifications prevents error propagation from the surrogate model's imperfect predictions. If updates were accumulated, early inaccurate pseudo-labels would corrupt the base model, degrading future requests. The transient design treats each update as local context injection rather than permanent learning, trading cumulative adaptation for stability.",
+      "MAML optimizes an initialization that can be quickly fine-tuned with a few gradient steps using real task labels at test time. LAST has no real labels at serving time and instead uses a surrogate model as the label source, making it feedback-free. LAST also does not aim to find a universally good initialization — it applies a single request-specific perturbation from the current base model state each time.",
+      "A good surrogate model should be fast to query, trained on signals available before purchase feedback (e.g., clicks, dwell time, add-to-cart), and well-calibrated to item relevance in the current context. It is typically a simpler or previously deployed model trained offline or with shorter-lag feedback, serving as a proxy teacher for the more complex re-ranking model.",
+      "LAST computes only a small number of gradient steps (likely one or few) on a subset of parameters or via efficient approximations. The re-ranking stage already operates on a small candidate set (tens to hundreds of items), so the computational cost is bounded. In practice, the overhead is managed by limiting update scope and leveraging hardware acceleration, though exact latency tradeoffs are deployment-specific.",
+      "LAST is specific to re-ranking because re-ranking models explicitly model inter-item interactions within a fixed candidate list, giving well-defined context per request for the surrogate to score. Initial ranking operates over a massive item corpus making per-request gradient updates computationally infeasible, and the candidate list context that makes LAST's request-specific adaptation meaningful does not exist at that stage."
+    ],
+    "generated_at": "2026-03-29T00:14:21Z"
+  }
+}

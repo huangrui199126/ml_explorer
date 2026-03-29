@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "InceptionXML is a lightweight CNN-based framework for extreme multi-label classification of short texts (e.g., search queries, product titles) that applies convolutions along the embedding dimension rather than the word dimension. It pairs with SyncXML, a pipeline that synchronizes the label shortlister and classifier during training to improve hard-negative sampling, cutting inference time in half and model size by 10x vs. state-of-the-art.",
+    "key_idea": "Applying inception-style convolutions across the embedding dimension (rather than word positions) captures semantic features robust to word-order noise in short queries, while synchronized negative sampling keeps the shortlister and classifier aligned during training for more accurate label retrieval.",
+    "why_it_matters": "Practitioners building large-scale retrieval or recommendation systems can achieve transformer-level accuracy at 2% of the compute cost, with a dramatically smaller model footprint — making extreme classification viable on-device or in low-latency serving environments.",
+    "possible_use_cases": [
+      "Related search query suggestion at scale (e.g., e-commerce or web search autocomplete)",
+      "Product tagging and recommendation from short product titles or descriptions",
+      "Automated content tagging for large knowledge bases or document libraries with millions of labels"
+    ],
+    "generated_at": "2026-03-29T00:08:27Z"
+  },
+  "deep": {
+    "method_breakdown": "InceptionXML uses a convolutional architecture that applies convolutions along the embedding dimension rather than the word/sequence dimension, making it robust to word-order variations common in short-text queries. The SyncXML pipeline synchronizes a label shortlister and the extreme classifier during training, enabling dynamic hard-negative mining that updates both components jointly. At inference, the label shortlister prunes the million-scale label space to a candidate set, which the extreme classifier then re-ranks.",
+    "key_innovation": "The primary innovation is transposing the convolution axis from the word dimension to the embedding dimension for short-text classification — prior CNNs for text assume word order matters, but queries like search terms are inherently bag-of-words. The secondary innovation is synchronized training of the shortlister and classifier, fixing the instability of Astec's asynchronous hard-negative mining where stale shortlister candidates degrade classifier training.",
+    "technical_insight": "Applying convolutions along the embedding dimension treats each token's full embedding as a 'channel' and learns cross-feature interactions across the embedding space rather than n-gram patterns. This is the right inductive bias for short queries where token order is arbitrary, and it yields a much lighter model than transformers while still capturing rich feature interactions — explaining the 2% FLOPs vs. transformer baselines result.",
+    "limitations": "The embedding-dimension convolution assumes word-order invariance, which may hurt on short texts where order does matter (e.g., named entities, negation). The approach still depends on a pre-trained embedding layer, so quality degrades for out-of-vocabulary or rare terms. SyncXML's synchronization requires co-training both modules, increasing training complexity and coupling two components that may benefit from independent tuning. The benchmark evaluations are on standard XMC datasets that may not reflect real production label distributions.",
+    "interview_questions": [
+      "Why does applying convolutions along the embedding dimension rather than the word dimension make sense for short-text queries?",
+      "What problem does SyncXML solve with Astec's dynamic hard-negative mining, and how does synchronization fix it?",
+      "How does InceptionXML achieve only 2% of transformer FLOPs while remaining competitive in accuracy?",
+      "What are the trade-offs between the label shortlisting approach and a full softmax over all labels?",
+      "In what scenarios would InceptionXML's word-order-invariant assumption break down, and how might you address it?"
+    ],
+    "interview_answers": [
+      "Short search queries behave like bags of words — 'buy cheap laptop' and 'cheap laptop buy' have the same intent. Word-dimension convolutions learn local n-gram patterns that assume positional structure, which is noise for such inputs. Embedding-dimension convolutions instead learn interactions across feature dimensions for each token independently, then aggregate, capturing semantic content without positional assumptions.",
+      "Astec trains the shortlister and classifier asynchronously: the shortlister is periodically retrained on fixed classifier outputs, creating stale negatives that don't reflect the current classifier's decision boundary. SyncXML couples their gradients in a single training loop so the shortlister always proposes hard negatives calibrated to the current classifier state, stabilizing training and halving inference cost by removing a separate shortlister forward pass.",
+      "Transformers have O(n²) attention complexity and large feed-forward blocks. InceptionXML replaces this with depthwise-separable or inception-style convolutions along the embedding axis, which are O(n·d·k) where k is a small kernel size. The model avoids self-attention entirely, and the embedding-dimension operation is highly parallelizable on modern hardware, yielding dramatic FLOP reduction with minimal accuracy loss on short inputs.",
+      "Full softmax over millions of labels is computationally infeasible at training and inference. Shortlisting reduces the effective label space to hundreds of candidates, making the problem tractable. The trade-off is that errors in the shortlister create a recall ceiling — any label not shortlisted cannot be predicted. The quality of the shortlister directly bounds end-to-end performance, making its calibration during SyncXML training critical.",
+      "The assumption breaks for inputs where token order encodes meaning: negation ('not recommended' vs 'recommended not'), comparative structure ('A better than B'), or technical identifiers where sub-word order matters. One mitigation is to use positional encodings or a hybrid model with a lightweight attention head on top of the embedding-dimension CNN, preserving order sensitivity only where needed without full transformer cost."
+    ],
+    "generated_at": "2026-03-29T00:08:53Z"
+  }
+}
