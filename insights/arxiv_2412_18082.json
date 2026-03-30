@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PROMO addresses item cold-start recommendations by using high-value positive user feedback (pinnacle feedback) as prompts instead of content descriptions, paired with item-wise personalized prompt networks to reduce model bias toward warm items. The approach has been deployed at billion-user scale on a short-video platform with measurable commercial gains.",
+    "key_idea": "Using high-value positive user interactions as prompt signals bridges the semantic gap between content descriptions and recommendation tasks while counteracting warm-item dominance bias.",
+    "why_it_matters": "Cold-start is a critical bottleneck in production recommender systems — new items rarely get fair exposure, stunting their growth; this method directly improves new-item performance without relying on fragile content metadata.",
+    "possible_use_cases": [
+      "Bootstrapping new product listings on e-commerce platforms to accelerate their transition from cold to warm items",
+      "Improving content discovery for newly uploaded videos or articles on media platforms where engagement signals are sparse",
+      "Personalizing recommendations for new items in app stores or marketplaces where content metadata alone is insufficient to match user intent"
+    ],
+    "generated_at": "2026-03-30T12:23:22Z"
+  },
+  "deep": {
+    "method_breakdown": "PROMO identifies high-value positive feedback ('pinnacle feedback') from warm items as prompt signals instead of content/text descriptions, feeding these into item-wise personalized prompt networks that encode the feedback into prompt embeddings. These prompt embeddings are injected into a base recommender model to bias it toward cold-start items during inference. The personalized prompt networks learn to map pinnacle feedback to a representation space aligned with the recommender task, bypassing the semantic gap that plagues text-based prompts.",
+    "key_innovation": "Prior cold-start prompt methods use item content (text, images, metadata) as prompts, which suffer from semantic misalignment with collaborative filtering signal spaces. PROMO's innovation is using actual high-quality positive interaction feedback as prompts — bridging the gap by staying in the same interaction-signal domain — combined with item-wise personalized encoding to counteract the warm-item dominance bias in the training distribution.",
+    "technical_insight": "The most critical design choice is selecting 'pinnacle' (high-value) positive feedback rather than all feedback as the prompt source. This works because it filters noise and ensures the prompt signal represents strong relevance evidence, while the item-wise personalization prevents the prompt network from collapsing to a generic warm-item prior — each cold item gets a distinct prompt conditioned on its own specific feedback context.",
+    "limitations": "The method requires that cold-start items accumulate at least some positive feedback to construct pinnacle prompts, making it less effective for true zero-interaction cold-start scenarios. The definition and selection criterion for 'pinnacle' feedback is likely heuristic and platform-specific, reducing out-of-the-box generalizability. The deployed system is a short-video platform, so results may not transfer to domains with sparse or qualitatively different feedback (e.g., e-commerce, news). Additionally, the warm-item bias problem is mitigated but not fully eliminated since the base model is still trained predominantly on warm items.",
+    "interview_questions": [
+      "How does PROMO define and select 'pinnacle feedback', and what makes certain positive interactions higher-value than others?",
+      "The paper claims positive feedback bridges the semantic gap better than text descriptions — how do they empirically verify this, and could this claim be confounded by other differences in the experimental setup?",
+      "How does the item-wise personalized prompt network avoid overfitting given that cold-start items have very few interactions by definition?",
+      "At billion-user scale deployment, how is pinnacle feedback retrieved and fed into the prompt network with low enough latency to serve real-time recommendations?",
+      "The model addresses warm-item bias via personalized prompts — but does the base recommender model itself get fine-tuned jointly, or are the prompt networks trained on top of a frozen backbone, and how does this choice affect cold-to-warm item transition?"
+    ],
+    "interview_answers": [
+      "Pinnacle feedback likely refers to interactions with strong positive signals — e.g., completions, shares, or high-dwell-time views — as opposed to soft signals like impressions or brief clicks. The selection is probably threshold-based on engagement metrics specific to the platform, though the paper's exact criterion may involve learned scoring or heuristic ranking of interaction quality.",
+      "They likely compare prompt variants (text vs. feedback) under controlled conditions on held-out cold-start items. However, a potential confounder is that feedback-based prompts contain implicit collaborative filtering signal (who liked what) which is fundamentally richer for a CF-based recommender than raw text — so the 'semantic gap' framing may be underselling the more direct advantage of in-domain signal type.",
+      "The personalized prompt network is likely kept lightweight (small MLP or attention over a small set of interactions) and regularized through the cold-start training objective. The few available interactions are maximally leveraged by focusing only on pinnacle ones, reducing the input noise that would otherwise cause overfitting on sparse data.",
+      "Pinnacle feedback is likely pre-computed and cached in a feature store indexed by item ID, so retrieval is a fast key-value lookup at serving time. The prompt network forward pass is a small neural network applied to this cached feature, adding minimal latency overhead compared to the main model inference.",
+      "This is a critical architectural question the abstract does not fully resolve. If the base model is frozen, cold-start prompts adapt the output without disrupting warm-item performance but may be limited in expressiveness. Joint fine-tuning risks catastrophic forgetting of warm-item representations. The likely approach is prompt-only training with a frozen or slowly updated backbone, similar to NLP prompt tuning paradigms, which also naturally supports the cold-to-warm transition as items accumulate more interactions and graduate out of the cold-start prompt pathway."
+    ],
+    "generated_at": "2026-03-30T12:23:52Z"
+  }
+}

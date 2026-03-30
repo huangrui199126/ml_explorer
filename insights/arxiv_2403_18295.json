@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a dual instruction tuning strategy for LLMs that trains mathematical reasoning in both forward and reverse directions, adding two auxiliary tasks: predicting intermediate reasoning states and reconstructing original instructions from solutions.",
+    "key_idea": "By jointly training LLMs to both generate step-by-step solutions (forward) and recover problem instructions from solutions (reverse), the model develops a more robust internal representation of mathematical reasoning that reduces incorrect, missing, or redundant steps.",
+    "why_it_matters": "Fine-tuned LLMs for math still hallucinate or skip reasoning steps; this bidirectional training signal is a lightweight, dataset-agnostic technique that improves CoT reliability without requiring new data collection.",
+    "possible_use_cases": [
+      "Improving math tutoring systems where step-by-step correctness is critical",
+      "Enhancing automated theorem proving or formal verification pipelines that rely on LLM-generated reasoning chains",
+      "Boosting performance of smaller, fine-tuned LLMs on math benchmarks as an alternative to scaling up model size"
+    ],
+    "generated_at": "2026-03-30T12:17:34Z"
+  },
+  "deep": {
+    "method_breakdown": "Dual Instruction Tuning (DIT) augments standard mathematical instruction tuning with two auxiliary tasks: (1) Intermediate Reasoning State Prediction (forward), where the model predicts intermediate CoT steps given partial reasoning chains, and (2) Instruction Reconstruction (reverse), where the model recovers the original problem/instruction given the CoT solution. These synthetic tasks are constructed from existing math instruction datasets and used in multi-task fine-tuning alongside standard instruction following.",
+    "key_innovation": "The bidirectional training signal is the core novelty — prior work only trains LLMs to generate solutions given problems (forward direction). By adding a reverse task (reconstruct the problem from the solution), the model is forced to learn tighter semantic alignment between problem statements and reasoning chains, reducing hallucinated or misaligned CoT steps.",
+    "technical_insight": "The Instruction Reconstruction task acts as a consistency regularizer: if a model can regenerate the original problem from its own reasoning trace, the trace must faithfully capture the problem's constraints. This bidirectional consistency pressure discourages the common failure modes of incorrect, missing, or redundant steps that arise when forward-only training allows the model to 'drift' from the original instruction mid-chain.",
+    "limitations": "The approach depends entirely on the quality of existing CoT datasets to construct auxiliary training data — noisy or incorrect base CoT will propagate errors into both auxiliary tasks. The reverse task may be ill-posed for ambiguous problems where many different questions could yield the same solution steps. Computational cost increases with multi-task training. The paper does not address whether gains hold for very long or multi-step reasoning chains beyond standard benchmarks.",
+    "interview_questions": [
+      "Why does training in the reverse direction (reconstructing the problem from the solution) help with forward reasoning accuracy?",
+      "How are the intermediate reasoning state prediction instances constructed — what counts as an 'intermediate state'?",
+      "What prevents the model from learning a trivial solution to the Instruction Reconstruction task, such as memorizing problem-solution pairs?",
+      "How does this approach compare to self-consistency or process reward model (PRM) based methods for improving CoT quality?",
+      "What are the failure modes of the dual instruction tuning strategy, and on which problem types does it underperform?"
+    ],
+    "interview_answers": [
+      "Reverse training enforces bidirectional semantic consistency: if the model must recover the original problem from reasoning steps, those steps must be faithful to the problem's constraints and structure. This regularization signal penalizes reasoning chains that drift, hallucinate, or omit critical conditions, which then transfers to improved forward generation quality.",
+      "Intermediate states are constructed by segmenting existing CoT solutions at step boundaries, then training the model to predict the next step (or a masked intermediate step) given the problem and preceding steps. The granularity of 'intermediate' is determined by the step delimiters already present in the CoT dataset (e.g., newlines or sentence boundaries).",
+      "The key defense is that the model is evaluated on held-out problems not seen during construction, so pure memorization doesn't generalize. Additionally, the reconstruction task requires compositional understanding — the model must infer which mathematical constraints, variables, and operations in the solution trace back to the original problem formulation, which goes beyond lookup.",
+      "Self-consistency generates multiple solutions and takes majority vote at inference time, adding no training signal. PRMs train a separate verifier to score each step. DIT is complementary — it improves the base generator's chain quality via training, while self-consistency or PRMs can be applied on top. DIT is cheaper at inference time than self-consistency but requires more training data construction.",
+      "The method likely underperforms on problems requiring novel mathematical insight not representable as step sequences (e.g., proof by contradiction, highly non-linear reasoning), and on domains poorly covered by the base CoT dataset. If the reverse task produces degenerate reconstructions (e.g., for problems with symmetric solutions), the gradient signal may be noisy or counterproductive."
+    ],
+    "generated_at": "2026-03-30T12:18:16Z"
+  }
+}

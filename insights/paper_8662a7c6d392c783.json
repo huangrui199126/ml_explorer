@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a hybrid neural architecture for ad hoc table retrieval that combines semantic matching (convolutional filters over query/table interactions) with relevance matching (term similarity distributions), using row and column summaries to represent table structure. It outperforms state-of-the-art retrieval methods on two benchmark datasets.",
+    "key_idea": "Combining CNN-based semantic feature extraction with explicit term-similarity distributions over structured table rows/columns yields better query-to-table relevance ranking than either signal alone.",
+    "why_it_matters": "Enterprise and research systems often need to surface relevant data tables from large repositories in response to natural language queries; this approach provides a practical, learnable ranking model that handles both the semantic intent of queries and the structured nature of tabular data.",
+    "possible_use_cases": [
+      "Enterprise data catalog search where analysts query for relevant datasets or tables by natural language",
+      "Open-domain question answering systems that retrieve supporting evidence from tabular knowledge bases",
+      "Scientific literature search tools that surface relevant experimental result tables from papers"
+    ],
+    "generated_at": "2026-03-30T12:20:42Z"
+  },
+  "deep": {
+    "method_breakdown": "The model combines two complementary matching signals: convolutional filters applied over query-table interaction matrices to capture semantic matching patterns, and a feature vector encoding term similarity distributions for relevance matching. Tables are represented using row and column summaries that distill structured content into a form amenable to neural processing. These signals are fused in a learning-to-rank framework trained end-to-end to rank candidate tables against queries.",
+    "key_innovation": "Prior table retrieval work treated tables as flat documents, ignoring their structured row/column nature. This work explicitly models table structure through row and column summaries fed into a hybrid architecture that jointly captures both semantic matching (via CNNs over interaction matrices) and relevance matching (via term distribution features), which had not been combined for structured table retrieval before.",
+    "technical_insight": "The critical design choice is using separate row and column summaries rather than flattening table content, because tables encode meaning along two orthogonal axes — rows represent entities/instances and columns represent attributes/features. Treating them independently preserves the relational semantics that flat-document approaches destroy, allowing the model to distinguish between a query matching a column header versus a cell value.",
+    "limitations": "The row/column summary approach requires a fixed-size compression of table content, likely losing information from large or sparse tables. The model is evaluated on only two datasets, limiting generalizability claims. CNNs over interaction matrices may struggle with long queries or wide tables due to fixed filter sizes. The approach likely requires significant labeled query-table relevance pairs which are expensive to obtain.",
+    "interview_questions": [
+      "How do you construct the row and column summaries, and what information is preserved or lost in that process?",
+      "Why use CNNs over the interaction matrix rather than attention mechanisms, given that attention has shown strong results in matching tasks?",
+      "How does the model handle tables with heterogeneous cell types — e.g., numeric columns versus text columns?",
+      "In the ablation study, what was the relative contribution of semantic matching versus relevance matching, and does this vary by dataset?",
+      "How does the model scale to large table corpora at retrieval time — is the neural scoring applied over all candidates or after an initial candidate selection step?"
+    ],
+    "interview_answers": [
+      "Row summaries aggregate cell values within each row (e.g., concatenation or pooling), and column summaries aggregate along each column. This preserves the axis-aligned relational structure but loses fine-grained cell-level positional information and cross-cell relationships within a row-column intersection.",
+      "CNNs were likely chosen because they were the dominant architecture for interaction-based matching at the time and because they naturally extract local n-gram patterns from the interaction matrix. Attention mechanisms could capture longer-range dependencies but were less established for this task when this work was done.",
+      "The model likely relies on textual representations of cells, so numeric columns would be tokenized as strings. This is a weakness — the model has no inductive bias for numerical similarity or ordering, so queries involving numeric ranges or comparisons would be handled poorly.",
+      "The ablation study supports that both components are necessary, with neither alone matching the combined model. The relative importance likely varies — relevance matching (term distributions) may dominate for keyword-style queries while semantic matching (CNN) helps for paraphrase or conceptual queries.",
+      "In practice the neural model would be applied as a re-ranker over a candidate set retrieved by a fast first-stage retrieval (e.g., BM25), since computing full interaction matrices for all tables in a large corpus would be computationally prohibitive."
+    ],
+    "generated_at": "2026-03-30T12:21:03Z"
+  }
+}
