@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates the dual privacy implications of RAG systems: RAG can be exploited to leak private retrieval database contents through novel attack methods, but simultaneously reduces the risk of exposing an LLM's training data. The authors present empirical studies and attack techniques that reveal these opposing privacy dynamics.",
+    "key_idea": "RAG creates a new attack surface by making private retrieval corpora vulnerable to extraction, while paradoxically acting as a privacy shield for the underlying LLM's training data.",
+    "why_it_matters": "Practitioners building RAG systems over proprietary or sensitive documents need to understand that their retrieval databases are a high-value attack target, and must implement access controls and query auditing beyond standard LLM privacy safeguards.",
+    "possible_use_cases": [
+      "Auditing RAG pipelines for retrieval data leakage before deploying over confidential enterprise documents",
+      "Designing privacy-preserving RAG architectures that limit how much retrieved context gets echoed in model outputs",
+      "Informing threat models for healthcare or legal RAG applications where document confidentiality is legally mandated"
+    ],
+    "generated_at": "2026-03-30T07:28:36Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper conducts empirical studies on RAG privacy from two angles: (1) novel membership inference and data extraction attacks against the private retrieval database, crafting adversarial queries that elicit verbatim reproduction of retrieved documents from the LLM, and (2) analysis of how RAG's in-context grounding affects the LLM's tendency to regurgitate its training data. Experiments span multiple LLMs and retrieval corpora to measure attack success rates under varying RAG configurations.",
+    "key_innovation": "Prior privacy work on LLMs focused exclusively on training data memorization; this is among the first systematic studies showing that RAG introduces a distinct, orthogonal privacy surface — the retrieval database — while simultaneously demonstrating the previously unrecognized side-effect that RAG can suppress training data leakage by overriding the model's parametric memory with retrieved context.",
+    "technical_insight": "The core insight is that the LLM's instruction-following behavior, which makes RAG useful, is also its vulnerability: an attacker can craft prompts that instruct the model to repeat or summarize retrieved documents verbatim. This works because RAG pipelines concatenate private documents directly into the prompt context, so standard extraction attacks require no model access beyond the API — making the attack surface fundamentally different from training-data extraction.",
+    "limitations": "The attack assumes a black-box query interface with no rate limiting or output filtering, which may not reflect hardened production deployments. The leakage mitigation finding for training data is correlational and may not generalize across all LLM families or fine-tuned variants. The study does not evaluate defenses such as differential privacy on retrieval, semantic chunking obfuscation, or output post-processing, leaving the practical defense landscape largely uncharted.",
+    "interview_questions": [
+      "How does your retrieval database extraction attack differ mechanically from classical training data extraction attacks against LLMs?",
+      "What property of RAG systems causes them to simultaneously increase retrieval-data leakage while decreasing training-data leakage?",
+      "How did you measure membership inference success for the retrieval corpus, and what baseline did you compare against?",
+      "Are there RAG configurations — chunk size, top-k, prompt templates — that significantly affect attack success rates, and which matter most?",
+      "What practical defenses would you recommend for RAG system builders today, given the risks you identified?"
+    ],
+    "interview_answers": [
+      "Training data extraction exploits memorization baked into model weights and typically requires many queries with careful prefix steering. Our retrieval extraction attack is simpler and more reliable: the private document is already present in the live context window, so adversarial prompts only need to trigger repetition of in-context content rather than surface memorized weights — making it effective with far fewer queries and no white-box access.",
+      "RAG grounds generation in retrieved context, which dominates the model's attention over its parametric knowledge. This is a double-edged sword: it exposes the retrieved document to extraction, but it also displaces the model's reliance on training-time memorization, reducing the probability that the model regurgitates sensitive training examples when the retrieved context steers the output elsewhere.",
+      "We used a threshold-based membership inference score derived from the model's verbatim reproduction rate and perplexity of candidate documents under the RAG output distribution, comparing against a shadow-retrieval baseline where the queried document is not in the corpus — analogous to shadow-model approaches in classical MI attacks.",
+      "Top-k and chunk size are the dominant factors. Larger top-k increases the attack surface by injecting more private text into context, while smaller chunks reduce the verbatim signal available for extraction. Prompt template verbosity matters less than retrieval configuration, suggesting that securing the retrieval layer is more impactful than prompt-level filtering alone.",
+      "We recommend: (1) output filtering to detect and redact near-verbatim reproduction of stored chunks; (2) access-controlled retrieval that scopes document retrieval to the authenticated user's permitted corpus; (3) differential privacy or noise injection at the chunk embedding level to degrade precise reconstruction; and (4) rate limiting and anomaly detection on query patterns that systematically probe the retrieval index."
+    ],
+    "generated_at": "2026-03-30T07:29:04Z"
+  }
+}
