@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GNMR is a graph neural network framework that models multiple types of user-item interactions (e.g., browse, purchase) simultaneously to improve recommendations. It uses a relation aggregation network and message passing over heterogeneous interaction graphs to capture richer collaborative signals.",
+    "key_idea": "By building a unified graph over multiple behavior types and propagating embeddings across it, GNMR captures how different interaction signals (weak vs. strong intent) inform each other to better predict target behaviors.",
+    "why_it_matters": "Most real-world platforms have multi-typed behavioral data that single-behavior models waste; leveraging all signals together yields better recommendations without requiring more data collection.",
+    "possible_use_cases": [
+      "E-commerce platforms modeling browse, add-to-cart, and purchase signals to improve purchase prediction",
+      "Streaming services using watch-time, likes, and shares jointly to recommend content",
+      "News apps combining click, read-to-end, and share behaviors to surface more relevant articles"
+    ],
+    "generated_at": "2026-03-30T08:07:54Z"
+  },
+  "deep": {
+    "method_breakdown": "GNMR constructs a heterogeneous user-item interaction graph where edges are typed by behavior (e.g., browse, purchase) and applies graph neural network message passing to propagate embeddings across neighboring nodes. A relation aggregation network explicitly models the dependency and heterogeneity between different interaction types, weighting contributions from each behavior type differently. Embeddings are recursively refined through multiple propagation layers, allowing higher-order collaborative signals to flow across the graph.",
+    "key_innovation": "Unlike prior multi-behavior methods that treat each behavior independently or simply concatenate behavior-specific signals, GNMR explicitly models cross-behavior dependencies via a relation aggregation network — capturing how auxiliary behaviors (browse, cart) inform and condition the target behavior (purchase) rather than treating them as isolated channels.",
+    "technical_insight": "The critical design choice is the relation aggregation network that learns inter-behavior interaction weights rather than treating all behaviors uniformly. This works because auxiliary behaviors carry heterogeneous but complementary intent signals — browsing indicates interest but not commitment, while purchase confirms intent — and weighting their contributions allows the model to distill a coherent user preference embedding that respects this behavioral hierarchy.",
+    "limitations": "The framework assumes a fixed, predefined set of behavior types known at training time, making it brittle to new or rare behavior categories. It also inherits standard GNN scalability issues on large sparse graphs. The reliance on co-occurrence patterns means cold-start users with few interactions across behavior types still suffer. Additionally, temporal ordering of behaviors is not modeled, losing sequential intent signals (e.g., browse → cart → purchase ordering).",
+    "interview_questions": [
+      "How does GNMR differ from simply training separate GNN models per behavior type and ensembling?",
+      "What is the role of the relation aggregation network and how does it capture cross-behavior dependencies?",
+      "How does the model handle the data sparsity imbalance between target behaviors (purchases) and auxiliary behaviors (browsing)?",
+      "What are the scalability implications of building a heterogeneous graph over all behavior types simultaneously?",
+      "How would you extend GNMR to handle temporal dynamics or sequential behavior patterns?"
+    ],
+    "interview_answers": [
+      "Separate per-behavior GNNs would learn independent embedding spaces with no shared structure, missing cross-behavior dependency signals. GNMR's relation aggregation network explicitly models how one behavior type informs another within a unified embedding space, enabling purchase prediction to leverage browse-level collaborative signals in a principled, learned manner.",
+      "The relation aggregation network takes behavior-specific neighbor embeddings and learns attention or weighting coefficients that reflect the relative informativeness of each behavior type for the target prediction task. This allows the model to, for instance, upweight cart-add signals over page-view signals when predicting purchase, rather than treating all behaviors equally.",
+      "The graph message passing naturally propagates denser auxiliary behavior signals to nodes (users/items) that have sparse target behavior interactions. The relation aggregation weighting further lets the model learn that auxiliary signals should contribute more heavily for sparse users, effectively acting as a regularizer that leverages behavioral co-occurrence to fill in preference gaps.",
+      "Building a unified heterogeneous graph multiplies edge density by the number of behavior types, increasing memory and computation costs quadratically in dense settings. GNN neighborhood explosion becomes more severe, and mini-batch sampling strategies must account for heterogeneous edge types, complicating standard neighbor sampling pipelines used for scalable GNN training.",
+      "GNMR could be extended with time-aware edge features encoding recency or sequential order of interactions, or by replacing the static aggregation with a sequential module (e.g., GRU over temporally ordered behavior embeddings per user). Alternatively, a causal graph structure could encode known behavioral funnels (browse → cart → purchase) as directed typed edges, biasing message passing to respect intent progression."
+    ],
+    "generated_at": "2026-03-30T08:08:18Z"
+  }
+}

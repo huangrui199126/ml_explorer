@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses the challenge of calibrating conversion rate (CVR) prediction models in online advertising when user feedback is delayed, making recent labels unreliable. It proposes a knowledge distillation framework where a teacher model learns from older, complete-feedback data and transfers that knowledge to a student model trained on recent data to reduce distribution shift.",
+    "key_idea": "Use knowledge distillation to bridge the gap between a teacher trained on historically complete but potentially stale data and a student trained on recent but label-incomplete data, achieving both calibration and recency.",
+    "why_it_matters": "Miscalibrated CVR predictions directly hurt ad bidding strategies and ROI; this method offers a practical way to stay calibrated on recent traffic without waiting for delayed feedback to resolve.",
+    "possible_use_cases": [
+      "Improving bid optimization in real-time bidding systems where conversion signals arrive hours or days after the click",
+      "Calibrating post-click conversion models in e-commerce ad platforms with long purchase consideration cycles",
+      "Extending to any streaming ML setting with delayed labels, such as fraud detection or subscription churn prediction"
+    ],
+    "generated_at": "2026-03-30T08:17:36Z"
+  },
+  "deep": {
+    "method_breakdown": "The method deploys a teacher-student knowledge distillation framework where the teacher model trains on older samples with complete conversion feedback to capture long-term patterns, while the student model trains on recent data to stay current with distribution shifts. A custom distillation loss transfers calibration knowledge from the teacher to the student, encouraging the student to produce well-calibrated probability outputs despite its labels being incomplete due to delayed feedback. The two models together balance the trade-off between label completeness (favoring old data) and distributional recency (favoring new data).",
+    "key_innovation": "Prior calibration methods treat delayed feedback and data shift as separate problems or ignore one entirely. This work is the first to explicitly frame delayed feedback calibration as a teacher-student distillation problem, using label-complete old data to supervise a recency-biased student — directly addressing the tension between feedback completeness and data freshness without requiring explicit delay-time modeling.",
+    "technical_insight": "The key design choice is decoupling the two conflicting objectives into separate models rather than trying to reconcile them in a single training objective. The teacher, unburdened by distribution shift pressure, can learn clean calibration signals from complete labels; the distillation loss then acts as a calibration regularizer on the student, preventing it from overfitting to noisy positive labels in recent data while still benefiting from recent feature distributions.",
+    "limitations": "The approach assumes the teacher's old data still provides useful calibration signal despite distribution shift, which may break in rapidly evolving ad ecosystems. It introduces a hyperparameter-sensitive distillation loss that may require careful tuning per dataset. The method does not model the actual delay distribution explicitly, so it cannot recover ground-truth conversion rates for partially-observed recent samples. Performance likely degrades when the gap between old and new data distributions is large, making teacher guidance misleading.",
+    "interview_questions": [
+      "Why does delayed feedback specifically hurt calibration rather than just ranking performance?",
+      "How does the distillation loss balance the teacher's calibration signal against the student's own training objective?",
+      "What happens when the teacher model itself is poorly calibrated due to historical distribution shift?",
+      "How would you choose the cutoff point separating 'complete feedback' (teacher) data from 'recent' (student) data in practice?",
+      "How does this approach compare to explicit delay-time modeling methods like the Elapsed-Time Sampling or DFM approaches?"
+    ],
+    "interview_answers": [
+      "Calibration requires accurate probability estimates, not just correct rankings. Delayed feedback causes recent positive conversions to appear as negatives at training time, systematically underestimating CVR. A model can still rank ads correctly (relative order preserved) while being badly miscalibrated (absolute probabilities wrong), which directly harms bidding and budget allocation in real ad systems.",
+      "The distillation loss adds a term penalizing the KL divergence (or MSE) between student and teacher output probabilities, weighted by a temperature or lambda hyperparameter. This acts as a soft label regularizer: rather than training purely on noisy hard labels from recent data, the student is pulled toward the teacher's calibrated soft predictions, reducing variance from label noise while the student's own loss on recent features reduces distribution shift.",
+      "This is a real vulnerability. If the teacher's data is too old, its calibration may reflect a prior distribution that systematically over- or under-estimates conversion for current traffic patterns. The method implicitly assumes teacher miscalibration from distribution shift is less severe than student miscalibration from delayed feedback — an assumption that should be validated per deployment context. One mitigation would be to weight teacher samples by inverse propensity scores for distribution shift.",
+      "The cutoff should be set at a delay window length that ensures the vast majority of conversions (e.g., 95th percentile of the attribution window, often 7–30 days) have been observed. In practice, this is domain-specific: for app installs, 7 days may suffice; for subscription conversions, 30+ days may be needed. The cutoff represents a bias-variance trade-off: longer windows give cleaner labels but older, more shifted data.",
+      "Explicit delay modeling methods like DFM or ESDF estimate the delay distribution p(delay | features) and reweight or impute labels accordingly, directly addressing label incompleteness probabilistically. This distillation approach avoids delay distribution estimation (which is noisy and feature-dependent) and instead uses a softer inductive bias via knowledge transfer. The distillation approach is simpler and more model-agnostic, but gives up the theoretical guarantees of explicit delay correction and may underperform when delay patterns are highly feature-dependent."
+    ],
+    "generated_at": "2026-03-30T08:18:05Z"
+  }
+}

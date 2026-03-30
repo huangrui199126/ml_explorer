@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper audits TikTok's algorithmic feed explanations using automated sockpuppet accounts to assess whether the stated reasons for video recommendations are accurate and meaningful. The study finds significant inaccuracies—such as citing user behaviors that never occurred—revealing that current explanations are largely generic and misleading rather than genuinely transparent.",
+    "key_idea": "By comparing TikTok's provided recommendation explanations against ground-truth sockpuppet account behavior and video metadata, the authors expose a systematic mismatch between stated reasons and actual algorithmic signals.",
+    "why_it_matters": "As regulations increasingly mandate algorithmic transparency, practitioners building or auditing recommendation systems need to understand that surface-level explanations can be compliance theater rather than genuine transparency, and this work provides a methodology to detect that gap.",
+    "possible_use_cases": [
+      "Auditing recommendation system explanations on other social media platforms for regulatory compliance",
+      "Designing more accurate and user-meaningful explainability features in content recommendation pipelines",
+      "Informing policymakers and regulators about the inadequacy of current platform transparency mechanisms"
+    ],
+    "generated_at": "2026-03-30T08:14:52Z"
+  },
+  "deep": {
+    "method_breakdown": "The authors deploy automated sockpuppet accounts on TikTok with controlled behavioral profiles (e.g., zero comments, specific watch history) to collect videos and their accompanying algorithmic explanations at scale. They then cross-reference the stated explanation reasons against ground-truth account behavior logs and video metadata to measure accuracy (whether the reason is behaviorally consistent) and comprehensiveness (whether all relevant signals are surfaced). Statistical analysis reveals patterns in which explanation types appear, how frequently they contradict account behavior, and how often generic non-personalized reasons dominate.",
+    "key_innovation": "Prior work on algorithmic auditing focuses on auditing the recommendations themselves (what content is shown); this paper specifically audits the explanations of recommendations — a layer one step removed. The sockpuppet methodology is adapted to create ground-truth behavioral baselines against which explanation claims can be falsified, enabling the first systematic accuracy audit of platform-provided algorithmic transparency disclosures.",
+    "technical_insight": "The critical design choice is creating sockpuppet accounts with zero-baseline behaviors (e.g., accounts that never comment, never like) so that any explanation citing those behaviors is provably false. This falsifiability condition transforms a qualitative transparency audit into a quantitative accuracy measurement, revealing that TikTok's explanations are often disconnected from actual personalization signals and instead serve as generic placeholders.",
+    "limitations": "Sockpuppet accounts may not replicate organic user behavioral dynamics, so TikTok's algorithms could treat them differently than real users, potentially skewing which explanations are triggered. The audit cannot access TikTok's internal ranking model, so absence of an explanation does not confirm absence of that signal. The study is also a temporal snapshot — platform explanation logic can change. Finally, geographic and demographic coverage is limited to the accounts created, restricting generalizability.",
+    "interview_questions": [
+      "Your audit found that 34% of videos shown to zero-comment accounts included 'You commented on similar videos' — what is the most likely technical explanation for this false attribution?",
+      "How do you distinguish between a genuinely inaccurate explanation and one that is accurate but reflects a signal the sockpuppet account generated unknowingly (e.g., passive signals like watch time)?",
+      "TikTok's explanations may serve a legal compliance function rather than a user utility function — how does that framing change how we should evaluate their 'accuracy'?",
+      "What would a methodologically sound ground truth look like for auditing comprehensiveness, given that you cannot enumerate all signals TikTok uses?",
+      "If platforms generate explanations post-hoc via a separate model rather than extracting them from the ranking model itself, what are the implications for regulation that mandates algorithmic transparency?"
+    ],
+    "interview_answers": [
+      "The most likely explanation is that TikTok generates explanations from a shallow post-hoc classifier or rule system that is loosely coupled from the actual ranking model — it may fire 'commented on similar videos' based on content similarity or topic affinity rather than actual comment history, meaning the explanation maps to a proxy signal rather than the stated behavioral one.",
+      "This is the core epistemological challenge of the audit. The authors partially address it by using zero-baseline accounts, but passive signals (watch duration, scroll speed, implicit affinity) are uncontrolled. A cleaner design would require platform API access or instrumented clients to log all transmitted behavioral signals, which is precisely what platforms do not expose.",
+      "If explanations are legal artifacts designed to satisfy GDPR Article 22 or DSA Article 27 obligations rather than to inform users, then 'accuracy' in the user-utility sense is irrelevant to the platform's incentive. This reframes the finding: platforms may be rationally producing plausible-but-false explanations that satisfy regulatory letter while minimizing information disclosure about proprietary ranking logic.",
+      "Comprehensiveness is fundamentally unauditable without internal model access. The authors can only check whether stated reasons are consistent with behavior, not whether unstated reasons were omitted. A partial proxy is to vary one behavioral dimension at a time across sockpuppet cohorts and measure whether explanation frequency shifts accordingly — a difference-in-differences design that infers signal importance from explanation rate changes.",
+      "Post-hoc explanation generation decouples transparency from the actual decision process, making regulatory mandates for 'explanation of the algorithm' potentially meaningless. Regulators would need to mandate that explanations be derived directly from the ranking model's feature attributions (e.g., SHAP values on the actual model) rather than allowing platforms to generate them separately, which current DSA language does not require."
+    ],
+    "generated_at": "2026-03-30T08:15:21Z"
+  }
+}
