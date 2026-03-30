@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MarfNet addresses two key challenges in LTV prediction for mobile game advertising: missing user features (due to privacy/log limitations) and sparse purchase labels. It routes samples through specialized experts based on their missing-feature patterns, then fuses representations, while a dynamic loss weighting mechanism (Bidden) focuses training on harder samples.",
+    "key_idea": "Compute per-sample missingness masks for both raw features and their interactions, then use these masks to route samples to specialized expert networks so each expert learns from complete feature subsets rather than imputed or noisy data.",
+    "why_it_matters": "In real ad systems, feature missingness is ubiquitous and label sparsity is the norm; a model that explicitly handles both can significantly improve bid optimization and user targeting without requiring complete data pipelines.",
+    "possible_use_cases": [
+      "Ad bid optimization for mobile games where user feature logs are incomplete",
+      "LTV prediction in privacy-first environments (iOS ATT, GDPR) with high feature dropout",
+      "Purchase propensity modeling in e-commerce with sparse conversion signals"
+    ],
+    "generated_at": "2026-03-30T04:28:56Z"
+  },
+  "deep": {
+    "method_breakdown": "MarfNet computes per-sample missing state vectors for both raw features and feature interactions, then uses these states to route samples to specialized expert networks via a Mixture-of-Experts (MoE) style architecture where each expert learns representations conditioned on specific missing patterns. The missing-aware representations from all experts are fused via learned weights derived from the missing states. Additionally, the Bidden loss weighting mechanism dynamically upweights hard samples within each mini-batch by tracking prediction difficulty relative to batch statistics, addressing label sparsity in LTV regression.",
+    "key_innovation": "The core novelty is treating feature missingness as a first-class routing signal rather than imputing missing values or masking them uniformly. Prior work either imputes (introducing noise) or drops missing features; MarfNet instead uses the missingness pattern itself as a structural feature to route samples to experts trained on compatible data distributions. Bidden is also novel in applying dynamic hard-sample mining at the batch level for LTV regression, analogous to focal loss in classification but adapted for sparse regression targets.",
+    "technical_insight": "The most critical design choice is computing missing states for feature interactions (cross-features), not just raw features. A raw feature may be present but its interaction with another missing feature is still unobservable — capturing this second-order missingness avoids information leakage into the model from phantom interactions. This works because the routing network can then assign samples to experts that have only ever seen valid interaction terms, keeping each expert's input distribution clean and consistent.",
+    "limitations": "The expert routing mechanism requires knowing missingness patterns at inference time, which may not always be reliable or consistent across deployment environments. The number of experts is a hyperparameter that likely needs to scale with the combinatorial diversity of missing patterns, making it expensive for systems with many features. Bidden's batch-level difficulty estimation is sensitive to batch composition and size — small or imbalanced batches may produce noisy weight estimates. The approach is validated in mobile gaming LTV which has domain-specific purchasing distributions; generalizability to other LTV contexts (e-commerce, subscriptions) is unproven.",
+    "interview_questions": [
+      "How does MarfNet handle the case where the missing state itself is unreliable — for example, if a feature is present but filled with a default/sentinel value rather than truly observed?",
+      "The Bidden loss mechanism assigns higher weights to difficult samples — how do you prevent the model from overfitting to noisy hard samples that are hard precisely because they are mislabeled or outliers?",
+      "How is the number of experts chosen, and does each expert specialize in a specific missingness pattern or do they emerge via soft routing?",
+      "LTV is typically a heavy-tailed distribution — what output head and loss function are used for the regression target, and how does Bidden interact with that?",
+      "In the online A/B test, what metric was used to measure LTV prediction quality, and how was the improvement in prediction translated into bid adjustment policy?"
+    ],
+    "interview_answers": [
+      "This is a real weakness of the paper. The missing state is computed from observed nulls or absence flags, so sentinel-imputed features would be treated as present and routed incorrectly. A robust extension would learn a confidence score over feature reliability rather than a binary present/absent flag, possibly using a learned detector trained on holdout corruptions.",
+      "The paper does not explicitly address noisy hard samples. Standard approaches include gradient clipping on the reweighted loss, capping the maximum weight multiplier, or combining Bidden with a noise-robust loss function like Huber loss. Without this guard, Bidden could amplify label noise, especially since LTV labels can be delayed or partial (users who haven't finished their payment window).",
+      "The routing is soft — all samples pass through all experts but with different weights determined by the missing state vector. The number of experts is a tuned hyperparameter. Specialization emerges implicitly: experts seeing high-weight samples from similar missingness patterns converge to handling those patterns, but there is no explicit assignment constraint.",
+      "LTV regression with sparse purchase events typically uses a log-transformed target with MSE or a two-stage model (purchase probability × value given purchase). Bidden weights are applied to the combined or stage-2 loss. The interaction is that Bidden would upweight samples where both stages are uncertain, which could be beneficial but also risks amplifying noise in the rare-purchase regime.",
+      "Online metrics likely include GINI coefficient or normalized discounted cumulative gain on ranked user value, plus downstream business metrics like ROAS (return on ad spend) or install-to-revenue ratio. The translation from better LTV estimates to bids typically uses a value-based bidding formula: bid = LTV_predicted × target_ROAS_adjustment, so improved LTV calibration directly shifts bid distribution toward higher-value users."
+    ],
+    "generated_at": "2026-03-30T04:29:26Z"
+  }
+}
