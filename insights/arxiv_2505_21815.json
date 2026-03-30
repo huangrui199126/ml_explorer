@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SemRank is a scientific paper retrieval framework that indexes papers using multi-granular concepts (topics and key phrases) and uses an LLM to identify corpus-grounded concepts from queries at search time, enabling precise semantic matching. It improves over dense retrievers and LLM-based baselines while remaining efficient.",
+    "key_idea": "Ground LLM query expansion in corpus-specific concepts rather than free-form generation, then match queries to papers via a concept-based semantic index for fine-grained retrieval.",
+    "why_it_matters": "Researchers and search systems that need accurate scientific literature discovery can plug SemRank on top of existing retrievers to get better results without sacrificing speed, and avoid the hallucination/unfaithfulness risks of unconstrained LLM query expansion.",
+    "possible_use_cases": [
+      "Academic search engines (e.g., Semantic Scholar, arXiv search) that need more precise query-to-paper matching",
+      "Research recommendation systems that surface relevant prior work during manuscript writing",
+      "Enterprise R&D knowledge bases where engineers need to find technical papers grounded in domain-specific terminology"
+    ],
+    "generated_at": "2026-03-30T03:58:22Z"
+  },
+  "deep": {
+    "method_breakdown": "SemRank builds a concept-based semantic index over a scientific corpus by extracting multi-granular concepts (broad research topics and fine-grained key phrases) from each paper offline. At query time, an LLM maps the query to corpus-grounded concepts rather than generating free-form expansions, enabling precise concept-level matching. These matched concepts then re-rank or augment retrieval from any base dense retriever, improving precision without sacrificing efficiency.",
+    "key_innovation": "Unlike prior LLM query expansion methods that hallucinate or generate corpus-agnostic text, SemRank grounds LLM concept identification in an explicit corpus-derived concept vocabulary. This closed-world grounding prevents unfaithful generation and ensures every LLM-identified concept maps to real indexed content, bridging the gap between open-ended LLM reasoning and corpus-specific retrieval.",
+    "technical_insight": "The most critical design choice is the two-level concept hierarchy (general topics + fine-grained key phrases), which allows the system to handle both broad thematic queries and precise technical queries. Coarse topics provide recall robustness while key phrases deliver precision for specialized scientific terminology — a mismatch that single-granularity embeddings systematically fail on.",
+    "limitations": "The concept index quality is bounded by the extraction quality at indexing time, meaning novel or emerging terminology not yet in the corpus vocabulary will be missed by the LLM concept grounding step. The approach also adds an offline indexing overhead and a query-time LLM call, which may not scale cost-effectively to very large corpora or high-throughput settings. Finally, evaluation is limited to scientific domains; generalization to other specialized retrieval domains is unverified.",
+    "interview_questions": [
+      "How does SemRank ground LLM concept identification in corpus-specific knowledge, and why is this important compared to free-form query expansion?",
+      "What are the two levels of concept granularity used in the semantic index, and how do they complement each other during retrieval?",
+      "How does SemRank integrate with existing base retrievers — does it replace them or augment them, and what does that mean for deployment flexibility?",
+      "What failure modes exist when a query contains concepts not represented in the indexed corpus vocabulary?",
+      "How does SemRank balance retrieval efficiency with the added cost of LLM inference at query time?"
+    ],
+    "interview_answers": [
+      "SemRank builds a concept vocabulary directly from the target corpus during offline indexing. At query time, the LLM is prompted to identify concepts constrained to this vocabulary, so every output concept is guaranteed to exist in the index. This prevents hallucination and ensures semantic matching is faithful to what the corpus actually contains, unlike unconstrained expansion methods.",
+      "The index uses general research topics (e.g., 'machine translation', 'graph neural networks') for broad thematic coverage and fine-grained key phrases (e.g., 'cross-lingual transfer with adapter layers') for technical precision. General topics boost recall for broad queries, while key phrases resolve specificity for narrow technical queries — together they cover the retrieval needs that single-granularity embeddings miss.",
+      "SemRank is designed as a re-ranking or augmentation layer on top of any base dense retriever rather than a replacement. The base retriever produces an initial candidate set, and concept-based matching refines or re-scores it. This makes SemRank modular and drop-in compatible with BM25, DPR, or any other retriever, lowering adoption barriers.",
+      "If the query's core concept is absent from the indexed vocabulary — as can happen with very new subfields or non-standard terminology — the LLM grounding step will either map to a semantically adjacent but imprecise concept or fail to identify a match. This degrades to the base retriever's performance, which is a graceful but potentially significant failure for cutting-edge queries.",
+      "The offline indexing cost is paid once per corpus. The query-time LLM call is a single structured prompt to identify concepts from a bounded vocabulary, which is typically faster and cheaper than multi-step reasoning pipelines. The authors report that this overhead remains acceptable in practice, though the exact cost depends on corpus vocabulary size and LLM API latency."
+    ],
+    "generated_at": "2026-03-30T03:58:47Z"
+  }
+}

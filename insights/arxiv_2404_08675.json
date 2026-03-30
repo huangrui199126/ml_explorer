@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RecGPT adapts the ChatGPT two-stage training paradigm (pre-training + prompt-based fine-tuning) to sequential recommendation, treating item sequences like language and users like conversational agents. It generates multiple personalized interest vectors autoregressively, then retrieves and merges candidate items per vector for final recommendations.",
+    "key_idea": "Framing sequential recommendation as autoregressive language modeling over item indices, with a ChatGPT-style fine-tuning stage that incorporates model-generated candidates and user feedback as prompts.",
+    "why_it_matters": "Practitioners get a principled way to transfer LLM training recipes (pre-train then RLHF-style fine-tune) directly to recommender systems, with demonstrated gains on both offline benchmarks and live A/B tests.",
+    "possible_use_cases": [
+      "E-commerce product recommendation using purchase history as token sequences",
+      "Streaming platform next-watch prediction with personalized multi-interest retrieval",
+      "News or content feed ranking where user engagement signals serve as fine-tuning feedback"
+    ],
+    "generated_at": "2026-03-30T03:55:34Z"
+  },
+  "deep": {
+    "method_breakdown": "RecGPT adapts the GPT architecture for sequential recommendation by treating items as tokens in a language model, with a user modular that captures personalized signals. It follows a two-stage ChatGPT-style training: autoregressive pre-training on item sequences, then prompt-based fine-tuning where prompts include model-generated candidates and user feedback signals. At inference, the model autoregressively generates multiple interest vectors, each used to retrieve top-k items via similarity search, with results merged into a final ranked list.",
+    "key_innovation": "The key novelty is bridging ChatGPT's RLHF-style two-stage paradigm to recommendation — specifically the fine-tuning stage that incorporates model-generated outputs alongside user feedback as prompt context, analogous to how ChatGPT uses human preference data. Prior sequential recommenders (SASRec, BERT4Rec) use discriminative objectives or masked prediction; RecGPT uses generative autoregression with a personalized user module and a multi-interest inference strategy rather than a single next-item prediction.",
+    "technical_insight": "The most important design choice is generating multiple interest vectors autoregressively rather than a single representation. This implicitly models the multi-faceted nature of user preferences — a user interested in both Python books and running shoes cannot be well-represented by one vector. By generating K interest vectors and merging their recall sets, the system achieves broader, more personalized coverage without requiring explicit interest disentanglement supervision.",
+    "limitations": "The paper is light on architectural specifics of the 'user modular' and the exact form of fine-tuning prompts, making reproducibility difficult. The analogy to ChatGPT's RLHF is conceptually loose — there is no explicit reward model or policy gradient; the 'user feedback' in fine-tuning likely refers to implicit signals (clicks), not true preference comparisons. Scalability of autoregressive inference over large item vocabularies at serving time is a practical concern not well addressed. Online A/B results are reported without statistical significance details.",
+    "interview_questions": [
+      "How does RecGPT's two-stage training differ mechanically from standard SASRec training, and what specific loss function is used in each stage?",
+      "What exactly constitutes the 'user modular' — is it a separate encoder, prefix tokens, or something else, and how is it integrated into the GPT backbone?",
+      "How does the prompt construction in fine-tuning incorporate model-generated results and user feedback — are negative samples used, and how are they chosen?",
+      "During inference, how many interest vectors K are generated, how is the merge/deduplication of recalled items handled, and how does this affect latency in production?",
+      "The item index space must be tokenized for a GPT to operate over it — how are items represented as tokens, and how does the model handle cold-start items not seen during pre-training?"
+    ],
+    "interview_answers": [
+      "Pre-training uses a standard causal language modeling (next-item prediction) autoregressive cross-entropy loss over item sequences. Fine-tuning adds prompts that prepend model-sampled candidate items and user interaction signals, likely using a similar cross-entropy objective but conditioned on this richer context — the paper does not detail whether a contrastive or ranking loss is also applied.",
+      "The paper describes the user modular abstractly as capturing personalized information but does not fully specify its architecture. Most likely it is a learned user embedding or prefix that is prepended or added to the input sequence, allowing the GPT to condition generation on user identity beyond just the interaction history.",
+      "The fine-tuning prompt appears to include the user's historical sequence plus newly generated item candidates from the current model checkpoint as additional context, with the target being items the user actually interacted with. The exact negative sampling strategy is not specified, which is a reproducibility gap.",
+      "K is a tunable hyperparameter (likely 3–10 based on multi-interest literature norms). Each interest vector retrieves top-k items via ANN search (e.g., FAISS), and the union is taken with optional re-ranking. Latency is managed by parallelizing the K ANN queries, but K autoregressive decoding steps add overhead compared to single-pass models.",
+      "Items are mapped to integer indices and treated as vocabulary tokens — essentially each item is a unique token ID. This means the vocabulary size equals the item catalog size, which can be millions in industrial settings, creating a softmax bottleneck. Cold-start items are not handled by the base model and would require side-information augmentation or a separate strategy."
+    ],
+    "generated_at": "2026-03-30T03:56:04Z"
+  }
+}
