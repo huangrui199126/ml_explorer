@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "HCE is a dense retrieval method that borrows the hierarchical contrastive training strategy from generative retrieval models (like DSI/NCI) but applies it to standard dense encoders, achieving better zero-shot and supervised retrieval performance. Unlike generative retrieval, HCE supports dynamic document indices, making it practical for real-world systems.",
+    "key_idea": "The performance gains of generative retrieval come from contrastive training between sibling nodes in a document hierarchy, which can be replicated with dense encoders without the limitations of fixed document IDs.",
+    "why_it_matters": "Practitioners get the zero-shot retrieval quality of generative models while retaining the flexibility of dense indices — documents can be added or removed without retraining, which is critical for production search systems.",
+    "possible_use_cases": [
+      "Enterprise search over dynamic document corpora where documents are frequently added or updated",
+      "Zero-shot retrieval for new domains without labeled query-document pairs",
+      "Scalable semantic search pipelines that need both high accuracy and index flexibility"
+    ],
+    "generated_at": "2026-03-30T04:09:31Z"
+  },
+  "deep": {
+    "method_breakdown": "HCE builds a hierarchical tree structure over the document corpus (similar to the document hierarchy used in generative retrieval like DSI/NCI), then trains dense encoders using contrastive learning between sibling nodes at each level of the hierarchy. At inference, retrieval proceeds by traversing the hierarchy using dense similarity scores rather than autoregressive decoding, ultimately identifying leaf-level document IDs. This decouples the structural inductive bias of hierarchical organization from the generative decoding mechanism.",
+    "key_innovation": "The paper identifies that the real performance driver in generative retrieval is not the autoregressive generation itself, but the contrastive training signal derived from sibling nodes in a document hierarchy. HCE extracts this training signal and applies it to standard dense encoders, achieving the benefits of hierarchical structure without the closed-world constraint that prevents generative models from handling unseen documents.",
+    "technical_insight": "The critical design choice is using hierarchical sibling contrastive training for dense encoders: by treating documents sharing the same parent node as hard negatives for each other, the encoder learns fine-grained discriminative representations at multiple granularities. This works because the hierarchy naturally provides semantically meaningful hard negatives at each level — harder than random negatives but structured enough to drive useful representation learning, mimicking what the generative model implicitly learns via its tree-structured docid prediction.",
+    "limitations": "The quality of learned representations is tightly coupled to the quality of the document hierarchy construction, which is typically built via clustering (e.g., k-means on existing embeddings), creating a chicken-and-egg dependency. The approach also inherits clustering artifacts and may struggle with documents that are semantically ambiguous or span multiple clusters. Additionally, while documents can be added/removed more easily than in generative retrieval, adding many new documents may require hierarchy restructuring to maintain retrieval quality.",
+    "interview_questions": [
+      "How does HCE construct its document hierarchy, and what clustering algorithm is typically used?",
+      "Why can't standard generative retrieval models like DSI handle documents not seen during training?",
+      "What is the contrastive training objective between sibling nodes in HCE, and how are negatives sampled?",
+      "How does HCE compare to standard bi-encoder dense retrieval baselines like DPR or ANCE in supervised settings?",
+      "What is the inference procedure in HCE — does it do beam search over the hierarchy or flat ANN search?"
+    ],
+    "interview_answers": [
+      "HCE typically constructs the hierarchy using recursive k-means clustering over initial document embeddings (e.g., from a pretrained encoder), producing a balanced tree where each internal node groups semantically similar documents. The depth and branching factor are hyperparameters that trade off retrieval granularity against training complexity.",
+      "Generative retrieval models assign each document a discrete string ID (either semantic or arbitrary) and train a seq2seq model to generate the correct ID given a query. Since the model's output vocabulary and decoding behavior are fixed at training time, documents added post-training have no valid ID in the model's learned output space, making zero-shot document addition fundamentally incompatible without full retraining.",
+      "At each level of the hierarchy, documents sharing a parent node are treated as hard negatives for one another. The contrastive loss (e.g., InfoNCE) pushes the query/document embedding closer to its target document while pushing it away from sibling documents in the same cluster, providing level-specific discriminative supervision that captures both coarse and fine semantic distinctions.",
+      "HCE outperforms standard dense retrieval baselines in both zero-shot and supervised settings according to the paper's experiments, suggesting that hierarchical contrastive training provides stronger supervision signal than standard in-batch or BM25-mined negatives used in DPR/ANCE, particularly for zero-shot generalization where the structural prior of the hierarchy aids representation quality.",
+      "At inference, HCE can use standard approximate nearest neighbor (ANN) search over the final document embeddings in a flat index, which is one of its practical advantages. Optionally, beam search over the hierarchy can be used to re-rank candidates level by level, but the flat ANN approach preserves scalability and dynamic document addition/removal without restructuring."
+    ],
+    "generated_at": "2026-03-30T04:09:56Z"
+  }
+}

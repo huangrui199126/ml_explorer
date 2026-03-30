@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Omni-RAG is a framework that improves RAG systems for real-world use by preprocessing messy user queries through denoising, intent decomposition, and structured retrieval before generating responses. It chains LLM-based query understanding with per-sub-query retrieval, BGE reranking, and chain-of-thought generation to handle the noisy, ambiguous queries common in live deployments.",
+    "key_idea": "Breaking noisy multi-intent queries into clean sub-queries before retrieval — rather than passing raw user input directly — significantly improves what documents get retrieved and thus what gets generated.",
+    "why_it_matters": "Most RAG benchmarks use clean queries, but production systems receive messy, ambiguous input; Omni-RAG directly addresses this gap, making it relevant for anyone deploying RAG in customer-facing or open-domain settings.",
+    "possible_use_cases": [
+      "Customer support chatbots where user queries are often misspelled or contain multiple questions in one message",
+      "Enterprise search over internal knowledge bases where employees phrase queries imprecisely",
+      "Open-domain question answering pipelines that need to handle diverse, real-world user input without manual query cleanup"
+    ],
+    "generated_at": "2026-03-30T04:02:36Z"
+  },
+  "deep": {
+    "method_breakdown": "Omni-RAG preprocesses noisy user queries through an LLM-driven pipeline with three stages: (1) query denoising and decomposition into structured sub-queries using tailored prompts, (2) per-sub-query retrieval from FineWeb via OpenSearch with result aggregation, and (3) BGE-based reranking followed by chain-of-thought generation with Falcon-10B. The system treats query understanding as a first-class citizen rather than passing raw queries directly to retrieval.",
+    "key_innovation": "The primary novelty is treating query preprocessing as an explicit LLM-assisted module that jointly handles denoising and multi-intent decomposition before retrieval, rather than the standard single-pass query-to-retrieval pipeline. Most prior RAG work assumes clean, single-intent queries; Omni-RAG explicitly models the messiness of live, open-domain user input.",
+    "technical_insight": "Decomposing multi-intent queries into sub-queries before retrieval is the most critical design choice — it avoids the precision-recall trade-off of trying to satisfy multiple intents with a single embedding or BM25 query. By retrieving separately per sub-query and then aggregating, the system avoids result sets dominated by the most salient intent at the expense of others, which is a known failure mode in dense retrieval.",
+    "limitations": "The pipeline introduces significant latency due to multiple sequential LLM calls (decomposition, then generation), making it potentially unsuitable for strict real-time SLA requirements. The decomposition quality is entirely dependent on the LLM's ability to correctly identify intents, meaning errors compound downstream with no recovery mechanism. The system is also evaluated primarily in the context of a single challenge (SIGIR 2025 LiveRAG), so generalization claims are not empirically grounded. FineWeb as the sole corpus limits applicability to domains not well-covered by web crawls.",
+    "interview_questions": [
+      "How does the system decide how many sub-queries to generate from a single user query, and what happens when decomposition is over- or under-segmented?",
+      "After retrieving per sub-query, how are the aggregated document sets deduplicated and ranked before the reranker — is there any score normalization across sub-query result sets?",
+      "Why was Falcon-10B chosen as the generator over stronger open-source alternatives, and how sensitive is end-to-end performance to the choice of generation model?",
+      "The paper mentions chain-of-thought prompting at generation time — what specific CoT structure is used, and is it conditioned on the decomposed sub-queries or only on the reranked documents?",
+      "How does Omni-RAG handle the case where sub-queries retrieve conflicting or contradictory documents, and does the reranker or generator resolve such conflicts explicitly?"
+    ],
+    "interview_answers": [
+      "The paper does not specify a fixed number; the LLM is prompted to decompose based on detected intents, which means the count is query-dependent. Over-segmentation would cause retrieval of highly specific but potentially irrelevant documents, while under-segmentation would fall back to near-standard RAG behavior. This is a significant unaddressed robustness question.",
+      "The paper describes aggregation but does not detail a principled score normalization strategy across sub-query result sets. This is a known challenge in federated retrieval — without normalization, sub-queries with higher BM25 score ranges would dominate the merged list before reranking.",
+      "The paper does not provide an ablation over generator choice; Falcon-10B appears to be a practical constraint (likely compute/availability for the challenge setting) rather than a principled selection. Performance would likely improve with stronger generators, but the query understanding modules are the focus of the contribution.",
+      "The paper states CoT prompting is used at generation but does not detail the exact template. It is unclear whether the prompt explicitly feeds back the decomposed sub-queries as structured context or only provides the reranked documents, which would be an important design decision affecting answer coherence.",
+      "There is no explicit conflict resolution mechanism described. The reranker (BGE) selects the top documents by relevance score, but relevance to what query — the original or sub-queries — is ambiguous. Contradiction handling is implicitly delegated to the LLM generator's in-context reasoning, which is a notable gap."
+    ],
+    "generated_at": "2026-03-30T04:03:01Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "SCCDR is a cross-domain recommendation framework that separates intra-domain and inter-domain contrastive learning into distinct curriculum stages, addressing the training instability caused by naively mixing these two objectives. It uses stop-gradient operations and difficulty-aware curriculum scheduling over negative samples to improve representation quality.",
+    "key_idea": "Separating intra-domain and inter-domain contrastive learning tasks—rather than mixing them—stabilizes training and allows progressive difficulty scheduling for cross-domain knowledge transfer.",
+    "why_it_matters": "Cold-start and cross-domain recommendation are pervasive industrial problems; SCCDR offers a principled way to leverage data from rich source domains to bootstrap sparse target domains with better embedding quality and training stability, validated on both public datasets and a live A/B test.",
+    "possible_use_cases": [
+      "Bootstrapping recommendations in a newly launched product vertical using data from an established one (e.g., new streaming category using existing purchase history)",
+      "Improving cold-start user recommendations by transferring behavioral signals across platforms (e.g., from a web app to a mobile app)",
+      "Multi-domain e-commerce ranking where overlapping users bridge catalog-level domains with uneven data density"
+    ],
+    "generated_at": "2026-03-30T04:12:09Z"
+  },
+  "deep": {
+    "method_breakdown": "SCCDR separates contrastive learning into two distinct stages: intra-domain CL (using two specialized contrastive views within source and target domains independently) and inter-domain CL (aligning overlapping user representations across domains). A stop-gradient operation prevents gradient interference between the two tasks. The inter-domain stage uses curriculum scheduling that orders negative samples by difficulty — easy negatives first, progressively harder ones — anchored by overlapping users as bridges between domains.",
+    "key_innovation": "Prior CDR contrastive methods mix intra-CL and inter-CL objectives in a single joint training step, ignoring that inter-domain alignment is significantly harder than intra-domain representation learning. SCCDR's core novelty is recognizing this difficulty asymmetry and addressing it through explicit task separation (with stop-gradient isolation) plus curriculum scheduling that controls negative sample difficulty for the harder inter-domain task specifically.",
+    "technical_insight": "The stop-gradient on the intra-CL branch when computing inter-CL gradients (and vice versa) is the most critical design choice. Without it, the harder inter-CL gradients destabilize the easier intra-CL representations during backprop, causing training oscillation. By decoupling gradient flows, each contrastive objective can converge at its own pace, producing higher-quality embeddings before knowledge transfer occurs — analogous to why curriculum learning in supervised settings outperforms random ordering.",
+    "limitations": "The framework relies on overlapping users as anchors for inter-domain curriculum scheduling — sparse overlap (cold-start scenario) degrades the quality of difficulty estimation for negative sampling. The two-stage curriculum introduces additional hyperparameters (curriculum pacing functions, difficulty thresholds) that require tuning per dataset. The method is evaluated primarily in matching/retrieval stage; its benefit at the re-ranking stage is unvalidated. Industrial dataset is proprietary and not reproducible by the community.",
+    "interview_questions": [
+      "Why does mixing intra-CL and inter-CL in a single loss cause training instability, and how does SCCDR's stop-gradient operation address this?",
+      "How does SCCDR define 'difficulty' of negative samples in the inter-domain curriculum scheduling stage, and why are overlapping users used as anchors?",
+      "What happens to SCCDR's performance when the overlap ratio between source and target domain users is very low — does the curriculum scheduling degrade gracefully?",
+      "How do the two contrastive views for intra-domain CL differ from each other, and what augmentation or view-construction strategy is used?",
+      "How does SCCDR compare to simply pre-training on intra-CL then fine-tuning on inter-CL, since both approaches separate the two objectives?"
+    ],
+    "interview_answers": [
+      "Intra-CL is an easier task since positive/negative pairs are drawn from the same domain distribution, while inter-CL requires aligning representations across domain shift. When mixed, the larger inter-CL gradients dominate backpropagation and corrupt the intra-domain embedding space before it has stabilized. Stop-gradient blocks inter-CL gradients from flowing into the intra-CL encoder parameters, letting each objective train against a stable target.",
+      "Difficulty is measured by the embedding similarity between a candidate negative and the anchor overlapping user — harder negatives are those closer in embedding space (more confusable). Overlapping users are used because they have ground-truth identity across both domains, making them reliable anchors to define a shared embedding reference point for cross-domain negative difficulty estimation.",
+      "With very low overlap, the pool of anchor users shrinks, making difficulty estimates noisier and less representative. The curriculum may collapse to near-random ordering, reducing to a weaker baseline. The paper acknowledges this implicitly but does not provide ablations at extreme low-overlap regimes, which is a gap in the evaluation.",
+      "The paper constructs two views via standard augmentation strategies (e.g., dropout-based or feature masking) applied independently to source and target domain user/item features, creating domain-specific positive pairs. The key is that the two views are kept strictly within their respective domains rather than mixing cross-domain signals, ensuring the intra-CL objective learns domain-coherent representations.",
+      "Sequential pre-training then fine-tuning is a valid baseline, but it risks catastrophic forgetting of intra-domain structure when the inter-CL fine-tuning phase begins, and it cannot adaptively weight the two objectives based on training progress. SCCDR's simultaneous but gradient-separated training with curriculum pacing allows continuous intra-domain refinement while inter-domain alignment improves, which the authors show empirically outperforms naive sequential approaches."
+    ],
+    "generated_at": "2026-03-30T04:12:36Z"
+  }
+}

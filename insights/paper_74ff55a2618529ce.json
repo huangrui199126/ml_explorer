@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper builds a domain-specific chatbot for college information retrieval by combining LLaMA/Gemini LLMs with a RAG framework, FAISS vector search, and web-scraped institutional data. The system uses Groq AI for low-latency inference and Beautiful Soup for automated data collection from college websites.",
+    "key_idea": "Augment LLMs with retrieved, domain-specific context from vectorized web-scraped documents to produce accurate, grounded answers without full model fine-tuning.",
+    "why_it_matters": "Demonstrates a practical, low-cost template for deploying institutional chatbots on private domain data using open-source components, avoiding hallucination through retrieval grounding.",
+    "possible_use_cases": [
+      "University/college FAQ chatbots for admissions, courses, and faculty info",
+      "Enterprise internal knowledge bases with fast vector search over scraped or uploaded documents",
+      "Domain-specific customer support bots that need up-to-date information without continuous retraining"
+    ],
+    "generated_at": "2026-03-30T04:10:50Z"
+  },
+  "deep": {
+    "method_breakdown": "The system scrapes college website data using Beautiful Soup, embeds the extracted text into dense vectors stored in a FAISS index for efficient similarity search, and then uses LLaMA or Gemini LLMs via the RAG framework to generate contextually grounded responses. At query time, the user's question is embedded and matched against the FAISS index to retrieve relevant document chunks, which are then passed as context to the LLM for answer generation. Groq AI's inference hardware is used to accelerate LLM response latency.",
+    "key_innovation": "The primary novelty is the domain-specific instantiation of RAG for academic institution queries, combining web scraping pipelines, FAISS vector search, and Groq-accelerated LLM inference into a single chatbot system. There is no fundamental algorithmic innovation — the contribution is an applied integration of existing components (RAG, FAISS, BeautifulSoup, Groq) tailored to the college information retrieval use case.",
+    "technical_insight": "Using FAISS for vector similarity search is the critical design choice: it enables sub-linear approximate nearest neighbor retrieval over dense embeddings at scale, avoiding the latency of exhaustive search. Combined with Groq's hardware-accelerated inference, the system minimizes end-to-end latency in a way that a naive LLM API call over a large document corpus could not achieve.",
+    "limitations": "The system depends entirely on the quality and freshness of web-scraped data — if the college website is poorly structured or infrequently updated, responses will be stale or incomplete. FAISS is an in-memory index that does not scale gracefully to very large corpora without sharding. The paper provides no rigorous evaluation benchmarks (e.g., RAGAS, faithfulness scores), making it impossible to assess retrieval precision or hallucination rates objectively. The approach is not generalizable without re-scraping and re-indexing for each new institution.",
+    "interview_questions": [
+      "How does RAG reduce hallucination compared to a vanilla LLM, and what failure modes remain?",
+      "Why was FAISS chosen over other vector databases like Pinecone or Weaviate for this use case?",
+      "What chunking strategy was used when splitting scraped documents before embedding, and how does chunk size affect retrieval quality?",
+      "How would you evaluate the quality of this RAG system rigorously — what metrics would you use?",
+      "What are the trade-offs between fine-tuning the LLM on college data versus using RAG with a general-purpose model?"
+    ],
+    "interview_answers": [
+      "RAG grounds the LLM's response in retrieved documents, reducing reliance on parametric memory where hallucinations originate. However, RAG can still hallucinate if the retrieved chunk is partially relevant but misleading, or if the LLM fails to faithfully synthesize the retrieved context — so retrieval precision and prompt design remain failure points.",
+      "FAISS is a local, open-source library with no infrastructure overhead and very low latency for moderate corpus sizes, making it practical for a single-institution prototype. Managed vector DBs like Pinecone offer better scalability and persistence but introduce network latency and cost, which are unnecessary for a contained academic dataset.",
+      "The paper does not specify chunking strategy explicitly, which is a significant gap. Chunk size is a critical hyperparameter: too large reduces retrieval specificity, too small loses contextual coherence. Typical practice uses overlapping fixed-size chunks (e.g., 256–512 tokens with 50-token overlap), and optimal size depends on the embedding model's context window.",
+      "Rigorous evaluation would use RAGAS metrics: faithfulness (does the answer follow from retrieved context?), answer relevancy (does the answer address the question?), and context precision/recall (were the right chunks retrieved?). A human-annotated QA benchmark specific to the college domain would serve as ground truth.",
+      "Fine-tuning encodes knowledge into model weights, which is fast at inference but expensive to update and prone to catastrophic forgetting. RAG keeps knowledge external and updateable without retraining, which is far more practical for frequently changing institutional data like course offerings or faculty listings. The main cost of RAG is retrieval latency and the risk of retrieval failure propagating to the answer."
+    ],
+    "generated_at": "2026-03-30T04:11:14Z"
+  }
+}

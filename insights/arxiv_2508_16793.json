@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a conditional retrieval method for recommendation systems that extends standard two-tower models by incorporating item-side attributes (like topics) directly into the query representation. The approach was deployed at Pinterest to power topic-based notification feeds, yielding a +0.26% lift in weekly active users.",
+    "key_idea": "By encoding item-side condition signals (e.g., topic) into the user query tower at inference time, a single model can support multiple filtered retrieval scenarios without needing separate models or post-hoc filtering.",
+    "why_it_matters": "Practitioners can bootstrap new conditional retrieval use cases (e.g., topic feeds, category pages) reusing existing two-tower training data, avoiding the cost of building and serving separate models per condition while achieving better relevance than applying filters on top of a standard two-tower model.",
+    "possible_use_cases": [
+      "Topic-based or category-based content feeds where retrieved items must match a specific theme",
+      "Personalized notification systems that surface items relevant to both user interest and a contextual condition",
+      "E-commerce product retrieval constrained by facets like brand or department without maintaining per-facet retrieval models"
+    ],
+    "generated_at": "2026-03-30T04:05:22Z"
+  },
+  "deep": {
+    "method_breakdown": "The method extends a standard two-tower retrieval model by injecting item-side condition signals (e.g., topic embeddings) into the query (user) tower at inference time, creating a condition-aware user representation. During training, the model uses the same implicit feedback data as a vanilla two-tower but learns to fuse user history with condition features via feature interaction layers. At serving time, a single ANN index per condition (or a shared index with condition-aware scoring) retrieves items that satisfy both user affinity and the specified condition.",
+    "key_innovation": "Rather than building separate models per condition or applying hard post-hoc filters on a standard retrieval index, the method bootstraps conditional retrieval by embedding the condition into the query side of an existing two-tower framework. This enables feature interaction between user context and condition at query time without requiring condition-specific labeled data or separate training pipelines, making new conditional use cases cheap to bootstrap.",
+    "technical_insight": "The critical design choice is encoding the condition on the query (user) side rather than the item side. This preserves the standard ANN indexing of item embeddings unchanged, so deployment cost is minimal, while the query vector shifts in embedding space to retrieve items topically aligned with the condition. It works because item representations already implicitly encode topic signals during training; conditioning the query steers retrieval toward the relevant submanifold of item space.",
+    "limitations": "The method relies on the condition being expressible as a feature computable from item-side signals present at training time, so novel or sparse conditions with little coverage in historical data may yield poor representations. Because the same item index is shared across conditions, the ANN index cannot be optimized per condition, which may reduce precision compared to dedicated per-condition models. The bootstrapping assumption also means the model cannot learn preferences that only manifest under a specific condition if that signal is absent from training interactions.",
+    "interview_questions": [
+      "How does incorporating the condition into the query tower allow the model to bootstrap without condition-specific training labels?",
+      "What are the trade-offs between using post-hoc filters on a standard two-tower model versus your conditional query approach?",
+      "How do you construct the condition representation, and what happens when a condition is unseen or very sparse at training time?",
+      "Why is it advantageous to keep the item tower and its ANN index unchanged, and does this introduce any precision loss?",
+      "How did you measure the +0.26% WAU lift — what was the experimental setup and what alternative baselines were compared?"
+    ],
+    "interview_answers": [
+      "The condition (e.g., topic) is derived from item metadata that already exists in the training corpus. By encoding the condition into the user query at training time alongside positive item interactions, the model learns to align user+condition representations with relevant items implicitly, requiring no new labels — the existing engagement signal acts as weak supervision for the conditional task.",
+      "Post-hoc filters apply a hard constraint after retrieval, which reduces effective recall and often surfaces items that are topically correct but not personalized to the user. The conditional query approach integrates the condition into ranking signal during retrieval itself, so the top-k candidates are both personalized and condition-relevant, yielding higher engagement-metric precision without sacrificing recall as sharply.",
+      "The condition representation is typically an embedding of item-side features (e.g., topic category embedding) aggregated or selected at query time. For unseen or sparse conditions, the model may generalize poorly because the condition embedding lies outside the dense region seen during training; one mitigation is to use pre-trained semantic embeddings (e.g., from a text encoder) for conditions so that similarity in semantic space compensates for data sparsity.",
+      "Keeping the item tower and ANN index static avoids reindexing costs and allows the same infrastructure as the baseline two-tower to be reused with only a query-side change. The potential precision loss is that items are indexed in a condition-agnostic space, so the ANN search is approximate with respect to the conditional query direction; in practice this is acceptable because the query shift in embedding space is sufficient to retrieve the most relevant items for common conditions.",
+      "The lift was measured via an online A/B experiment on Pinterest's topic-based notification feed, comparing the conditional retrieval model against a standard two-tower model with topic filters as the control. WAU (weekly active users) was the primary business metric, with engagement metrics (click-through rate, saves) as secondary signals. The baseline was specifically the filtered two-tower rather than an unfiltered model, making the comparison a direct test of conditional retrieval quality versus post-hoc filtering."
+    ],
+    "generated_at": "2026-03-30T04:05:53Z"
+  }
+}
