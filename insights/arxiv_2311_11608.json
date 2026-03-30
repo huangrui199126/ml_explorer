@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Taiyi is a bilingual (English/Chinese) large language model fine-tuned on 140 biomedical datasets spanning 10+ NLP task types using a 2-stage supervised fine-tuning strategy. It outperforms general LLMs on biomedical NER, relation extraction, text classification, and QA tasks in both languages.",
+    "key_idea": "A 2-stage supervised fine-tuning approach on a large, diverse collection of bilingual biomedical corpora enables a single LLM to handle diverse biomedical NLP tasks across languages more effectively than general-purpose models.",
+    "why_it_matters": "Practitioners building biomedical NLP pipelines—especially for multilingual or Chinese-language clinical/research settings—can leverage Taiyi instead of maintaining separate models per task, though discriminative models still edge it out on structured extraction tasks.",
+    "possible_use_cases": [
+      "Automated extraction of biomedical entities and relations from Chinese and English clinical notes or research papers",
+      "Bilingual biomedical question answering for clinical decision support systems",
+      "Multi-task biomedical text classification (e.g., disease categorization, adverse event detection) across language boundaries"
+    ],
+    "generated_at": "2026-03-30T12:58:25Z"
+  },
+  "deep": {
+    "method_breakdown": "Taiyi fine-tunes a general-purpose LLM on 140 biomedical text mining datasets (102 English, 38 Chinese) spanning over 10 task types by converting corpora into instruction-following format. A 2-stage supervised fine-tuning strategy is employed: first training on broader biomedical data to build domain knowledge, then refining on task-specific instruction data to optimize multitask performance. The resulting model is evaluated on 13 test sets covering NER, relation extraction, text classification, and QA.",
+    "key_innovation": "Taiyi is the first bilingual (English-Chinese) LLM fine-tuned across a comprehensive suite of diverse biomedical NLP tasks rather than focusing narrowly on QA or conversation. The combination of 140 curated datasets with a 2-stage fine-tuning strategy to handle both language and task diversity simultaneously is novel compared to prior monolingual or single-task biomedical LLMs.",
+    "technical_insight": "The 2-stage fine-tuning strategy is the critical design choice — by separating broad biomedical domain adaptation from task-specific instruction tuning, the model avoids catastrophic forgetting of domain knowledge while still specializing for diverse task formats. This staged approach prevents the model from being simultaneously pulled in too many directions during optimization.",
+    "limitations": "Generative LLM approaches still underperform discriminative smaller language models on structured extraction tasks like NER and relation extraction, which are not naturally generation tasks. The model's bilingual scope is limited to English and Chinese, leaving other biomedical languages unaddressed. Performance likely degrades on out-of-distribution biomedical subdomains not represented in the 140 training datasets.",
+    "interview_questions": [
+      "Why does Taiyi still underperform discriminative models on information extraction tasks like NER, and what would it take to close that gap?",
+      "How does the 2-stage fine-tuning strategy specifically prevent catastrophic forgetting across 10+ task types?",
+      "What criteria were used to select and balance the 140 datasets across languages and task types, and how was data imbalance handled?",
+      "How does instruction formatting differ across structurally different tasks (e.g., span extraction for NER vs. multi-choice for QA) when converting to a unified instruction-tuning format?",
+      "Given that Chinese biomedical NLP datasets are far fewer (38 vs. 102 English), how does cross-lingual transfer manifest in the model and was it intentionally leveraged?"
+    ],
+    "interview_answers": [
+      "Generative models decode output token-by-token and struggle to enforce the structural constraints inherent in NER (exact span boundaries) and RE (relational triples). Discriminative models directly classify over input spans with architectures purpose-built for this. Closing the gap would require constrained decoding, structured prediction heads, or reinforcement learning from structured feedback.",
+      "Stage 1 builds a general biomedical representation across all data, establishing a shared feature space. Stage 2 then applies task-specific instruction tuning on top of this stable foundation. By not optimizing for all task formats from scratch simultaneously, the model retains domain-general knowledge while the instruction layer adapts — analogous to pre-training then fine-tuning paradigms.",
+      "The paper curates existing public benchmarks, so dataset selection reflects community availability rather than a sampling strategy. Imbalance is partially addressed by the instruction-tuning format which normalizes inputs, but the paper does not report explicit reweighting or oversampling strategies, which is a methodological gap.",
+      "Each task type is reformulated into a prompt-completion pair: NER tasks frame entity spans as generation targets given a passage and entity type prompt; QA tasks use question-answer pairs directly; classification tasks are cast as label generation. The unified format allows the model to learn a shared instruction-following behavior despite structural task differences.",
+      "Cross-lingual transfer is implicitly leveraged through the shared LLM backbone which already encodes multilingual representations. With 38 Chinese vs. 102 English datasets, the model likely relies on cross-lingual transfer for lower-resource Chinese tasks. However, the paper does not explicitly ablate this transfer, so the degree to which Chinese performance benefits from English data remains unquantified."
+    ],
+    "generated_at": "2026-03-30T12:58:50Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles policy selection in offline RL settings where you have lots of logged data but limited budget for live environment interactions. It proposes combining off-policy evaluation (OPE) estimates as a warm start with Bayesian optimization-guided online evaluation to efficiently identify the best policy from many candidates.",
+    "key_idea": "Use OPE estimates to initialize a Bayesian optimization loop that intelligently allocates scarce online interactions across candidate policies using a policy-similarity kernel.",
+    "why_it_matters": "In real-world RL deployments (robotics, recommendations, healthcare), exhaustive online evaluation of candidate policies is costly or dangerous — this method gets near-optimal policy selection with far fewer live interactions than pure online evaluation.",
+    "possible_use_cases": [
+      "Safe deployment of offline RL policies in robotics where trial-and-error is expensive or risky",
+      "Recommender system A/B testing where live user traffic is limited and OPE alone is unreliable",
+      "Healthcare or industrial control settings where evaluating many candidate policies online is infeasible due to safety or cost constraints"
+    ],
+    "generated_at": "2026-03-30T12:59:46Z"
+  },
+  "deep": {
+    "method_breakdown": "Active Offline Policy Selection (AOPS) frames policy selection as a sequential decision problem that combines offline policy evaluation (OPE) with a limited online interaction budget. OPE estimates are used to warm-start a Bayesian optimization loop, which then selects which policy to evaluate next in the real environment. The acquisition function leverages a kernel encoding policy similarity, so information from evaluating one policy propagates to related policies, reducing redundant online queries.",
+    "key_innovation": "Prior work treated OPE and online evaluation as separate, competing paradigms. AOPS is the first to explicitly frame policy selection as an active learning / Bayesian optimization problem that uses OPE estimates as a prior and online interactions as sequential, information-efficient queries — bridging the offline-online gap rather than choosing one side.",
+    "technical_insight": "The policy-similarity kernel is the critical design choice: it encodes structural relationships between candidate policies (e.g., via behavioral similarity or parameter distance) so that a single online rollout informs the Gaussian Process posterior over all nearby policies. This exponentially reduces the number of online interactions needed to confidently identify the best policy compared to naive round-robin or random online evaluation.",
+    "limitations": "The method depends on the quality of the OPE warm start — if OPE estimates are severely biased (e.g., severe distributional shift), the BO prior is misleading and early queries may be wasted. The policy similarity kernel must be hand-designed or learned, and a poor kernel degrades sample efficiency. Scalability to very large policy sets is constrained by GP cubic complexity. The approach also assumes a fixed candidate policy set, not continual policy improvement.",
+    "interview_questions": [
+      "How does the Bayesian optimization acquisition function balance exploration (trying policies with high uncertainty) versus exploitation (evaluating policies OPE ranks highly)?",
+      "What kernel did you use to represent policy similarity, and how sensitive is performance to the choice of kernel?",
+      "How does the method handle the case where OPE estimates are badly biased — does the BO framework eventually correct for a misleading prior with enough online budget?",
+      "How does AOPS scale computationally when the candidate policy set is very large (e.g., thousands of checkpoints)?",
+      "Could AOPS be extended to the continual / online RL setting where new policies are generated during deployment, rather than selecting from a fixed offline set?"
+    ],
+    "interview_answers": [
+      "The acquisition function (e.g., GP-UCB or Thompson sampling) naturally balances this: OPE estimates initialize the GP mean, providing exploitation signal, while the GP posterior variance drives exploration toward policies with uncertain true returns. The budget controls how many rounds this trade-off plays out.",
+      "The paper experiments with kernels based on behavioral similarity (action distribution overlap) and policy parameter distance. Performance is moderately sensitive — a kernel that groups genuinely similar policies together is critical; a random or identity kernel degrades to independent evaluation, losing the key benefit.",
+      "Yes, but slowly. The GP posterior is updated after each online evaluation, and if observed online returns consistently contradict OPE rankings, the posterior mean shifts accordingly. However, with a very small budget, a badly biased prior can dominate, making robust OPE warm-starting a prerequisite.",
+      "Exact GP inference is O(n³) in the number of evaluated policies, but since the online budget is small by assumption, the GP is only conditioned on a small number of observations. The main cost is computing the full kernel matrix over all candidates for predictions, which is O(n²) and can become expensive for thousands of policies.",
+      "Extending to continual settings would require online kernel updates and a policy generation model, turning the problem into a joint search-and-select problem. This is a natural future direction but substantially harder — the fixed candidate set assumption is load-bearing for the current BO framing."
+    ],
+    "generated_at": "2026-03-30T13:00:11Z"
+  }
+}

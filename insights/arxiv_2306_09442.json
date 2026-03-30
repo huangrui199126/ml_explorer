@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces a three-step 'red-teaming from scratch' framework (Explore, Establish, Exploit) for finding harmful LLM behaviors without requiring a pre-existing failure classifier. The authors apply it to GPT-3 to uncover false-statement generation patterns, releasing the CommonClaim dataset of 20,000 human-labeled statements.",
+    "key_idea": "By first exploring model behavior, then defining and learning a failure classifier from that exploration, and finally using it to generate adversarial prompts, red-teaming can be tailored to the specific failure modes of a target model rather than relying on predefined harm categories.",
+    "why_it_matters": "Most automated red-teaming tools assume you already know what failure looks like, which limits discovery of novel harms; this framework enables open-ended safety auditing that surfaces unexpected vulnerabilities specific to a given model's behavior.",
+    "possible_use_cases": [
+      "Model safety auditing before deployment to discover unknown failure modes",
+      "Building custom harm classifiers grounded in real model outputs for fine-grained safety evaluation",
+      "Creating labeled datasets of factual errors or harmful content to improve model training and filtering"
+    ],
+    "generated_at": "2026-03-30T12:55:39Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework operates in three phases: first, an adversary explores the target model's behavior space by generating diverse prompts and outputs without any predefined failure criteria; second, human annotators label these outputs to establish a formal definition of undesired behavior and train a classifier reflecting human judgment; third, the trained classifier is used as a reward signal to iteratively generate and refine adversarial prompts that reliably elicit failures. Applied to GPT-3, this pipeline uncovered systematic false-statement generation and produced the 20,000-example CommonClaim dataset.",
+    "key_innovation": "Prior red-teaming methods assumed a pre-existing failure classifier, which creates a circular dependency — you can only find failures you already know how to define. This work breaks that assumption by treating failure discovery and failure classification as jointly learned, allowing the red-teaming process itself to define what counts as harmful for a specific model in a specific context, rather than importing definitions from elsewhere.",
+    "technical_insight": "The most important design choice is decoupling exploration from exploitation: by first running an open-ended behavioral survey before committing to any failure taxonomy, the method avoids confirmation bias where adversaries only find failure modes they anticipated. This works because the exploration phase surfaces unexpected model behaviors that then inform a grounded, model-specific classifier, making the subsequent exploitation phase far more targeted than generic red-teaming.",
+    "limitations": "The explore phase is labor-intensive and difficult to systematize — it relies on human creativity to surface diverse behaviors, which may still miss rare or subtle failure modes. The human annotation step introduces subjectivity and is costly to scale. The classifier trained in phase 2 is specific to the discovered failure class and does not generalize to other failure types without rerunning the full pipeline. Additionally, the approach was validated only on factual falsity in GPT-3, leaving open whether it transfers to other harm types (e.g., toxicity, bias) or newer models.",
+    "interview_questions": [
+      "Why is relying on a pre-existing failure classifier a fundamental limitation in red-teaming, and how does your framework address it?",
+      "How do you ensure the exploration phase surfaces a sufficiently diverse range of behaviors rather than clustering around obvious failure modes?",
+      "What design choices went into constructing the CommonClaim dataset, and how did you handle disagreements between annotators on borderline statements?",
+      "How does the classifier trained in phase 2 compare to off-the-shelf toxicity classifiers in terms of precision and coverage of failures?",
+      "How does your framework scale — both in human annotation cost and in compute — as models grow larger and their failure modes become more subtle?"
+    ],
+    "interview_answers": [
+      "A pre-existing classifier encodes a prior assumption about what failure looks like, which means red-teaming can only rediscover known problems. Our framework starts with no failure definition, letting the model's own behavior during exploration inform what should be classified as failure — this is essential when the target model has idiosyncratic failure modes not covered by generic classifiers.",
+      "We use a combination of diverse prompt templates and human explorers instructed to probe varied topics, phrasings, and contexts. Diversity is not fully guaranteed, which is an acknowledged limitation; however, the open-ended nature of exploration without a fixed label set encourages broader coverage than classifier-guided search from the start.",
+      "Statements were sourced from a wide range of domains and phrased to test common-knowledge claims. Annotators labeled each as true, false, or neither, with disagreements resolved by majority vote. The 'neither' category was critical to avoid forcing ambiguous cases into binary labels, which would have introduced systematic noise.",
+      "The model-specific classifier trained from human labels on the exploration outputs is more precisely calibrated to the target model's particular failure signature than general-purpose classifiers, which are trained on broad corpora. However, it has narrower coverage by design — it is tuned to the specific failure class discovered, not all possible harms.",
+      "The human annotation bottleneck is the main scaling challenge; the current pipeline requires hundreds of labeled examples per failure class. Compute cost for exploitation is moderate since it uses the classifier as a reward signal for prompt search. Future work could use active learning or LLM-assisted labeling to reduce human effort, but this risks reintroducing the pre-existing-classifier problem the framework was designed to avoid."
+    ],
+    "generated_at": "2026-03-30T12:56:07Z"
+  }
+}

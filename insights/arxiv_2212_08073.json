@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Constitutional AI trains harmless AI assistants using self-critique and revision guided by a written set of principles, eliminating the need for human-labeled harmful outputs. It combines supervised fine-tuning on self-revised responses with reinforcement learning from AI-generated preference feedback (RLAIF).",
+    "key_idea": "An AI can be made safer by having it critique and revise its own outputs against a constitutional ruleset, then training a preference model from AI-generated comparisons rather than human labels.",
+    "why_it_matters": "This dramatically reduces the human annotation burden for safety alignment while producing models that explain their refusals rather than being evasively unhelpful — enabling more scalable, transparent, and controllable AI safety pipelines.",
+    "possible_use_cases": [
+      "Scaling safety alignment to new domains without expensive human labeling of harmful content",
+      "Building AI-assisted red-teaming and policy enforcement pipelines using model self-evaluation",
+      "Training domain-specific assistants (legal, medical, customer service) to follow custom behavioral constitutions with minimal human oversight"
+    ],
+    "generated_at": "2026-03-30T12:52:56Z"
+  },
+  "deep": {
+    "method_breakdown": "Constitutional AI (CAI) operates in two phases: a supervised learning phase where the model generates responses, critiques them against a set of human-written principles, revises them, and then finetunes on the revised outputs; and an RL phase where a preference model is trained using AI-generated preference labels (RLAIF) rather than human labels. The preference model then serves as the reward signal for PPO-style reinforcement learning. Chain-of-thought reasoning is used in both phases to make the critique and preference judgments more transparent and accurate.",
+    "key_innovation": "The core novelty is replacing human preference labelers with AI-generated feedback guided by explicit constitutional principles, enabling scalable oversight without human annotation of harmful content. Prior work (RLHF) required humans to label harmful outputs directly, which is costly, inconsistent, and exposes labelers to harmful content. CAI also introduces the self-critique-and-revision loop in the SL phase, which is distinct from standard RLHF finetuning pipelines.",
+    "technical_insight": "The most important design choice is decomposing alignment into explicit, auditable principles rather than implicit human preferences. This works because it externalizes the normative judgment into a inspectable artifact (the constitution), making it easier to diagnose and correct the model's value system. It also allows the AI to apply principles consistently at scale, whereas human labelers introduce variance and fatigue effects.",
+    "limitations": "The quality of alignment is bottlenecked by the quality and completeness of the constitutional principles — poorly written or incomplete constitutions can produce subtly misaligned models. The AI evaluator used in RLAIF may inherit biases from its own pretraining, potentially encoding the base model's blind spots into the reward signal. The approach has limited evaluation on adversarial jailbreaks and does not fully address the problem of sycophantic revision where the model learns to appear harmless without truly being so. The method also requires a capable enough base model to perform coherent self-critique.",
+    "interview_questions": [
+      "How does Constitutional AI differ from standard RLHF, and what problem does it solve?",
+      "What are the two phases of CAI training and what role does each play?",
+      "Why is chain-of-thought reasoning important in the CAI pipeline?",
+      "What are the risks of using AI feedback instead of human feedback for preference labeling?",
+      "How would you evaluate whether a CAI-trained model is genuinely harmless versus merely evasive?"
+    ],
+    "interview_answers": [
+      "Standard RLHF requires humans to label harmful outputs to train a reward model, which is expensive, inconsistent, and exposes annotators to harmful content. CAI replaces this with AI-generated feedback guided by a human-authored list of principles (the constitution), eliminating the need for human labels on harmful content while keeping human oversight at the level of principle specification.",
+      "The supervised learning phase generates responses, critiques them against constitutional principles using chain-of-thought reasoning, revises them, and finetunes the model on revised outputs — this bootstraps a more aligned policy. The RL phase then samples pairs from this finetuned model, uses an AI evaluator to label which response better follows the constitution, trains a preference model on these AI labels, and uses PPO with this preference model as the reward signal to further refine the policy.",
+      "Chain-of-thought reasoning allows the model to explicitly articulate why a response violates a principle before revising it, which improves the quality and consistency of self-critique. It also increases transparency — the reasoning chain is inspectable, making it easier to audit why the model made particular alignment decisions rather than treating the judgment as a black-box classification.",
+      "The AI evaluator inherits biases and blind spots from its pretraining data, so systematic errors in the base model's values can be amplified into the reward signal rather than corrected. There is also a risk of reward hacking where the policy learns to satisfy the AI evaluator's heuristics without being genuinely aligned. Additionally, the approach may be less reliable for novel or culturally specific harms not well-represented in the base model's training distribution.",
+      "You would look for engagement quality: a genuinely harmless model should explain its objections to harmful queries and provide useful context, whereas an evasive model simply refuses. Evaluation should include adversarial red-teaming to test whether the model can be manipulated into harmful outputs, as well as human preference studies comparing helpfulness and harmlessness jointly. Measuring the rate of over-refusals on benign queries is also critical, since high refusal rates on innocuous requests indicate evasiveness rather than true alignment."
+    ],
+    "generated_at": "2026-03-30T12:53:21Z"
+  }
+}
