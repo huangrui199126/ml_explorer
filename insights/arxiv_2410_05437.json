@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "ESPACE compresses large language models by projecting activations onto principal components, enabling weight decomposition at inference as a mathematical byproduct while allowing lossless retraining. It achieves 50% compression of GPT3, Llama2, and Nemotron4 with minimal accuracy loss, and even improves perplexity at 20-40% compression rates.",
+    "key_idea": "By centering compression on activations rather than weights, matrix multiplication associativity naturally yields decomposed weights at inference with no expressivity loss during retraining.",
+    "why_it_matters": "Practitioners can compress production LLMs by up to 50% with negligible accuracy degradation—and sometimes improvement—while also reducing GEMM execution time and prefill latency on existing hardware without architectural changes.",
+    "possible_use_cases": [
+      "Deploying large LLMs on memory-constrained hardware by compressing model size 2x with minimal quality loss",
+      "Speeding up inference prefill latency for high-throughput serving of GPT or Llama-class models",
+      "Fine-tuning compressed models that match or exceed baseline perplexity, enabling cheaper iterative experimentation"
+    ],
+    "generated_at": "2026-03-30T12:38:46Z"
+  },
+  "deep": {
+    "method_breakdown": "ESPACE projects activations onto a pre-calibrated set of principal components derived from calibration data, reducing the effective dimensionality of intermediate representations. At inference time, weight decomposition emerges as a byproduct of matrix multiplication associativity — projecting activations is equivalent to decomposing the weight matrices, requiring no architectural changes. The projection matrices are constructed via PCA on collected activations, with theoretical guarantees on optimal computational accuracy.",
+    "key_innovation": "Prior tensor decomposition methods are weight-centric, directly factorizing weight matrices (e.g., SVD on W), which forces a trade-off between approximation error and rank at the weight level. ESPACE is activation-centric: it learns projections from data distribution, meaning retraining preserves full expressivity (the network can learn to use the projected subspace optimally), whereas weight-centric decomposition permanently constrains the function class before retraining begins.",
+    "technical_insight": "The critical design choice is decoupling compression from the weight representation during training. By projecting activations rather than decomposing weights, the model retains its original parameter space during retraining and can redistribute information into the principal subspace. The decomposition only materializes at inference via associativity (W(Pᵀx) = (WPᵀ)x), meaning training sees no approximation loss while inference gets the FLOP reduction — this asymmetry is what enables 20-40% compression to actually improve perplexity over baseline.",
+    "limitations": "Compression gains require a calibration dataset to estimate principal components, introducing a data-dependency that may not generalize across domains. The method's effectiveness depends on activation low-rank structure being stable across inputs; out-of-distribution inputs may have higher effective rank, degrading performance. At high compression rates (50%+), accuracy degradation becomes non-trivial. The approach also requires retraining, making it inapplicable as a post-hoc zero-shot compression technique. Hardware speedups depend on efficient implementation of the decomposed matmuls, which may not materialize on all accelerators.",
+    "interview_questions": [
+      "Why does projecting activations rather than decomposing weights preserve expressivity during retraining, and what happens mathematically at inference to recover the compression?",
+      "How are the principal components selected — what calibration procedure is used, and how sensitive is the method to the choice of calibration data?",
+      "Why does ESPACE sometimes improve perplexity over the uncompressed baseline at 20-40% compression rates?",
+      "How does ESPACE compare theoretically and empirically to SVD-based weight decomposition methods like ASVD or SliceGPT?",
+      "What are the practical hardware requirements for realizing the claimed GEMM and latency speedups, and are these reductions uniform across all layer types?"
+    ],
+    "interview_answers": [
+      "During retraining, the full weight matrix W is kept intact — the network trains with projected activations Px, so it can optimize freely within the projected subspace without any rank constraint on W. At inference, associativity gives W(Px) = (WP)x, so the product WP is precomputed once, yielding a reduced weight matrix that performs fewer FLOPs. The key is that training never approximates — it trains on the exact projected inputs — while inference exploits the precomputed product for speed.",
+      "Calibration runs a small dataset through the network and collects activation tensors at each layer; PCA is applied to find the top-k principal components explaining the most variance. The paper provides theoretical results on constructing these projection matrices for optimal computational accuracy. Sensitivity to calibration data is a known weakness — if calibration distribution diverges from deployment distribution, the principal components may not capture the relevant subspace.",
+      "This is likely a regularization effect: the projection onto principal components acts as a structured bottleneck that removes noise dimensions and forces the model to concentrate information in directions that matter most. Retraining with this constraint can improve generalization, analogous to how dropout or low-rank regularization sometimes improves over unregularized baselines when the original model is overparameterized relative to the task.",
+      "SVD-based methods decompose W = UΣVᵀ and truncate, which introduces approximation error before retraining and permanently constrains the rank of each layer. ESPACE avoids this by keeping W intact during training. Empirically, on Llama2-7B the paper shows ESPACE advances state-of-the-art in matrix factorization compression, suggesting the activation-centric approach recovers better after retraining than weight-centric decomposition.",
+      "Speedups come from reduced GEMM dimensions in the decomposed product WP, which has fewer columns than W. This benefits throughput-bound regimes (large batch, prefill) more than latency-bound regimes (single-token decode). The gains are hardware-dependent: they require the reduced dimensions to align with efficient tile sizes on the target accelerator. Decode latency may see smaller improvements since memory bandwidth, not compute, often dominates in that phase."
+    ],
+    "generated_at": "2026-03-30T12:39:18Z"
+  }
+}
