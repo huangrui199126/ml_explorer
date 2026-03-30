@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "LTRGR proposes adding a learning-to-rank training phase on top of existing generative retrieval models, using a rank loss to directly optimize passage ranking rather than just identifier generation. This bridges the gap between autoregressive training objectives and the actual goal of returning well-ranked results.",
+    "key_idea": "By appending a rank loss fine-tuning stage, the autoregressive model learns to order candidate passages by relevance rather than merely predicting their identifiers.",
+    "why_it_matters": "Practitioners using generative retrieval systems can plug in this training phase to improve ranking quality with no added inference cost, making generative retrieval more competitive with dense retrieval pipelines.",
+    "possible_use_cases": [
+      "Improving passage ranking in open-domain question answering systems",
+      "Enhancing document retrieval quality in enterprise search built on generative models",
+      "Boosting retrieval performance in RAG pipelines that use generative identifiers"
+    ],
+    "generated_at": "2026-03-30T03:44:32Z"
+  },
+  "deep": {
+    "method_breakdown": "LTRGR adds a learning-to-rank (LTR) training phase on top of existing generative retrieval systems. After the standard autoregressive training that teaches the model to generate document identifiers, LTRGR introduces a rank loss that directly optimizes passage ordering by comparing scores of relevant vs. irrelevant passages decoded by the autoregressive model. This two-phase approach (generate-then-rank) closes the gap between the token-level generation objective and the list-level ranking objective without modifying inference.",
+    "key_innovation": "Prior generative retrieval methods (DSI, NCI, GENRE, etc.) only optimize cross-entropy over identifier tokens, which is a proxy objective misaligned with passage ranking. LTRGR is the first to directly apply a ranking loss — operating on the log-probabilities that the autoregressive decoder assigns to each identifier sequence — as an explicit training signal for generative retrieval, treating generation scores as ranking scores and supervising them with pairwise or listwise rank losses.",
+    "technical_insight": "The critical design choice is using the sequence-level log-probability of generating a document identifier as its retrieval score, then applying a rank loss (e.g., pairwise margin loss) over these log-probs across positive and negative passages. This works because the generation probability naturally encodes relevance signal, and the rank loss reshapes the probability space so that relevant identifiers consistently score higher than irrelevant ones — something cross-entropy alone cannot guarantee since it treats each token independently without relative comparisons.",
+    "limitations": "LTRGR inherits the core limitation of generative retrieval: scalability to very large corpora is constrained by the identifier vocabulary and beam search complexity. The method also requires negative sampling during the LTR phase, making it sensitive to negative quality and selection strategy. Additionally, the identifier design (atomic, hierarchical, or semantic) remains a separate upstream choice that heavily influences ranking quality and is not addressed by LTRGR itself.",
+    "interview_questions": [
+      "Why does autoregressive training alone create a learning gap in generative retrieval, and what exactly is being misaligned?",
+      "How does LTRGR compute a ranking score from an autoregressive model, and what property of sequence generation makes this possible?",
+      "What rank loss formulation does LTRGR use, and why is it compatible with backpropagating through a discrete token generation process?",
+      "How does LTRGR compare to re-ranking approaches that apply a separate cross-encoder after retrieval — what are the trade-offs?",
+      "What are the scalability limits of generative retrieval in general, and does LTRGR do anything to address or worsen them?"
+    ],
+    "interview_answers": [
+      "Autoregressive training minimizes token-level cross-entropy loss, which teaches the model to correctly predict each token of a relevant identifier given prior tokens. This is a generation objective — it does not compare scores across different passages or enforce that relevant passages rank higher than irrelevant ones. The ranking target requires relative ordering, but cross-entropy optimizes absolute likelihood of each sequence independently, so a model can assign similar log-probs to relevant and irrelevant identifiers and still have low generation loss.",
+      "LTRGR uses the sum of log-probabilities of all tokens in a document identifier sequence as the retrieval score for that document. This is the standard sequence log-likelihood under the autoregressive model. Since beam search in generative retrieval already uses this score to rank candidates, optimizing it directly with a rank loss aligns training with the actual inference-time ranking mechanism — making the training objective and the inference scoring function consistent.",
+      "LTRGR applies a pairwise rank loss (similar to RankNet or margin-based losses) that penalizes cases where the log-probability of a relevant document identifier is lower than that of an irrelevant one. Backpropagation flows through the log-probability computation, which is differentiable with respect to model parameters even though tokens are discrete — the loss is computed on the log-softmax outputs, not on the sampled tokens themselves, so gradients are well-defined.",
+      "A cross-encoder re-ranker is a separate model added at inference time, increasing latency proportionally to the number of candidates re-ranked. LTRGR instead improves the generative model itself so better ranking emerges from beam search with no additional inference cost or model. The trade-off is that LTRGR is constrained to the expressivity of the identifier log-probability as a ranking signal, whereas a cross-encoder sees full query-passage interaction — re-rankers typically achieve higher ceiling performance but at higher inference cost.",
+      "Generative retrieval requires the model to memorize the entire corpus in its parameters and enumerate identifiers via beam search at query time, making both memory and latency scale poorly with corpus size. Beam search complexity is O(B * L * V) per query where B is beam width, L is identifier length, and V is vocabulary size. LTRGR does not address this — it only improves ranking quality within the candidates that beam search already surfaces. For corpora beyond a few million passages, generative retrieval remains practically constrained compared to ANN-based dense retrieval."
+    ],
+    "generated_at": "2026-03-30T03:45:00Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PALR is a recommendation framework that fine-tunes a 7B-parameter LLM to rank items by combining user interaction history with LLM reasoning. It uses interaction-guided candidate retrieval followed by LLM-based ranking to generate personalized recommendations.",
+    "key_idea": "Fine-tuning a 7B LLM on user behavior data for ranking—rather than relying on zero-shot prompting—unlocks the model's reasoning and parametric item knowledge for sequential recommendation.",
+    "why_it_matters": "Shows that fine-tuned mid-sized LLMs can outperform specialized recommendation models, offering a practical path to building LLM-powered recommenders without requiring massive zero-shot models.",
+    "possible_use_cases": [
+      "Personalized product recommendations in e-commerce by leveraging purchase and click history",
+      "Content recommendation (articles, videos) using watch/read history as LLM context",
+      "Sequential next-item prediction in domains like music or podcast streaming"
+    ],
+    "generated_at": "2026-03-30T03:41:59Z"
+  },
+  "deep": {
+    "method_breakdown": "PALR is a two-stage retrieval-then-ranking framework: first, user-item interaction history is used to retrieve a small candidate set via collaborative filtering signals, then a fine-tuned 7B LLM takes those candidates as natural language input and is explicitly instructed to rank/select from only those candidates. The LLM is fine-tuned with instruction tuning that constrains its output to the provided candidate pool, enabling grounded recommendation generation.",
+    "key_innovation": "Unlike prior work using zero/few-shot prompting with frozen LLMs or fine-tuning small (<1B) models, PALR fine-tunes a 7B LLM specifically for ranking with constrained candidate selection — combining the retrieval stage's efficiency with the LLM's parametric knowledge and reasoning over item descriptions in natural language.",
+    "technical_insight": "The critical design choice is the explicit instruction to select only from retrieval candidates during inference, which solves the hallucination problem endemic to generative recommendation (LLMs generating non-existent items) while still leveraging the LLM's semantic understanding of items. This grounding makes the 7B model practically deployable for recommendation.",
+    "limitations": "Scalability is a concern since running a 7B LLM at inference time per user request is expensive compared to traditional retrieval models. The two-stage pipeline means errors in the retrieval stage cannot be recovered by the LLM ranker. The approach is evaluated on sequential recommendation benchmarks that may not capture cold-start or diversity aspects. Fine-tuning cost limits accessibility and adaptation to new domains requires retraining.",
+    "interview_questions": [
+      "How does PALR handle the hallucination problem common in generative recommendation systems?",
+      "What is the role of the retrieval stage, and what signals does it use?",
+      "Why did the authors choose 7B parameters specifically, and what tradeoffs does this size create?",
+      "How is the LLM fine-tuned — what does the training data and instruction format look like?",
+      "What are the key baselines PALR is compared against, and on what benchmarks?"
+    ],
+    "interview_answers": [
+      "PALR constrains the LLM's output space by explicitly instructing it during inference to select only from the provided candidate list, rather than generating item names freely. This grounding prevents the model from hallucinating non-existent items while still leveraging its language understanding.",
+      "The retrieval stage uses user-item interaction history (clicks, purchases, ratings) as collaborative filtering signals to narrow the full item catalog to a manageable candidate set. This stage handles scalability, reducing the ranking problem from millions of items to tens of candidates.",
+      "7B parameters was chosen as a sweet spot where instruction-following and reasoning capabilities are sufficiently strong to leverage item-side knowledge, unlike <1B models. The tradeoff is significant inference cost and latency, making deployment expensive relative to traditional ranking models.",
+      "The LLM is fine-tuned with instruction tuning where each training example presents a user's history, a set of retrieved candidates in natural language, and an instruction asking the model to select the most relevant items. The target output is the ground-truth next item from the candidate set.",
+      "PALR is evaluated on sequential recommendation benchmarks such as MovieLens and Amazon product datasets, compared against baselines including SASRec, BERT4Rec, and LLM-based methods like P5 and zero-shot GPT variants, demonstrating superior Hit Rate and NDCG metrics."
+    ],
+    "generated_at": "2026-03-30T03:42:19Z"
+  }
+}
