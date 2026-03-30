@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FBNetV2 introduces DMaskingNAS, a differentiable neural architecture search method that extends search to spatial and channel dimensions (input resolution and filter counts) using a masking mechanism for feature map reuse. This expands the searchable space by up to 10^14x over conventional DNAS while keeping memory and compute costs nearly constant.",
+    "key_idea": "By applying learnable masks over shared feature maps rather than instantiating all candidate layers explicitly, the search can efficiently explore input resolution and channel width without prohibitive memory overhead.",
+    "why_it_matters": "Practitioners building mobile or edge models can find better accuracy-efficiency tradeoffs automatically — FBNetV2 beats MobileNetV3 and EfficientNet-B0 on FLOPs and accuracy with drastically lower search cost, making high-quality NAS practical without massive compute budgets.",
+    "possible_use_cases": [
+      "Designing efficient on-device vision models for mobile and embedded hardware",
+      "Automating architecture search for latency-constrained inference pipelines",
+      "Benchmarking and replacing hand-designed backbones like MobileNet in production CV systems"
+    ],
+    "generated_at": "2026-03-30T12:06:11Z"
+  },
+  "deep": {
+    "method_breakdown": "DMaskingNAS extends DARTS-based differentiable NAS by introducing a masking mechanism over feature maps, allowing the search space to include spatial (input resolution) and channel (number of filters) dimensions without instantiating all candidates explicitly in memory. A shared feature map is computed at maximum resolution/channels, and binary masks select subsets during search, keeping memory and compute nearly constant regardless of search space size. Shape propagation is applied across layers to ensure that chosen dimensions are consistent and accuracy-per-FLOP is maximized.",
+    "key_innovation": "Prior DNAS methods (e.g., DARTS, FBNetV1) fix spatial resolution and channel counts because each candidate must be materialized in memory simultaneously; DMaskingNAS introduces differentiable masking over a single shared feature map so that resolution and channel dimensions become searchable architecture parameters without multiplicative memory cost, expanding the effective search space by up to 10^14x.",
+    "technical_insight": "The masking mechanism for feature map reuse is the critical design choice: by computing one large feature map and applying learned soft masks to select sub-tensors, the method amortizes the cost of evaluating many resolution/channel candidates into a single forward pass. This works because lower-resolution or fewer-channel outputs are strict subsets of the full computation, making the mask gradients a faithful proxy for discrete architectural choices.",
+    "limitations": "The masking approximation assumes that sub-tensors of a larger feature map are representative of independently trained smaller networks, which introduces a train-search distribution mismatch. The method is evaluated primarily on mobile-scale image classification and may not generalize straightforwardly to tasks with very different spatial structure (e.g., detection, segmentation at high resolution). Search cost is still non-trivial and requires proxy datasets; the correlation between proxy search accuracy and final fine-tuned accuracy is assumed but not rigorously analyzed.",
+    "interview_questions": [
+      "How does the masking mechanism enable searching over channel dimensions without increasing memory cost?",
+      "What is shape propagation and why is it necessary in DMaskingNAS?",
+      "How does DMaskingNAS differ from one-shot NAS methods like SMASH or Single-Path NAS?",
+      "What are the theoretical guarantees, if any, that the soft-mask gradient signal reliably guides the search toward good discrete architectures?",
+      "Why does jointly searching spatial resolution and channel width improve efficiency over searching them separately or fixing them by hand?"
+    ],
+    "interview_answers": [
+      "A single feature map is computed at the maximum channel count; soft masks (implemented as differentiable Gumbel-Softmax or sigmoid gates) zero out channels beyond a candidate count. Because all candidates share the same underlying computation, memory scales with the maximum, not the sum, of all candidates.",
+      "Shape propagation ensures that when a layer's output resolution or channel count is reduced, downstream layers adapt their input expectations accordingly. Without it, mismatched tensor shapes would either require padding (wasting compute) or cause errors; propagation threads the chosen dimensions through the DAG so that per-FLOP accuracy is consistently optimized.",
+      "One-shot methods like Single-Path NAS also share weights but typically fix spatial dimensions and search only over operator types (kernel size, SE, skip). DMaskingNAS additionally makes resolution and filter count differentiable parameters, and the masking trick specifically addresses the memory explosion that would occur if resolution/channel candidates were instantiated separately as in standard DARTS.",
+      "There are no strong theoretical guarantees; the soft relaxation is a continuous proxy for a discrete choice, and the mask gradients are valid only under the assumption that the masked sub-network loss is a smooth function of the mask value. Empirically the method works, but the proxy-to-final accuracy gap is an open problem shared by all gradient-based NAS approaches.",
+      "Resolution and width interact nonlinearly with accuracy and FLOPs: a model with fewer channels can afford higher resolution for the same FLOP budget, and vice versa. Manual compound scaling (as in EfficientNet) uses a fixed heuristic ratio; joint search finds Pareto-optimal combinations that heuristics miss, explaining the 20% FLOP reduction at matched accuracy versus EfficientNet-B0."
+    ],
+    "generated_at": "2026-03-30T12:06:37Z"
+  }
+}
