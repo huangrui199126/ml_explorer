@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PanScore is a deep learning model that uses 8 genomic features to stratify pancreatic cancer patients by risk of liver metastasis before surgery, identifying patients with nominally resectable tumors who have survival outcomes similar to advanced disease.",
+    "key_idea": "Training a neural network on genomic markers of liver metastasis (TMB, FGA, TP53, AKT2, MYC, KRAS, CDKN2A, SMAD4) produces a prognostic score that reveals occult metastatic potential invisible to imaging.",
+    "why_it_matters": "Surgeons and oncologists currently rely on imaging to determine resectability, but PanScore could flag high-risk patients who appear resectable yet harbor occult metastases, enabling better-informed decisions about neoadjuvant therapy versus immediate surgery.",
+    "possible_use_cases": [
+      "Preoperative triage to identify PDAC patients unlikely to benefit from upfront resection",
+      "Enriching clinical trial enrollment by selecting genomically high-risk patients for neoadjuvant or systemic therapy trials",
+      "Integrating genomic risk scoring into multidisciplinary tumor board workflows alongside standard CT-based staging"
+    ],
+    "generated_at": "2026-03-30T03:31:08Z"
+  },
+  "deep": {
+    "method_breakdown": "PanScore is a 6-layer deep neural network trained on 8 genomic features (TMB, FGA, TP53, AKT2/MYC/KRAS/CDKN2A/SMAD4 CNVs) selected by prevalence >2.5% and statistical significance for liver metastasis prediction. The model was built using H2O AutoML with 5-fold cross-validation and AUC-based hyperparameter optimization on the MSK-MET cohort (n=1779), then validated externally on MSK-IMPACT (n=2181). Output is a continuous score (0–100) bucketed into low/intermediate/high risk tiers with distinct OS outcomes.",
+    "key_innovation": "The novelty is using liver metastasis—identified as the strongest independent prognostic driver—as a surrogate binary training target to indirectly learn overall survival risk, rather than training directly on OS. This reframes a survival regression problem as a metastasis classification task, enabling cleaner signal extraction from a biologically meaningful endpoint and allowing the model to identify occult metastatic disease in radiographically resectable patients.",
+    "technical_insight": "The critical design choice is selecting liver metastasis as the training label rather than OS directly. Liver metastasis is a discrete, high-signal event that concentrates the biological variance most predictive of poor outcome in PDAC, reducing label noise from competing causes of death and treatment heterogeneity that would confound direct OS modeling. This biological grounding makes the learned features more interpretable and clinically actionable.",
+    "limitations": "The model relies solely on genomic features available at diagnosis, ignoring imaging, CA19-9, tumor size, and clinical staging which are routinely available preoperatively. Feature selection was done in the training cohort, risking circularity. The high-risk resectable group is small (n=62), limiting statistical power. Both cohorts are from a single institution (MSK), restricting generalizability to community oncology settings. The binary liver metastasis proxy may miss patients who fail via other metastatic routes.",
+    "interview_questions": [
+      "Why was liver metastasis chosen as the training target rather than overall survival directly, and what are the tradeoffs of this proxy label approach?",
+      "How were the 8 genomic features selected, and could this selection process introduce data leakage or overfitting given it was performed on the training cohort?",
+      "What does it mean clinically that high-PanScore resectable patients had survival similar to borderline/locally advanced disease, and how should this change surgical decision-making?",
+      "The model uses only genomic features — how would you extend PanScore to incorporate multimodal inputs like CT radiomics or CA19-9 without losing clinical deployability?",
+      "H2O AutoML was used for model selection — what architectural details of the final 6-layer DNN matter here, and how robust is the score calibration across the 0–100 range?"
+    ],
+    "interview_answers": [
+      "Liver metastasis is the dominant mode of PDAC treatment failure and the strongest independent predictor of poor OS identified in their analysis. Using it as a binary label creates a cleaner, less noisy training signal than OS, which is confounded by treatment heterogeneity, comorbidities, and censoring. The tradeoff is that the model optimizes for one failure mode and may underperform for patients who progress via peritoneal or lung metastasis, or who die from surgical complications.",
+      "Features were selected using prevalence >2.5% and univariate p<0.05 for association with liver metastasis, both computed in the MSK-MET training cohort. This introduces a form of leakage: the feature set is optimized on the same data used to train the model, which can inflate apparent performance. Proper methodology would require feature selection on a held-out or cross-validated subset, or at minimum a separate discovery cohort.",
+      "It suggests these patients harbor occult micrometastatic disease that renders upfront surgery futile or suboptimal. Clinically, high-PanScore resectable patients may be better served by neoadjuvant systemic therapy to control subclinical metastasis before committing to major surgery. This reframes PanScore as a tool to select patients for neoadjuvant versus upfront resection rather than merely predicting prognosis.",
+      "The most natural extension is late fusion: train separate encoders for genomics, radiomics, and clinical labs, then concatenate embeddings before the final prediction layers. This preserves modularity so the model degrades gracefully when one modality is missing — critical for real-world deployment where CT quality or genomic sequencing availability varies. Attention-based fusion could also learn which modality is most informative per patient.",
+      "H2O AutoML performs grid/random search over architectures and regularization; the reported 6-layer DNN was selected by held-out AUC. For a tabular dataset of 8 features, a 6-layer network is likely overparameterized, and performance probably comes from regularization (dropout, L2) rather than depth. Score calibration across the 0–100 range is critical for clinical use but is not discussed — the thresholds at 50 and 70 appear to be chosen post-hoc based on survival separation rather than derived from model probabilities."
+    ],
+    "generated_at": "2026-03-30T03:31:37Z"
+  }
+}

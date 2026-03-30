@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "XPERT is an ML framework that automates the recommendation of KQL (Kusto Query Language) queries for on-call engineers during cloud system incidents at Microsoft, leveraging historical incident data and LLMs to generate tailored diagnostic queries. The paper includes an empirical study of KQL usage patterns and a novel evaluation metric (XCORE) assessing query quality across three dimensions.",
+    "key_idea": "Fine-tune LLMs on historical incident-query pairs to automatically generate domain-specific telemetry queries that match the context of new incidents, reducing manual query writing during time-critical outages.",
+    "why_it_matters": "On-call engineers waste significant time crafting diagnostic queries during incidents; automating this step with context-aware LLM recommendations can dramatically reduce mean-time-to-resolution (MTTR) in large-scale cloud operations.",
+    "possible_use_cases": [
+      "Automated query suggestion in incident management dashboards (e.g., Azure Monitor, Splunk) to accelerate root cause analysis",
+      "Training junior SREs by surfacing expert-level diagnostic queries for unfamiliar system components",
+      "Building institutional knowledge bases by systematically capturing and reusing effective incident queries across teams"
+    ],
+    "generated_at": "2026-03-30T03:15:38Z"
+  },
+  "deep": {
+    "method_breakdown": "XPERT retrieves historically similar incidents using embedding-based similarity search, then uses those incidents' KQL queries as few-shot examples fed into an LLM to generate new KQL queries for the current incident. The framework is end-to-end: incident description → retrieval → LLM generation → ranked recommendations. A custom evaluation metric XCORE assesses query quality across syntactic correctness, semantic relevance, and execution validity.",
+    "key_innovation": "First empirical study and production system combining retrieval-augmented generation (RAG) with LLMs specifically for DSL query recommendation in incident management. Prior work on query recommendation focuses on SQL/code completion in development contexts, not ops/SRE workflows. The XCORE metric is a novel multi-dimensional evaluator designed for DSL quality that goes beyond BLEU/exact-match.",
+    "technical_insight": "Using historical incident-query pairs as retrieval context rather than generic code corpora is the critical design choice — it grounds the LLM in domain-specific KQL idioms and telemetry schema conventions that no pre-training corpus would contain. This makes RAG essential: the LLM alone lacks the organizational knowledge of which tables, columns, and query patterns are meaningful for a given service.",
+    "limitations": "Relies heavily on quality and coverage of historical incident data — new services or novel failure modes with no query history will have poor retrieval and thus poor generation. KQL is Microsoft-proprietary, limiting generalizability. The paper evaluates mostly offline; online A/B metrics like MTTR reduction are not rigorously reported. XCORE is self-designed and not validated against human judgment at scale.",
+    "interview_questions": [
+      "How does XPERT handle incidents for new services with no historical query data to retrieve from?",
+      "What are the components of XCORE and how are they weighted relative to each other?",
+      "How do you prevent the retrieved similar incidents from leaking future information or causing distribution shift during evaluation?",
+      "Why KQL-specific fine-tuning versus purely prompt-based RAG, and what were the tradeoffs?",
+      "How does XPERT perform when the incident description is ambiguous or incomplete, which is common in real on-call scenarios?"
+    ],
+    "interview_answers": [
+      "This is a cold-start problem the paper acknowledges but doesn't fully solve — fallback likely relies on template-based or category-level retrieval, but sparse coverage for novel services remains a real gap in production deployments.",
+      "XCORE evaluates three dimensions: syntactic validity (does the query parse), semantic relevance (does the query address the incident context, likely embedding similarity), and execution correctness (does the query run and return non-empty results). The exact weighting is a design parameter tuned on held-out data.",
+      "Temporal splitting is the standard defense — train/retrieve only from incidents before the evaluation timestamp. However, if incident types recur cyclically, leakage risk persists; the paper should validate that retrieved neighbors are not near-duplicates of eval targets.",
+      "The paper primarily uses RAG with a pre-trained LLM rather than fine-tuning, leveraging few-shot prompting. Fine-tuning would require labeled KQL data at scale and risks overfitting to historical query styles; RAG is more flexible and updatable as new incidents accumulate.",
+      "Ambiguous descriptions degrade retrieval quality since embedding similarity relies on meaningful incident text. In practice, XPERT likely surfaces lower-confidence recommendations in these cases; robust handling would require either clarification mechanisms or confidence-based abstention, which the paper does not deeply address."
+    ],
+    "generated_at": "2026-03-30T03:16:02Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MPGraf is a hybrid learning-to-rank model that combines Transformer-based ranking score regression with GNN-based link prediction in a unified framework using modular, capsule-based pre-training. It addresses the distribution shift problem between these two paradigms through a three-step approach: graph construction, domain-specific pre-training, and surgical fine-tuning.",
+    "key_idea": "By pre-training Transformer and GNN modules separately on their respective domains and then surgically fine-tuning them together, MPGraf bridges the gap between pointwise/pairwise ranking regression and graph-based link prediction for web-scale search.",
+    "why_it_matters": "Search engineers can deploy a single unified ranking model that captures both query-document relevance signals and web graph topology, with validated A/B test improvements on real production traffic — making it directly applicable to large-scale commercial search systems.",
+    "possible_use_cases": [
+      "Web search ranking in large-scale search engines where both document relevance and hyperlink graph structure are available",
+      "E-commerce product ranking leveraging both user-query-item relevance scores and user-item interaction graphs",
+      "Academic paper recommendation combining query-paper relevance regression with citation graph link prediction"
+    ],
+    "generated_at": "2026-03-30T03:22:52Z"
+  },
+  "deep": {
+    "method_breakdown": "MPGraf constructs query-webpage bipartite graphs from sparsely annotated query-webpage pairs, then independently pre-trains a Transformer module (for ranking score regression) and a GNN module (for link prediction) on domain-specific source datasets. These pre-trained modules are then 'surgically' fine-tuned together on the target LTR dataset, meaning only select layers are updated to handle cross-domain distribution shifts while preserving pre-trained knowledge. The capsule-based modular design allows each component to retain its inductive bias while enabling joint optimization.",
+    "key_innovation": "Prior work pre-trains GNNs and Transformers independently and applies them to LTR in isolation. MPGraf is the first to cohesively integrate both paradigms in a single framework by (1) bridging their incompatible input formats via graph construction from pairs, and (2) using surgical fine-tuning to reconcile the two domain distribution shifts simultaneously rather than naively stacking or parallelizing the modules.",
+    "technical_insight": "The most critical design choice is 'surgical' fine-tuning — selectively updating only specific layers of the pre-trained modules rather than full fine-tuning. This works because full fine-tuning on sparse target LTR data would overwrite pre-trained representations and cause catastrophic forgetting across both domains; surgical fine-tuning preserves generalizable features while adapting the interface between the two modules to the target distribution.",
+    "limitations": "The graph construction step introduces a dependency on annotation density — very sparse labels may yield graphs with poor connectivity, degrading GNN performance. The approach requires pre-training data from two distinct domains (pair-based and graph-based), which may not always be available or well-aligned. Surgical fine-tuning heuristics (which layers to freeze/update) likely require tuning per deployment, limiting plug-and-play generalization. Scalability of graph construction and GNN inference at web-scale inference time remains a practical concern.",
+    "interview_questions": [
+      "How does MPGraf construct query-webpage graphs from sparsely annotated pairs, and what strategies are used to ensure the graph is sufficiently connected for GNN message passing?",
+      "What does 'surgical fine-tuning' mean concretely — which layers are frozen vs updated, and how is this selection determined?",
+      "How are the distribution shifts between the Transformer domain (query-webpage pairs) and GNN domain (bipartite graphs) quantified and addressed during fine-tuning?",
+      "The capsule-based modular design is mentioned — how do capsules facilitate integration of regression and link prediction objectives compared to standard module combination?",
+      "In the A/B test deployment, what specific metrics showed significant improvement, and were there any cases where MPGraf underperformed the baseline?"
+    ],
+    "interview_answers": [
+      "Graph construction likely uses shared query or document nodes as hubs, with edges weighted by annotation relevance scores. Sparsity is addressed by potentially adding soft edges via embedding similarity or co-click signals to ensure connectivity beyond direct annotations.",
+      "Surgical fine-tuning typically means freezing lower representation layers (which capture general semantic features) and only updating the top task-adaptation layers and cross-module interface components. The selection is likely determined empirically by layer-wise sensitivity analysis on a validation set.",
+      "Distribution shift is handled by keeping the two pre-trained modules' weights largely frozen and using an adapter or projection layer at the integration boundary that is fully trained on target data, effectively acting as a domain translator between the pair-space and graph-space representations.",
+      "Capsule-based design allows each module to output structured vector representations (capsules) encoding both magnitude and orientation, which carry richer relational information than scalar outputs. This enables the integration layer to selectively route regression signals vs. graph structural signals depending on input context, rather than blindly summing them.",
+      "The paper reports improvement on standard LTR metrics such as NDCG@k; specific failure cases are typically not disclosed in industry papers, but likely edge cases include navigational queries with very few annotated documents where graph construction degrades and the GNN module provides noise rather than signal."
+    ],
+    "generated_at": "2026-03-30T03:23:18Z"
+  }
+}

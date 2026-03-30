@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "mtRAG is a human-generated benchmark of 110 multi-turn RAG conversations (842 total tasks) across four domains, designed to evaluate how well LLM-based RAG systems handle realistic conversational retrieval scenarios. The benchmark reveals that even state-of-the-art systems struggle with later conversation turns, unanswerable questions, and non-standalone queries.",
+    "key_idea": "Evaluating RAG in multi-turn conversational settings exposes critical failure modes—context dependence, unanswerability, and retrieval degradation over turns—that single-turn benchmarks miss entirely.",
+    "why_it_matters": "Most RAG evaluations use single-turn Q&A, but production systems face multi-turn dialogues; this benchmark gives practitioners a realistic stress test to identify where their pipelines actually break down.",
+    "possible_use_cases": [
+      "Benchmarking and comparing RAG pipeline architectures for conversational AI products",
+      "Identifying weaknesses in retrieval systems when handling context-dependent or ambiguous follow-up questions",
+      "Developing and validating LLM-as-a-Judge evaluation methods for automated RAG quality assessment"
+    ],
+    "generated_at": "2026-03-30T03:18:22Z"
+  },
+  "deep": {
+    "method_breakdown": "mtRAG is a human-generated benchmark consisting of 110 multi-turn conversations (842 total tasks, avg 7.7 turns) across four domains, designed to evaluate end-to-end RAG pipelines on realistic conversational scenarios. The benchmark captures challenging properties including non-standalone questions (requiring conversation history for resolution), unanswerable questions, and domain diversity. Evaluation is supported both by human annotation and an LLM-as-a-Judge automation path using synthetic data generation for scalability.",
+    "key_innovation": "Unlike prior RAG benchmarks that focus on single-turn question answering, mtRAG explicitly models multi-turn conversational dynamics where later turns depend on prior context, introducing non-standalone questions and unanswerable questions as first-class evaluation dimensions. The end-to-end pipeline evaluation (retrieval + generation jointly) across real-world domains distinguishes it from benchmarks that evaluate components in isolation.",
+    "technical_insight": "The most critical design choice is forcing evaluation on non-standalone questions — queries that cannot be resolved without conversation history. This exposes a fundamental gap in current RAG systems: retrievers are typically designed for standalone queries, so multi-turn context must be either explicitly passed or resolved via query rewriting. This stress-test reveals whether systems truly integrate conversational state or merely perform single-turn lookup with prepended history.",
+    "limitations": "With only 110 conversations and 842 tasks, the benchmark is relatively small, limiting statistical power and domain coverage generalizability. The four domains may not represent the full diversity of real-world RAG deployments. LLM-as-a-Judge evaluation introduces its own biases and may not perfectly align with human judgments, especially for nuanced answerability decisions. The benchmark does not explicitly control for document corpus size or retrieval pool difficulty across domains.",
+    "interview_questions": [
+      "What makes a question 'non-standalone' in the mtRAG framework, and how does this differ from standard coreference resolution?",
+      "How does mtRAG handle the evaluation of unanswerable questions — what signals distinguish a correct abstention from a hallucinated answer?",
+      "What specific failure modes did state-of-the-art LLMs exhibit on later turns of conversations, and what does this suggest about context window utilization?",
+      "How was the LLM-as-a-Judge approach validated against human evaluation, and what were the agreement rates or discrepancy patterns?",
+      "How does the benchmark decouple retrieval failure from generation failure in its end-to-end evaluation, and can individual components be scored independently?"
+    ],
+    "interview_answers": [
+      "A non-standalone question in mtRAG requires the preceding conversation context to be resolvable — for example, pronouns, ellipsis, or implicit topic references that cannot be interpreted from the question alone. This goes beyond coreference in that the dependency may be semantic or topical rather than syntactic, requiring the system to maintain a coherent discourse model rather than just resolving entity mentions.",
+      "For unanswerable questions, the benchmark likely relies on gold annotations marking questions where the retrieved corpus contains no supporting evidence. A correct abstention is a response indicating the information is unavailable, while hallucination would be a confident but unsupported answer. The evaluation framework must define a threshold for what counts as sufficient grounding, which is non-trivial when partial evidence exists.",
+      "State-of-the-art systems degrade on later turns, suggesting that relevant context from early turns becomes diluted or deprioritized as the conversation grows. This implies that simple context concatenation is insufficient and that models may fail to maintain salient facts from earlier exchanges, pointing to the need for explicit conversational memory mechanisms or dynamic context compression strategies.",
+      "The LLM-as-a-Judge approach was calibrated against human judgments on a subset of the benchmark. Typical agreement challenges arise around borderline answerability and partial-credit generation quality. The paper explores this automation path precisely because human evaluation at scale is expensive, but systematic biases in LLM judges (e.g., favoring fluent but unfaithful responses) remain a concern that limits full substitution.",
+      "The benchmark evaluates the full pipeline end-to-end, meaning retrieval errors cascade into generation errors. However, by providing gold retrieval results as an oracle condition, one can isolate generation quality from retrieval quality. This ablation reveals whether failures stem from the retriever missing relevant passages or from the generator failing to synthesize correctly given relevant context, enabling targeted system improvement."
+    ],
+    "generated_at": "2026-03-30T03:18:50Z"
+  }
+}
