@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Plan-and-Budget is a test-time framework that tackles LLM overthinking by decomposing complex queries into sub-questions and adaptively allocating token budgets based on estimated complexity. It achieves up to 70% accuracy gains and 39% token reduction without any retraining.",
+    "key_idea": "By planning a decomposition of problems into sub-questions first, then budgeting tokens proportionally to each sub-question's estimated difficulty, the framework avoids both overthinking on easy parts and underthinking on hard parts.",
+    "why_it_matters": "Practitioners can drop this model-agnostic framework onto existing LLMs to cut inference costs significantly while improving accuracy, even closing the performance gap between smaller and larger models without fine-tuning.",
+    "possible_use_cases": [
+      "Cost reduction in production LLM APIs by reducing token usage on multi-step reasoning tasks",
+      "Enabling smaller, cheaper models to match the efficiency of larger models for enterprise deployments",
+      "Improving reliability of LLM agents on complex, multi-step planning tasks where overthinking wastes compute"
+    ],
+    "generated_at": "2026-03-30T07:48:00Z"
+  },
+  "deep": {
+    "method_breakdown": "Plan-and-Budget decomposes a complex query into a structured sequence of sub-questions using a planning step, then estimates the complexity/uncertainty of each sub-question to allocate token budgets via adaptive scheduling. At inference time, each sub-question is solved within its assigned budget, preventing both overthinking (wasting tokens on easy steps) and underthinking (truncating hard steps). The framework is model-agnostic and requires no retraining, operating entirely at test time.",
+    "key_innovation": "Prior work applied fixed global token budgets uniformly, which trades one failure mode (overthinking) for another (underthinking on hard problems). Plan-and-Budget introduces the BAM theoretical framework that models reasoning as a sequence of sub-questions with heterogeneous uncertainty, enabling per-step adaptive budget allocation rather than a single global constraint. The E3 metric (efficiency-effectiveness trade-off) is also novel as a principled way to jointly measure correctness and token cost.",
+    "technical_insight": "The critical design choice is separating planning (decomposition into sub-questions) from budgeting (per-sub-question token allocation). This works because problem-solving strategy ambiguity—not raw problem difficulty—is the primary driver of overthinking; by forcing explicit decomposition first, the model commits to a strategy before generating reasoning tokens, which eliminates verbose exploratory meandering and makes complexity estimation per sub-step tractable.",
+    "limitations": "The planning step itself consumes tokens and can fail if the decomposition is poor or misses key sub-problems, potentially hurting performance on problems that resist clean decomposition (e.g., open-ended or highly creative tasks). Complexity estimation for budget allocation is heuristic and may mis-allocate on novel problem types outside the training distribution. The framework adds a sequential dependency (plan then budget then solve) that may increase latency even when total tokens decrease. Results are evaluated on a limited set of reasoning benchmarks and may not generalize to all reasoning domains.",
+    "interview_questions": [
+      "How does Plan-and-Budget estimate the complexity of each sub-question to determine its token budget, and what happens when that estimate is wrong?",
+      "What is the BAM (Budget Allocation Model) and what theoretical guarantees or insights does it provide about optimal budget allocation?",
+      "How does the E3 metric formally capture the trade-off between correctness and efficiency, and why is it preferable to reporting accuracy and token count separately?",
+      "The paper claims Plan-and-Budget closes the performance gap between DS-Qwen-32B and DS-LLaMA-70B — is this purely an efficiency gain or does accuracy also improve, and what explains it?",
+      "What are the failure modes when the planning step itself is incorrect or produces a suboptimal decomposition, and does the framework have any recovery mechanism?"
+    ],
+    "interview_answers": [
+      "Complexity estimation is done using adaptive scheduling based on properties of each sub-question (e.g., estimated uncertainty or difficulty signals derived from the model itself). If the estimate is wrong, the sub-question either gets too few tokens (underthinking, risking an incorrect answer) or too many (wasting compute), and since budgets are set before solving, there is no dynamic correction mid-sub-question.",
+      "BAM formalizes reasoning as a Markov-like sequence of sub-questions each with an associated uncertainty level, and models token expenditure as a resource allocation problem. It provides theoretical backing for why uniform budgets are suboptimal under heterogeneous uncertainty and motivates the adaptive allocation strategy, though it is a theoretical model rather than a guarantee with strong empirical coverage.",
+      "E3 is defined to jointly penalize incorrect answers and excess token usage, capturing that a correct answer at 10x the tokens of a baseline is not truly efficient. Reporting them separately allows cherry-picking (e.g., claiming efficiency while accepting accuracy drops), whereas E3 forces a single comparable scalar that reflects both dimensions simultaneously.",
+      "The paper reports both accuracy gains (up to 70%) and token reductions (up to 39%), so it is not a pure efficiency-accuracy trade-off but a simultaneous improvement on both axes for many settings. The likely explanation is that explicit planning prevents the model from pursuing incorrect reasoning paths that consume many tokens without converging, so the structured decomposition itself acts as a form of guided search that improves correctness.",
+      "If the planning step produces an incorrect or incomplete decomposition, downstream sub-questions may be ill-formed or miss necessary reasoning steps, leading to incorrect final answers regardless of budget. The framework does not appear to include a verification or replanning step, so errors in decomposition propagate without correction — this is a structural vulnerability for problems where the solution path is not obvious upfront."
+    ],
+    "generated_at": "2026-03-30T07:48:28Z"
+  }
+}

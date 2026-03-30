@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Cocktail is a benchmark of 16 datasets mixing human-written and LLM-generated documents to evaluate how information retrieval systems perform in the AI-content era, including a fresh dataset (NQ-UTD) to avoid LLM training data contamination.",
+    "key_idea": "Neural retrieval models exhibit a measurable trade-off between ranking performance and source bias when corpora contain both human-written and LLM-generated documents.",
+    "why_it_matters": "As AI-generated content floods the web, search and retrieval systems built on human-only corpora may degrade or exhibit biases; this benchmark lets practitioners diagnose and address those failure modes before deployment.",
+    "possible_use_cases": [
+      "Evaluating retrieval model robustness when indexed corpora contain a mix of human and AI-generated documents",
+      "Detecting and mitigating source bias in neural rankers and dense retrievers",
+      "Benchmarking RAG pipelines that pull from web-scale corpora increasingly dominated by LLM-generated content"
+    ],
+    "generated_at": "2026-03-30T07:46:41Z"
+  },
+  "deep": {
+    "method_breakdown": "Cocktail constructs a benchmark of 16 datasets by augmenting existing IR corpora with LLM-generated documents that are semantically equivalent to human-written ones, creating mixed-source corpora. Retrieval models are evaluated on these mixed corpora across diverse tasks (open-domain QA, fact verification, entity retrieval, etc.) using standard ranking metrics. A new dataset NQ-UTD is introduced using queries from post-cutoff events to prevent LLM training data leakage from contaminating evaluation.",
+    "key_innovation": "The core novelty is systematically exposing a source bias in neural retrieval models — they disproportionately rank LLM-generated documents higher than human-written ones regardless of relevance, a phenomenon not previously benchmarked. The NQ-UTD dataset is also novel in its contamination-resistant design using temporally gated queries.",
+    "technical_insight": "The most critical design choice is pairing LLM-generated documents with existing human-written relevant documents for the same queries, which isolates source bias from relevance signal. This controls for content quality and topic coverage, making the observed ranking preference for AIGC attributable purely to stylistic/distributional properties that neural models have learned to associate with relevance.",
+    "limitations": "The benchmark relies on LLM-generated documents that may not faithfully represent the diversity of real-world AIGC on the internet. The trade-off between ranking performance and source bias is demonstrated but no mitigation methods are proposed. NQ-UTD will also eventually become stale as LLMs are updated with newer training data. The study focuses on text retrieval and may not generalize to multimodal IR.",
+    "interview_questions": [
+      "What specific mechanism causes neural retrieval models to prefer LLM-generated documents, and how did you isolate this from genuine relevance differences?",
+      "How did you generate the LLM-produced documents — did you prompt for paraphrasing, summarization, or free generation, and does generation strategy affect the measured bias?",
+      "NQ-UTD uses queries from recent events to avoid contamination — how did you verify that the LLMs used to generate documents had not seen this data, and what's the shelf life of this guarantee?",
+      "You observe a trade-off between ranking performance and source bias — does this mean models that are better at ranking are inherently more biased toward AIGC, and what architectural properties drive this?",
+      "What would a bias-corrected retrieval model look like in practice — would debiasing require changes to training data, loss functions, or inference-time re-ranking?"
+    ],
+    "interview_answers": [
+      "By constructing pairs of human-written and LLM-generated documents with equivalent relevance to a query and measuring rank displacement, they attribute preference to surface-level stylistic cues (fluency, structure, density) that neural encoders trained on large web corpora have learned to associate with authoritative text.",
+      "The paper primarily uses instruction-following LLMs to generate documents conditioned on the query and relevant passage content; different generation strategies likely modulate bias magnitude, which is a gap in the current analysis since generation method is treated as a single condition.",
+      "Verification relies on knowledge cutoff dates of the LLMs used, cross-referenced with event timestamps of queries — but this is soft assurance; as frontier models are continuously updated and cutoffs are not always transparent, NQ-UTD's contamination resistance degrades over time without active curation.",
+      "Yes, higher-capacity neural models with richer semantic representations appear more susceptible because they have encoded stronger priors about what 'good' text looks like from pretraining on internet data dominated by fluent LLM-style writing, suggesting the bias is an emergent property of scale.",
+      "Practical debiasing likely requires adversarial training with source-labeled negatives, re-ranking with source-agnostic diversity objectives, or data augmentation to balance human/AIGC representation in training — the paper positions this as future work rather than providing a solution."
+    ],
+    "generated_at": "2026-03-30T07:47:07Z"
+  }
+}

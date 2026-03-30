@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "PathFinder is a tree-search-based reasoning framework that applies beam search principles to LLM reasoning, using dynamic decoding with varied sampling methods to explore diverse reasoning paths. It incorporates quality constraints, pruning, and scoring to efficiently navigate the search space and select the best multi-step reasoning chains.",
+    "key_idea": "Apply beam search-style tree exploration with dynamic decoding and constrained pruning to generate and rank diverse reasoning paths, improving multi-step reasoning without retraining the model.",
+    "why_it_matters": "Practitioners can improve LLM accuracy on complex reasoning tasks (arithmetic, commonsense) by 6%+ at inference time without fine-tuning, making it a drop-in enhancement for production reasoning pipelines.",
+    "possible_use_cases": [
+      "Improving accuracy of multi-step math and logic problem solvers in educational or scientific tools",
+      "Enhancing reliability of LLM-based agents that must chain multiple reasoning steps (e.g., code generation, planning)",
+      "Boosting commonsense reasoning quality in dialogue systems or question-answering applications where reasoning depth matters"
+    ],
+    "generated_at": "2026-03-30T07:52:20Z"
+  },
+  "deep": {
+    "method_breakdown": "PathFinder constructs a tree of reasoning steps using beam search as its backbone, where each node represents an intermediate reasoning state. At each expansion step, it uses dynamic decoding — varying sampling methods (greedy, top-k, nucleus) and temperatures across branches — to encourage diverse candidate paths. Constrained reasoning filters and prunes low-quality branches using quality constraints before a scoring/ranking module selects the best final candidates.",
+    "key_innovation": "The key novelty is dynamic decoding: rather than using a fixed decoding strategy for all branches, PathFinder varies sampling parameters per branch and per step. This contrasts with prior tree-search methods (e.g., Tree-of-Thought) that use uniform sampling, and allows the search to balance exploitation of high-confidence paths with exploration of diverse reasoning chains without requiring separate verifier models.",
+    "technical_insight": "The most important design choice is coupling diversity-inducing decoding with hard quality constraints and pruning rather than relying solely on a reward model or verifier. This prevents the exponential blowup of low-quality paths that would otherwise make tree search computationally intractable, while the diverse branching ensures the correct reasoning chain is actually reachable in the search tree — a prerequisite for any ranking step to succeed.",
+    "limitations": "The method's compute scales with branching factor and depth, making it expensive at inference time relative to single-pass CoT. The paper only evaluates on arithmetic and commonsense reasoning benchmarks, leaving open questions about generalization to open-domain or knowledge-intensive tasks. Quality constraints are likely heuristic and task-specific, reducing plug-and-play applicability. Performance gains (6% avg) are modest relative to the added inference cost.",
+    "interview_questions": [
+      "How does PathFinder decide which sampling method and temperature to apply at each node in the tree, and is this learned or heuristic?",
+      "What specific quality constraints are used for pruning, and how sensitive is overall performance to their design?",
+      "How does PathFinder's inference cost compare to competitive baselines like Tree-of-Thought or self-consistency at the same accuracy level?",
+      "The abstract claims generalization to longer, unseen reasoning chains — what experimental evidence supports this, and what chain lengths were tested?",
+      "Could PathFinder's scoring/ranking step be replaced by an external verifier or process reward model, and would that improve results?"
+    ],
+    "interview_answers": [
+      "This is likely a key underspecified detail in the paper. The variation is probably rule-based or grid-searched per task rather than learned end-to-end, which limits adaptability. A learned controller that selects decoding parameters conditioned on the current reasoning state would be a natural extension.",
+      "The constraints likely include syntactic well-formedness checks, entailment or consistency filters, and possibly confidence thresholds on intermediate steps. High sensitivity to these choices would be a significant weakness, as it would require task-specific engineering for each new domain.",
+      "Tree-search methods are generally more expensive than self-consistency (parallel sampling) at equal sample counts. The relevant comparison is accuracy-per-FLOP or accuracy at a fixed inference budget. If PathFinder requires a large branching factor to win by 6%, the efficiency story may be unfavorable.",
+      "Generalization to longer chains is tested by training on short chains and evaluating on longer ones. The analogy to beam search with large branching factors suggests the tree structure itself provides the inductive bias for multi-hop composition, but the actual chain length range and degradation curve are critical details to probe.",
+      "Yes, and it would likely improve results significantly. Process reward models (PRMs) trained on step-level correctness labels are stronger supervisors than heuristic quality constraints. The PathFinder architecture is compatible with PRM scoring, so this is a straightforward and high-value extension."
+    ],
+    "generated_at": "2026-03-30T07:52:45Z"
+  }
+}

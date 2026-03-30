@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper addresses the challenge of recommending items users have never interacted with in session-based GNN recommender systems, a problem the authors term GSNIR. They propose a dual-intent GNN that infers user intent via attention and historical data distributions, and represents unseen items using their attributes inspired by zero-shot learning.",
+    "key_idea": "By decoupling user intent modeling from item interaction history and inferring new item embeddings from attributes via zero-shot learning principles, the model bridges the gap between GNN session graphs and cold-start items.",
+    "why_it_matters": "Most GNN-based recommenders are blind to new or cold-start items, creating filter bubbles; this approach enables discovery of genuinely new products or content without requiring prior user interactions, which is critical for e-commerce launches, new content releases, and combating information cocoons.",
+    "possible_use_cases": [
+      "Recommending newly listed products on e-commerce platforms to relevant users before any purchase history exists",
+      "Surfacing newly published courses or educational content to learners in e-learning platforms",
+      "Introducing newly released media (songs, videos, articles) to users on streaming or news platforms"
+    ],
+    "generated_at": "2026-03-30T07:42:29Z"
+  },
+  "deep": {
+    "method_breakdown": "The method builds session graphs using GNNs to capture user behavior patterns, then employs a dual-intent network that jointly learns user intent from both an attention mechanism (capturing sequential/contextual signals) and the statistical distribution of historical interaction data (capturing long-term preferences). For new items unseen during training, it borrows from zero-shot learning by projecting item attribute embeddings (e.g., category, text features) into the GNN representation space, enabling scoring of items with no historical interactions.",
+    "key_innovation": "Prior GNN-based session recommendation methods are restricted to items appearing in historical sessions, creating filter bubbles. This work uniquely frames 'GNN Session-based New Item Recommendation (GSNIR)' as a distinct problem and solves it by combining: (1) a dual-intent module that models both local attention-based intent and global distributional intent, and (2) a zero-shot learning-inspired attribute-to-GNN-space projection for new items — neither of which has been combined in this specific formulation before.",
+    "technical_insight": "The most critical design choice is the dual-intent decomposition: using attention to capture the user's immediate/contextual decision signal while separately modeling the population-level distributional prior prevents the model from overfitting to sparse session context when predicting interaction with novel items. This mimics human decision-making where both situational cues and habitual preferences jointly determine whether to try something new.",
+    "limitations": "The approach relies heavily on rich item attribute features for the ZSL-based new item projection — cold-start quality degrades when attributes are sparse or noisy. The dual-intent module adds architectural complexity with potentially opaque hyperparameter sensitivity. Evaluation on only two datasets limits generalizability claims. The method does not explicitly address temporal dynamics (item trends) or multi-modal attributes, and the ZSL projection assumes a bridgeable semantic gap between attribute space and GNN embedding space, which may not hold for highly heterogeneous catalogs.",
+    "interview_questions": [
+      "How does the zero-shot learning component project new item attributes into GNN embedding space, and what attribute types are supported?",
+      "How are the two intent signals — attention-based and distribution-based — combined during inference, and is there a learned weighting?",
+      "What prevents the model from simply ignoring new items in favor of the high-confidence historical items during ranking?",
+      "How does the method handle the case where a new item's attribute features overlap heavily with an existing item's features?",
+      "What are the computational overhead trade-offs of the dual-intent module compared to a standard GNN session recommender at inference time?"
+    ],
+    "interview_answers": [
+      "New item attributes (e.g., category, textual descriptions) are encoded via a semantic embedding layer and then mapped through a learned projection (likely a MLP or linear transform) trained to align attribute representations with the GNN's item embedding space — essentially learning a semantic-to-collaborative space bridge. The supported attribute types depend on dataset features but typically include categorical and text-based metadata.",
+      "The two intents are likely fused via concatenation or weighted summation with a learned gating or softmax-based mixing coefficient, allowing the model to adaptively balance immediate session context against historical distributional priors depending on session length and confidence.",
+      "The scoring function explicitly computes probabilities for new items alongside existing items in a unified ranking pass; the dual-intent module is specifically trained to surface novel items by learning a decision boundary that accounts for attribute similarity rather than interaction frequency alone.",
+      "This is a real risk — the projection may map similar-attribute new items near existing item embeddings, potentially causing confusion. Ideally the model would cluster similar items but still distinguish them via unique attribute dimensions; in practice this may require careful attribute feature engineering to maintain discriminability.",
+      "The dual-intent module adds two parallel forward passes (attention branch + distribution branch) plus a fusion step, roughly doubling the intent computation relative to single-intent baselines. However, the ZSL projection is a one-time offline computation per new item, so inference latency scales with the number of candidate new items rather than session length."
+    ],
+    "generated_at": "2026-03-30T07:42:56Z"
+  }
+}

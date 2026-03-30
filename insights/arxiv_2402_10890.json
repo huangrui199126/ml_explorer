@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper evaluates when tree search and iterative correction actually help LLM agents solve multi-step problems, finding that advanced planning methods only outperform simple re-ranking when the discriminator (judge/verifier) achieves at least 90% accuracy. Current LLMs fall short of this threshold, making tree search 10-20x slower with negligible gains.",
+    "key_idea": "The quality of the discriminator, not the sophistication of the planning algorithm, is the binding constraint on LLM agent performance.",
+    "why_it_matters": "Practitioners building LLM agents should invest in improving their verifier/discriminator accuracy before adopting complex planning methods, as tree search and iterative correction are costly and only pay off with near-perfect discrimination.",
+    "possible_use_cases": [
+      "Choosing the right planning strategy for text-to-SQL agents based on available discriminator quality",
+      "Benchmarking LLM discriminator accuracy before committing to expensive tree search inference budgets",
+      "Justifying simpler re-ranking approaches in production systems where latency and cost matter"
+    ],
+    "generated_at": "2026-03-30T07:39:47Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper frames LLM planning as a three-component system: a generator that produces candidate solutions, a discriminator that evaluates them, and a planning method (re-ranking, iterative correction, or tree search) that combines the two. It systematically varies discriminator accuracy and measures the downstream effect on agent performance across text-to-SQL and math reasoning benchmarks. The key finding is that planning method utility is fundamentally gated by discriminator quality.",
+    "key_innovation": "Rather than proposing a new planning algorithm, the paper provides a rigorous empirical analysis of the discriminator accuracy threshold required for advanced planning methods to outperform simple re-ranking. Prior work treated planning methods as inherently beneficial; this work shows they only pay off when discriminator accuracy exceeds ~90%, which current LLMs do not achieve.",
+    "technical_insight": "The critical design insight is that tree search amplifies discriminator errors — each node expansion compounds misevaluations, so a weak discriminator causes tree search to explore bad branches aggressively. Re-ranking, by contrast, is a one-shot selection that limits error propagation. This explains why tree search is 10-20x slower yet yields negligible gains: the computational cost scales with search depth/breadth while the benefit is bottlenecked by discriminator reliability.",
+    "limitations": "The study is limited to two task types (text-to-SQL and math reasoning), which may not generalize to open-ended or long-horizon tasks where iterative refinement has qualitatively different dynamics. The discriminator accuracy threshold of 90% is empirically derived on these benchmarks and may shift for other domains. The paper also does not explore hybrid approaches where discriminator confidence is used to selectively trigger tree search only on high-uncertainty steps.",
+    "interview_questions": [
+      "Why does tree search perform poorly even when the generator is strong, according to this paper?",
+      "What is the practical implication of the 90% discriminator accuracy threshold for deploying LLM agents today?",
+      "How does iterative correction differ from tree search in terms of how discriminator errors propagate?",
+      "Why might re-ranking be a more robust baseline than its simplicity suggests?",
+      "What would need to change — in models or methods — to make tree search practically viable for LLM planning?"
+    ],
+    "interview_answers": [
+      "Tree search relies on the discriminator to guide which branches to expand. Even with a strong generator producing good candidates, a discriminator below ~90% accuracy will frequently score bad branches higher than good ones, causing the search to invest compute in wrong directions and compound errors across depth levels.",
+      "Since current LLMs act as discriminators well below 90% accuracy on these benchmarks, the practical implication is that advanced planning methods are not yet cost-effective. Practitioners should default to re-ranking unless they have access to a high-accuracy verifier (e.g., a symbolic checker or ground-truth executor), rather than assuming more sophisticated search automatically improves outcomes.",
+      "Iterative correction applies the discriminator once per correction step to redirect the generator, so errors are introduced sequentially but with opportunities for recovery. Tree search applies the discriminator at every node expansion, meaning errors accumulate multiplicatively across the tree structure — a bad score at a parent node prunes or deprioritizes entire subtrees of potentially correct solutions.",
+      "Re-ranking generates N candidates independently and selects the best-scored one, so its error rate is bounded by a single discriminator decision rather than a sequence of them. It also parallelizes generation, making it computationally cheap relative to sequential search. When the discriminator is weak, avoiding compounded decisions is actually a structural advantage.",
+      "Two changes would be needed: first, substantially more accurate discriminators — either through better LLM training on verification tasks, fine-tuning on domain-specific feedback, or integrating symbolic/executable validators that provide near-perfect signals. Second, adaptive search strategies that use discriminator confidence scores to decide when to expand vs. prune, rather than blindly expanding the tree, would reduce wasted compute when signal is uncertain."
+    ],
+    "generated_at": "2026-03-30T07:40:11Z"
+  }
+}
