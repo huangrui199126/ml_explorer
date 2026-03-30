@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CARTS is a multi-agent LLM framework that generates textual summaries (e.g., carousel titles) for groups of recommended items through three stages: feature extraction, iterative refinement, and collaborative arbitration. It outperforms single-pass and chain-of-thought LLM baselines on e-commerce data and live A/B tests.",
+    "key_idea": "Decomposing recommendation summarization into specialized agent roles—extraction, iterative critique-and-refine, and multi-agent voting—produces more relevant and length-constrained titles than single-prompt LLM approaches.",
+    "why_it_matters": "Practitioners building recommendation UIs (carousels, bundles, curated lists) need concise, relevant labels that drive engagement; CARTS provides a production-validated framework for automating this with LLMs while respecting hard constraints like word limits.",
+    "possible_use_cases": [
+      "Generating carousel or shelf titles for e-commerce product recommendations",
+      "Summarizing curated content playlists or bundles in streaming or media apps",
+      "Producing concise category labels for grouped search results or personalized feeds"
+    ],
+    "generated_at": "2026-03-30T07:13:19Z"
+  },
+  "deep": {
+    "method_breakdown": "CARTS decomposes carousel title generation into three sequential stages: Generation Augmented Generation (GAG) extracts salient features from item sets to build a grounded context; a refinement circle iteratively improves candidate titles via feedback agents scoring relevance and length compliance; finally, an arbitration stage has multiple agents collaboratively vote or rank candidates to select the final title. Each stage is handled by a specialized LLM agent role, enabling modular error correction across the pipeline.",
+    "key_innovation": "The key novelty is the three-stage multi-agent decomposition specifically tailored to recommendation summarization constraints — prior LLM summarization work uses single-pass or chain-of-thought prompting without iterative refinement loops or arbitration. The refinement circle that explicitly scores and re-prompts based on recommendation-specific signals (item relevance, strict word limits) is not present in general NLP summarization frameworks. The arbitration stage borrows from ensemble/jury methods but applies them to open-ended text generation in a structured e-commerce context.",
+    "technical_insight": "The refinement circle is the most important design choice: by making relevance and length constraints explicit feedback signals that loop back into generation, CARTS avoids the common failure mode of single-pass LLMs that hallucinate or produce titles misaligned with item set features. This works because LLMs respond well to concrete, targeted feedback in context (analogous to constitutional AI self-critique), and splitting generation from critique allows each agent to specialize rather than requiring one prompt to simultaneously generate and self-evaluate.",
+    "limitations": "The multi-agent pipeline introduces significant latency and API cost compared to single-pass methods, which may be prohibitive at scale without aggressive caching or distillation. The arbitration stage's quality depends on agent agreement heuristics that are not well-theorized — failure cases where agents systematically agree on a bad title are not addressed. Evaluation relies heavily on live A/B metrics (user engagement) which conflate title quality with ranking and UI factors. The approach is validated on one e-commerce domain and may not generalize to other recommendation contexts (music, video) where item features are less textually rich.",
+    "interview_questions": [
+      "What specific signals does the refinement circle use as feedback, and how are relevance scores computed for item sets?",
+      "How does the arbitration stage work mechanically — is it majority vote, scoring, or something else, and how are ties broken?",
+      "How do you handle latency in production given three sequential LLM calls, and what is the p99 latency impact on the recommendation serving stack?",
+      "How does GAG differ from standard RAG, and what retrieval or augmentation is actually happening in that first stage?",
+      "What baselines were tested beyond single-pass and chain-of-thought, and were any non-LLM summarization methods (e.g., extractive, BART-based) included?"
+    ],
+    "interview_answers": [
+      "The abstract does not fully specify the relevance scoring mechanism — it likely uses LLM self-scoring prompts that rate how well a candidate title captures the dominant item features extracted in GAG, possibly combined with a length-penalty signal, but the exact formulation would require reading the full paper.",
+      "The arbitration stage is described as 'collaborative' but the mechanism is not specified in the abstract — it could be a separate judge LLM ranking all refinement-circle candidates, or a multi-agent voting protocol. The term 'arbitration' implies a conflict-resolution metaphor, suggesting agents may disagree and a meta-agent resolves the conflict.",
+      "This is a genuine production concern the paper likely addresses — common mitigations include running the pipeline asynchronously offline for pre-computed carousels, caching GAG outputs for repeated item sets, or using smaller/faster models for the refinement loop while reserving a large model only for arbitration.",
+      "GAG likely refers to using retrieved item metadata (titles, descriptions, reviews) to ground the generation context, analogous to RAG but with structured catalog data instead of free-text documents. The 'generation augmented' framing suggests the augmentation enriches the prompt with extracted features rather than retrieved passages.",
+      "The absence of non-LLM baselines is a notable gap — BART or T5-based extractive/abstractive summarization fine-tuned on carousel data would be a stronger baseline than zero-shot LLM prompting, and their exclusion makes it harder to assess whether the gains come from LLMs generally or the multi-agent structure specifically."
+    ],
+    "generated_at": "2026-03-30T07:13:48Z"
+  }
+}
