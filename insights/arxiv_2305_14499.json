@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "NAIL introduces a non-autoregressive model architecture that converts neural reranker quality into lexicalized scoring functions, capturing up to 86% of cross-attention Transformer gains while requiring only 10⁻⁶% of the FLOPs and running on commodity CPUs.",
+    "key_idea": "Pre-compute document representations as lexical term weights at index time using LLMs (T5, GPT-3, PaLM), so query scoring requires no neural computation — just sparse vector dot products.",
+    "why_it_matters": "Teams can achieve near state-of-the-art retrieval quality without GPU/TPU infrastructure at serving time, drastically reducing cost and operational complexity for production search systems.",
+    "possible_use_cases": [
+      "CPU-only enterprise search pipelines replacing expensive GPU-based rerankers",
+      "Augmenting BM25 indices with learned term weights to close the quality gap with dual encoders",
+      "Lightweight retrieval for on-device or edge search where accelerators are unavailable"
+    ],
+    "generated_at": "2026-03-30T07:58:00Z"
+  },
+  "deep": {
+    "method_breakdown": "NAIL trains an encoder-decoder or decoder-only LLM (T5, GPT-3, PaLM) to generate a weighted lexical representation of a document at indexing time, producing a sparse bag-of-words-style scoring vector that can be stored in an inverted index. At query time, scoring is purely lexical (dot product over term weights), requiring no neural computation — only CPU-based index lookups. The model is fine-tuned non-autoregressively: rather than generating tokens sequentially, it predicts term weights for all vocabulary positions in parallel from the document encoding.",
+    "key_innovation": "The core novelty is using a large pretrained LLM's document encoder to produce learned lexical expansions and term weights offline, completely eliminating query-time neural computation. Unlike prior sparse learned retrieval (DeepCT, SPLADE, DocT5Query) which still require query-side neural processing or generate pseudo-queries, NAIL produces a static inverted-index-compatible document representation that requires zero FLOPs at query time beyond BM25-style lookup.",
+    "technical_insight": "The most important design choice is the non-autoregressive decoding head: by predicting all term weights in a single forward pass rather than generating tokens sequentially, NAIL avoids the quadratic cost of autoregressive generation and makes the document representation fully precomputable. This works because relevance signals are captured in the encoder's contextualized document representation, and the decoder simply projects that representation into vocabulary space — the sequential dependency of language modeling is unnecessary for this discriminative scoring task.",
+    "limitations": "Because query terms are never seen at scoring time, NAIL cannot handle query-document term interactions that require cross-attention (e.g., ambiguous terms whose relevance depends on query context). The lexical representation is fixed at index time, so queries with novel vocabulary or rare multi-word phrases may not match well. The method still depends on BM25 as a first-stage retriever, inheriting its vocabulary mismatch limitations for out-of-domain queries. Additionally, the 86% gains figure is relative to a specific cross-encoder baseline and may not generalize across all retrieval benchmarks.",
+    "interview_questions": [
+      "Why does NAIL use non-autoregressive decoding instead of standard autoregressive generation, and what tradeoff does this introduce?",
+      "How does NAIL differ from SPLADE or DocT5Query, which also produce learned sparse representations?",
+      "What is the computational cost comparison between NAIL and a dual encoder at query time, and why does NAIL win on serving cost?",
+      "How is NAIL fine-tuned — what is the training signal and loss function used to learn the term weights?",
+      "What are the conditions under which NAIL's lexical scoring would fail to capture the gains of a cross-encoder reranker?"
+    ],
+    "interview_answers": [
+      "Non-autoregressive decoding predicts all term weights simultaneously in one forward pass, making document representation a single offline computation. Autoregressive generation would require O(vocab) sequential steps per document. The tradeoff is that non-autoregressive models cannot model dependencies between output terms, but for scoring this is acceptable since the goal is a weighted term vector, not coherent text generation.",
+      "SPLADE and DocT5Query still require query-side neural processing: SPLADE runs the query through a BERT encoder at query time, and DocT5Query generates pseudo-documents that are indexed but the query still needs BM25 matching. NAIL uniquely requires zero query-time neural computation — the document representation is precomputed and stored in a standard inverted index, and queries are matched using raw token lookup with no model inference.",
+      "A dual encoder requires running a neural query encoder (e.g., a BERT-size model on an accelerator) for every query. NAIL requires only an inverted index lookup — the same operation as BM25 — on commodity CPUs. The document encoding is done once offline. This reduces per-query cost to 10^-6 of cross-encoder FLOPs and eliminates the need for GPU/TPU serving infrastructure entirely.",
+      "NAIL is fine-tuned using relevance supervision (e.g., from MS MARCO or similar passage ranking datasets). The training objective encourages the predicted term weight vector for a document to score higher against relevant queries than irrelevant ones, typically via a ranking loss (e.g., cross-entropy over softmax scores or margin-based loss). The LLM backbone is used as the document encoder, and only the projection head mapping encoder output to vocabulary weights is trained (or the full model is fine-tuned).",
+      "NAIL fails when relevance is highly query-context-dependent — e.g., polysemous terms where the correct sense depends on the query (cross-encoder can resolve this via attention; NAIL cannot). It also underperforms on queries requiring multi-hop or compositional reasoning over document content, or when the relevant document uses entirely different vocabulary than the query with no lexical overlap even after learned expansion."
+    ],
+    "generated_at": "2026-03-30T07:58:32Z"
+  }
+}

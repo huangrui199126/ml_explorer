@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RankGen is a 1.2B parameter encoder model that scores and re-ranks language model outputs by learning to map prefixes close to coherent continuations and far from random or model-generated negatives via contrastive learning. It outperforms standard sampling methods like nucleus and top-k sampling on both automatic metrics and human evaluations.",
+    "key_idea": "Train a ranking model with contrastive learning so that a prefix embedding is pulled toward its true continuation and pushed away from random and LLM-generated distractors, then use this scorer to guide beam search decoding.",
+    "why_it_matters": "Any practitioner using LLMs for open-ended text generation can plug RankGen into their decoding pipeline as a reranker—without retraining the base model—to get more coherent, relevant, and non-repetitive outputs across model sizes from 345M to 11B parameters.",
+    "possible_use_cases": [
+      "Improving long-form story or article generation by reranking beam search candidates for coherence",
+      "Filtering low-quality LLM outputs in RAG pipelines before returning results to users",
+      "Serving as a reward model or quality signal in RLHF pipelines for text generation fine-tuning"
+    ],
+    "generated_at": "2026-03-30T08:06:32Z"
+  },
+  "deep": {
+    "method_breakdown": "RankGen is a 1.2B parameter encoder trained with contrastive learning to score candidate text continuations given a prefix. It maps prefixes close to ground-truth continuations and far from two types of negatives: random in-document sequences and LLM-generated continuations conditioned on the prefix. At inference time, RankGen acts as a reranking scoring function integrated into beam search, compatible with any pretrained LM.",
+    "key_innovation": "The dual negative training strategy is the core novelty: using both random in-document sequences (hard negatives that are topically related but contextually wrong) and model-generated sequences (which capture realistic failure modes like repetition and incoherence) forces the encoder to learn fine-grained coherence and relevance distinctions beyond simple topic matching. Prior work on decoding (nucleus, top-k, typical sampling) operated purely on token-level probabilities without a learned relevance signal.",
+    "technical_insight": "Using LLM-generated text as negatives is the critical design choice — it directly trains the model to penalize exactly the failure modes of modern LMs (repetition, incoherence, topic drift). This creates a self-adversarial training signal where the same class of models that generate bad text also provides the negative examples, making RankGen highly calibrated to the specific deficiencies it needs to overcome.",
+    "limitations": "RankGen is English-only and adds significant inference cost since it requires scoring multiple candidates via beam search. The model was trained and evaluated on specific domains (Wikipedia, Books) so generalization to code, dialogue, or highly technical text is untested. It also requires integration into beam search, meaning it cannot easily be used for pure sampling-based generation without modification. The contrastive objective may not capture all dimensions of text quality (e.g., factual accuracy).",
+    "interview_questions": [
+      "Why are LLM-generated sequences used as negatives rather than just random sequences, and what would happen if you only used random negatives?",
+      "How does RankGen integrate with beam search, and what are the computational trade-offs compared to standard decoding?",
+      "MAUVE measures distributional similarity — why is it a good metric here, and what important aspects of text quality does it miss?",
+      "How does contrastive learning in RankGen differ from the contrastive objectives used in dense retrieval models like DPR or SimCSE?",
+      "What is the theoretical justification for why a separately trained ranking model can outperform the LM's own probability scores for decoding?"
+    ],
+    "interview_answers": [
+      "Random negatives teach the model to distinguish on-topic vs off-topic continuations, but LLM-generated negatives are much harder — they are topically and grammatically coherent yet subtly wrong in coherence or relevance. Without LLM-generated negatives, RankGen would likely fail to penalize the most realistic failure modes (e.g., plausible-sounding but contextually incoherent text), since these look like positives to a model trained only on random negatives.",
+      "RankGen replaces or augments the LM score in beam search by scoring each beam candidate with the encoder, combining or replacing the LM log-probability with RankGen's similarity score. The cost is O(k) encoder forward passes per beam step (where k is beam width), roughly multiplying inference cost by k. This is non-trivial but acceptable for quality-sensitive applications; it does not require retraining the base LM.",
+      "MAUVE measures how close the distribution of generated text is to human-written text in an embedding space, capturing holistic quality including fluency, diversity, and coherence. However, it misses factual correctness, logical consistency, and instruction-following — text can be fluent and human-like but factually wrong or off-task. It is also a corpus-level metric so it does not capture per-instance quality.",
+      "Dense retrieval models like DPR use contrastive learning to match queries to relevant documents for retrieval, with in-batch or BM25-mined negatives. RankGen's key difference is that negatives are domain-specific (in-document random sequences and LLM-generated text), directly targeting the failure modes of language generation rather than retrieval irrelevance. The positive/negative structure also reflects temporal continuity (prefix → continuation) rather than semantic relevance.",
+      "LM probabilities reflect how likely a sequence is under the model's learned distribution, which is miscalibrated toward repetitive or degenerate text due to exposure bias and MLE training. A separately trained ranking model optimized with a contrastive objective on human-written continuations as positives can learn a different, better-calibrated signal for what constitutes a good continuation — essentially correcting for the LM's known failure modes without modifying its weights."
+    ],
+    "generated_at": "2026-03-30T08:07:00Z"
+  }
+}

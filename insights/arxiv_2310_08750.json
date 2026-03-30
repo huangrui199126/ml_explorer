@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Search-Adaptor is a method that post-processes embeddings from pre-trained LLMs to improve information retrieval, without modifying the underlying model itself. It can wrap any LLM including black-box API models, and achieves 5%+ nDCG@10 gains on standard retrieval benchmarks.",
+    "key_idea": "Train a lightweight adapter that transforms frozen LLM embeddings using query-corpus paired data, effectively customizing retrieval behavior without touching model weights.",
+    "why_it_matters": "Practitioners can dramatically improve search quality on top of any embedding API (including closed-source ones like Google's) just by training a small adapter on domain-specific data, making it cheap and flexible to specialize retrieval for new domains.",
+    "possible_use_cases": [
+      "Improving enterprise search over proprietary document corpora without fine-tuning large models",
+      "Boosting multilingual or multimodal retrieval for e-commerce product search",
+      "Adapting general-purpose embedding APIs to specialized domains like legal, medical, or scientific literature retrieval"
+    ],
+    "generated_at": "2026-03-30T07:53:40Z"
+  },
+  "deep": {
+    "method_breakdown": "Search-Adaptor is a lightweight post-processing module that transforms embeddings produced by a frozen pre-trained LLM to better suit retrieval tasks. It is trained on query-corpus paired data (e.g., relevance-labeled pairs) and learns a transformation over the embedding space without modifying the base LLM weights. Because it operates purely on the output embeddings, it is compatible with black-box APIs where model internals are inaccessible.",
+    "key_innovation": "The core novelty is decoupling retrieval adaptation from model fine-tuning: rather than updating LLM parameters (which requires white-box access and is computationally expensive), Search-Adaptor learns a compact mapping on top of frozen embeddings. This allows any embedding API — including commercial, closed-source ones — to be customized with domain or task-specific supervision, something standard fine-tuning cannot achieve.",
+    "technical_insight": "The most important design choice is operating in embedding space rather than input/output space, which keeps the adaptor small and differentiable while avoiding catastrophic forgetting or distribution shift in the base model. This works because retrieval relevance is largely a geometric property — aligning query and document embeddings in a task-appropriate subspace — and a learned linear or shallow nonlinear projection is sufficient to recalibrate that geometry without needing to retrain billions of parameters.",
+    "limitations": "The adaptor's quality is bounded by the expressiveness of the base LLM embeddings; if the frozen model fails to encode certain semantic distinctions, a post-hoc projection cannot recover them. Performance gains likely diminish for highly out-of-domain corpora where the base embeddings are fundamentally misaligned. The approach also requires labeled query-document pairs for training, so its benefit in truly zero-shot or low-resource settings is unclear. Finally, the paper focuses on nDCG@10 on BEIR, so generalization to recall-heavy or latency-critical production scenarios is not fully characterized.",
+    "interview_questions": [
+      "What specific architecture does Search-Adaptor use to transform embeddings, and why was that architecture chosen over alternatives like full fine-tuning or prompt tuning?",
+      "How does Search-Adaptor handle the asymmetry between query and document embeddings — does it apply the same transformation to both, or separate adaptors?",
+      "The paper claims compatibility with black-box APIs. What are the practical constraints on training the adaptor when you only have access to embedding outputs and not gradients through the base model?",
+      "BEIR is a zero-shot transfer benchmark. How do you justify using supervised paired data for adaptation on BEIR without causing the evaluation to be considered in-distribution?",
+      "How does Search-Adaptor compare to approaches that modify the retrieval objective (e.g., adding a re-ranker or cross-encoder) rather than the embedding representation itself?"
+    ],
+    "interview_answers": [
+      "Search-Adaptor likely uses a shallow MLP or linear projection trained with a contrastive or ranking loss (e.g., InfoNCE or in-batch negatives). This is chosen because it keeps parameter count low, avoids back-propagating through the frozen LLM, and is sufficient to recalibrate embedding geometry for retrieval without overfitting on small paired datasets.",
+      "Retrieval requires that query and document embeddings land in a compatible space, so the adaptor must be applied consistently to both. The likely design is either a shared transformation applied to both sides or two coordinated projections trained jointly so that the inner product or cosine similarity remains a meaningful relevance signal after adaptation.",
+      "When the base model is a black-box API, gradients from the adaptor's loss cannot flow through the LLM. Training is still possible because the adaptor sits entirely downstream: you call the API to get fixed embeddings, then train only the adaptor parameters end-to-end. The limitation is that the adaptor cannot influence the tokenization or attention layers, so it is restricted to reshaping the output manifold.",
+      "The paper likely uses datasets or splits that are disjoint from BEIR test corpora for training the adaptor, or uses BEIR's own provided training splits. The key distinction is that BEIR tests generalization across domains — if the adaptor is trained on a different domain's pairs, the evaluation remains a test of cross-domain transfer, which is the benchmark's intent.",
+      "Re-rankers and cross-encoders improve precision but require full query-document interaction at inference time, making them expensive for first-stage retrieval over large corpora. Search-Adaptor improves the dense retrieval stage itself, preserving sub-linear ANN lookup, which is critical for scalability. The two approaches are complementary and could be stacked."
+    ],
+    "generated_at": "2026-03-30T07:54:10Z"
+  }
+}
