@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a meta-learning framework that recommends the best energy forecasting model (from SARIMA, Random Forest, LSTM, etc.) for building cooling systems based on user-defined preferences like accuracy vs. computation cost. It was validated on 40 cases across five factory buildings, achieving over 99% recommendation success rate.",
+    "key_idea": "Rather than using a single model for all scenarios, a neural network recommendation system learns to match application contexts and user preferences to the most suitable forecasting model for cooling load and COP prediction.",
+    "why_it_matters": "Practitioners managing building energy systems can automatically get model recommendations tailored to their specific trade-offs (e.g., speed vs. accuracy), reducing the expertise needed to deploy effective forecasting without manual model selection.",
+    "possible_use_cases": [
+      "Automated energy model selection for HVAC systems in commercial or industrial buildings",
+      "Real-time cooling load forecasting dashboards that adapt model choice based on operational constraints",
+      "Multi-building energy management platforms that personalize forecasting pipelines per facility type or usage pattern"
+    ],
+    "generated_at": "2026-03-30T12:27:33Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper proposes a meta-learning framework that uses an ANN-based recommendation system to select the best forecasting model (SARIMA, RF, LSTM, etc.) for cooling load and COP prediction across 40 cases from five factory buildings. A two-stage user preference filtering based on multi-objective decision-making allows selection of models optimized for accuracy, computation cost, or both. A novel 'walking slide method' is introduced to handle special edge cases where standard models underperform.",
+    "key_innovation": "The genuine novelty is the combination of a meta-learning recommendation layer with explicit user preference modeling — rather than training one universal model, the system learns which model class is best suited for a given scenario and user objective, effectively automating model selection in building energy forecasting.",
+    "technical_insight": "The two-stage multi-objective decision-making for user preferences is the critical design choice: it decouples prediction accuracy from deployment constraints (compute cost), allowing operators to choose Pareto-optimal models for their specific context rather than being locked into accuracy-only rankings. This works because real industrial deployments have heterogeneous hardware and latency constraints that a single-metric leaderboard ignores.",
+    "limitations": "Cross-validation score of ~65% indicates the recommendation system struggles to generalize across cases with high variance, suggesting the meta-features may not fully capture case-specific characteristics. The dataset is limited to five factory buildings with 40 cases, raising questions about generalizability to other building types. The 'walking slide method' for special cases lacks theoretical grounding and its applicability conditions are not clearly defined.",
+    "interview_questions": [
+      "How are meta-features constructed for the ANN recommendation system, and what building/data characteristics are used as inputs?",
+      "What defines a 'special case' that triggers the walking slide method, and how does it differ mechanically from standard sliding window approaches?",
+      "The cross-validation success rate is ~65% but the recommendation success rate is >99% — how are these two metrics defined differently, and does this gap indicate overfitting?",
+      "How does the two-stage multi-objective decision-making handle cases where accuracy and computation cost are strongly conflicting objectives?",
+      "What is the sensitivity of the recommendation system to distribution shift — i.e., how does performance degrade when a new building has characteristics outside the training distribution of 40 cases?"
+    ],
+    "interview_answers": [
+      "Meta-features likely include statistical properties of the time series (seasonality strength, autocorrelation structure, variance) and case descriptors (building type, load range), fed into the ANN to predict model suitability scores — though the paper does not detail feature engineering rigorously.",
+      "Special cases appear to be time series with non-stationary or irregular patterns where standard model fitting fails; the walking slide method presumably adapts the training window dynamically, but the paper's description suggests it is heuristic rather than formally derived.",
+      "The gap likely arises because cross-validation score measures held-out prediction accuracy of the recommended model (sensitive to variance across cases), while success rate measures whether the top-recommended model matches the empirically best model — a softer criterion that can be satisfied even with imprecise confidence estimates.",
+      "The two-stage approach first filters by one criterion (e.g., accuracy threshold) then ranks by the second (e.g., compute cost), forming a lexicographic ordering rather than a true Pareto front — this sidesteps the conflict but may discard valid trade-off solutions.",
+      "With only 40 training cases from 5 buildings, the recommendation system is vulnerable to distribution shift; buildings with unusual thermal dynamics or occupancy patterns would likely trigger incorrect recommendations, and the >99% success rate reported almost certainly reflects in-distribution evaluation only."
+    ],
+    "generated_at": "2026-03-30T12:27:54Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CTNet addresses cross-domain click-through rate prediction in industrial recommender systems by introducing Continual Transfer Learning (CTL), which transfers knowledge between time-evolving source and target domains without discarding previously learned parameters. The approach treats source domain representations as external knowledge for the target domain, enabling efficient knowledge reuse across continuously updating domains.",
+    "key_idea": "Preserve and reuse continually trained source and target domain parameters by injecting source domain representations as external knowledge into target domain CTR prediction, avoiding catastrophic forgetting during ongoing knowledge transfer.",
+    "why_it_matters": "Industrial recommender systems must handle data that evolves over time across multiple domains; most cross-domain methods assume static data and break down in production, so CTNet provides a deployable solution that maintains performance without retraining from scratch as distributions shift.",
+    "possible_use_cases": [
+      "E-commerce recommendation: transferring user behavior signals from a high-traffic product category (e.g., electronics) to improve CTR prediction in a lower-traffic category (e.g., home goods)",
+      "Ad targeting: leveraging engagement patterns from a mature advertising domain to bootstrap and continuously improve predictions in a newer ad format or platform",
+      "Multi-platform personalization: transferring learned user preferences from a desktop browsing domain to a mobile shopping domain as both evolve over time"
+    ],
+    "generated_at": "2026-03-30T12:37:25Z"
+  },
+  "deep": {
+    "method_breakdown": "CTNet addresses Continual Transfer Learning (CTL) by treating source domain representations as external knowledge inputs to the target domain model, rather than jointly training both domains. The source domain model is continuously trained on its own stream of data, and its learned representations are periodically transferred to the target domain without overwriting target-specific parameters. This decoupled architecture allows both source and target models to evolve independently while still enabling knowledge flow across domains.",
+    "key_innovation": "Prior cross-domain CTR methods assume static or batch-trained source domains, ignoring that both source and target domains evolve continuously in production. CTNet explicitly frames this as a Continual Transfer Learning problem and solves the catastrophic forgetting issue that arises when naive joint training is applied to time-evolving multi-domain data. The key novelty is preserving and reusing independently trained domain parameters during transfer rather than merging or overwriting them.",
+    "technical_insight": "The most important design choice is treating source domain representations as read-only external knowledge rather than shared parameters. This prevents gradient interference between domains during continual updates — if source and target parameters were tied, updates in one domain would corrupt the other. By keeping them decoupled, each domain model can be optimally updated on its own data stream while the target still benefits from source-side feature enrichment at inference time.",
+    "limitations": "The approach assumes a meaningful semantic overlap between source and target domains; if the domains diverge significantly over time, transferred representations may become noisy or irrelevant. The method also adds inference-time latency by requiring source domain forward passes, which may be costly at Taobao's scale. There is limited discussion of how the system handles concept drift in the source domain or how transfer quality degrades when source data distribution shifts abruptly.",
+    "interview_questions": [
+      "Why does naive joint training across time-evolving domains lead to catastrophic forgetting, and how does CTNet avoid it?",
+      "How does CTNet decide which source domain representations to transfer, and at what granularity (item-level, user-level, feature-level)?",
+      "What evaluation protocol was used to simulate the continual learning setting offline, and how does it differ from standard cross-domain CTR benchmarks?",
+      "How does CTNet handle the cold-start problem in the target domain when source domain representations are not yet informative?",
+      "What are the computational trade-offs of CTNet at inference time, and how were they managed for production deployment at Taobao's scale?"
+    ],
+    "interview_answers": [
+      "In joint training, gradients from both domains are mixed, causing the model to overwrite previously learned domain-specific patterns as new data arrives — this is catastrophic forgetting. CTNet avoids it by keeping source and target domain parameters entirely separate; the source model trains on its own stream, and only its output representations (not gradients) are passed to the target model as fixed-context features, so neither domain's parameters are corrupted by the other's updates.",
+      "CTNet transfers representations at the instance or embedding level from the source domain encoder. The source model produces a dense representation for each sample, which is concatenated or fused with target domain features before the final prediction layers. The transfer is feature-level (learned embeddings) rather than parameter-level (weight sharing), allowing flexible semantic alignment without structural coupling.",
+      "The offline evaluation likely uses a time-ordered train/test split that mimics production data flow — models are trained on earlier time slices and evaluated on later ones, with incremental updates applied sequentially. This differs from standard benchmarks that use random splits or ignore temporal ordering, which would leak future information and fail to capture distribution shift over time.",
+      "When source domain representations are noisy or uninformative early on, the target model can learn to downweight them via attention or gating mechanisms. CTNet likely includes a fusion module that adaptively weights source-side knowledge against target-side features, so the model gracefully falls back to target-only prediction when source signals are weak or misaligned.",
+      "CTNet requires running both source and target domain encoders at inference, roughly doubling the forward pass cost compared to a single-domain model. To manage this at Taobao's scale, the source representations can be precomputed and cached (since source domain items change less frequently than user sessions), reducing online compute to a single target-side forward pass augmented with cached source embeddings."
+    ],
+    "generated_at": "2026-03-30T12:37:50Z"
+  }
+}

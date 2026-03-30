@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CDLRec is a disentangled representation learning framework for recommender systems that uses uniform (unbiased) data as a supervisory signal to separate user/item representations from confounding factors. It combines contrastive learning to overcome the scarcity of uniform data by generating augmented positive/negative samples.",
+    "key_idea": "Use uniform data to supervise disentanglement of user/item representations from bias-inducing confounders, augmented with contrastive learning to compensate for limited unbiased data.",
+    "why_it_matters": "Recommendation models trained on observational data inherit systematic biases (popularity, exposure) that distort predicted preferences; this method offers a principled way to learn cleaner representations without requiring large amounts of expensive uniform/randomized data.",
+    "possible_use_cases": [
+      "Debiasing e-commerce product recommendations to surface long-tail items unfairly suppressed by popularity bias",
+      "Improving fairness in content recommendation (news, video) by separating user interest signals from exposure/position bias",
+      "Building more accurate user preference models in domains with limited A/B test (uniform) data by leveraging contrastive augmentation"
+    ],
+    "generated_at": "2026-03-30T12:24:47Z"
+  },
+  "deep": {
+    "method_breakdown": "CDLRec disentangles user/item representations into bias-free and bias-related components by using uniform (unbiased) interaction data as a supervisory signal to guide the separation. Two contrastive learning strategies augment the scarce uniform data by constructing positive/negative pairs via different sampling schemes, enforcing that the debiased representations align with uniform data distributions while bias components capture confounding factors. The framework jointly optimizes reconstruction, disentanglement, and contrastive objectives to produce representations suitable for unbiased preference prediction.",
+    "key_innovation": "Prior debiasing methods using uniform data (e.g., IPS, doubly robust estimators) reweight losses but do not structurally separate biased from unbiased information in the latent space. CDLRec is the first to explicitly disentangle representations into bias-free vs. bias-laden factors using uniform data as a direct supervision signal, and uniquely addresses uniform data scarcity through contrastive augmentation rather than requiring more collected data.",
+    "technical_insight": "The critical design choice is using uniform data not as a loss reweighter but as a disentanglement oracle — representations that reconstruct uniform interactions are forced to be bias-free by construction. This works because uniform data has no position/popularity/exposure bias by collection design, so aligning latent factors to it implicitly removes confounding; contrastive augmentation then generalizes this signal beyond the small uniform sample size.",
+    "limitations": "The method relies on the existence of at least some uniform (randomized) data, which is expensive and rare in practice; performance likely degrades significantly when uniform data is extremely sparse. The two contrastive strategies are heuristically designed and their sampling assumptions may not hold across all domains. Disentanglement is not formally guaranteed — the model may still entangle factors if the uniform data is insufficiently diverse or the encoder capacity is mismatched.",
+    "interview_questions": [
+      "How does CDLRec use uniform data differently from IPS-based debiasing methods, and why is that distinction important?",
+      "What are the two contrastive strategies in CDLRec and how do they differ in constructing positive and negative pairs?",
+      "How does the framework handle the scarcity of uniform data during training, and what assumptions does the contrastive augmentation make?",
+      "What guarantees, if any, does CDLRec provide that the disentangled 'bias-free' representation is truly free of confounding?",
+      "How would CDLRec behave if no uniform data were available at all, and what alternative supervision signals could substitute?"
+    ],
+    "interview_answers": [
+      "IPS and related methods reweight the observational loss to correct for exposure bias but keep representations intact — they adjust 'how much' each sample contributes to learning. CDLRec instead structurally separates the representation space so that one subspace is causally aligned with uniform interactions; this prevents confounders from entering the prediction pathway at the representation level, not just the loss level.",
+      "The two strategies differ in how positives and negatives are sampled: one strategy constructs positives from augmented views of the same user/item under uniform data and negatives from observational data counterparts, enforcing alignment; the other samples within uniform data itself, using different interaction contexts as positives and unrelated users/items as negatives to capture fine-grained preference structure without bias.",
+      "Contrastive augmentation generates additional training signal by treating transformations or re-samplings of existing uniform interactions as proxy supervised pairs, effectively multiplying the supervision budget. This assumes that the semantic preference signal is preserved under the augmentation while bias-related signals are not — an assumption that may not hold if augmentations are poorly calibrated to the domain.",
+      "There are no formal disentanglement guarantees; the framework relies on the empirical hypothesis that minimizing reconstruction loss on uniform data while maximizing contrastive separation is sufficient. Without identifiability constraints (e.g., from causal structure or independence penalties like total correlation), the encoder could still mix factors, especially when uniform data is too sparse to constrain the full representation manifold.",
+      "Without uniform data CDLRec collapses to a standard contrastive recommender with no debiasing signal, likely performing similarly to SimCLR-style baselines. Potential substitutes include synthetic uniform data via exposure models, propensity-stratified sampling from logs, or using causal intervention proxies (e.g., do-calculus-inspired augmentations) to approximate what uniform interactions would look like."
+    ],
+    "generated_at": "2026-03-30T12:25:13Z"
+  }
+}

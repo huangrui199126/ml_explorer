@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes Q2ID (Query-to-Intent-Description), a task where a system automatically generates a detailed natural language description of a search query's intent by analyzing both relevant and irrelevant documents. The authors introduce CtrsGen, a contrastive generation model that learns to describe query intent by contrasting what relevant documents have that irrelevant ones lack.",
+    "key_idea": "By contrasting relevant versus irrelevant documents for a query, a model can generate precise intent descriptions that capture richer query semantics than coarse classification or clustering approaches.",
+    "why_it_matters": "Richer, auto-generated query intent descriptions can improve downstream IR tasks like document ranking, query rewriting, and relevance evaluation — reducing reliance on expensive human annotation for query understanding.",
+    "possible_use_cases": [
+      "Automated query annotation to replace or augment human-written TREC-style topic descriptions",
+      "Query expansion and rewriting by using the generated intent description as a richer query representation",
+      "Improving zero-shot or few-shot document ranking by feeding the generated intent description to relevance models"
+    ],
+    "generated_at": "2026-03-30T12:30:25Z"
+  },
+  "deep": {
+    "method_breakdown": "CtrsGen frames query understanding as a generation task: given a query plus sets of relevant and irrelevant documents, it generates a natural language intent description. The model uses a contrastive mechanism that conditions generation on the difference signal between relevant and irrelevant document representations, encouraging the output to capture what distinguishes relevant content. This is built atop a sequence-to-sequence backbone where document evidence is encoded and contrasted before being fed into the decoder.",
+    "key_innovation": "The reversal of the classic query-document relevance paradigm: instead of using a query+description to rank documents (standard IR), Q2ID uses documents to generate the query's intent description. The contrastive generation objective — explicitly incorporating irrelevant documents as negative signal during generation, not just retrieval — is novel; prior generative query understanding work did not leverage hard negatives at generation time.",
+    "technical_insight": "The critical design choice is contrastive conditioning: the model learns what a query means by seeing what it does NOT mean (irrelevant docs) alongside what it does. This mirrors how human annotators reason — they exclude off-topic interpretations to sharpen intent descriptions — and prevents the generator from producing generic, high-recall descriptions that fit many queries.",
+    "limitations": "The model requires access to both relevant and irrelevant documents at inference time, which creates a chicken-and-egg dependency: good retrieval is needed to identify relevant docs, but good query understanding is what you need for good retrieval. Quality of generated descriptions is sensitive to the quality and diversity of the input document sets. Evaluation on TREC/SemEval may not generalize to conversational or ambiguous queries. The approach is also computationally heavy relative to classification-based query understanding baselines.",
+    "interview_questions": [
+      "At inference time, how do you obtain the relevant and irrelevant documents needed as input to CtrsGen, given that the whole point is to understand a query before retrieval?",
+      "How does the contrastive generation mechanism differ from standard contrastive learning used in dense retrieval models like DPR or ANCE?",
+      "Why is generating a natural language intent description strictly better than query classification or clustering for downstream IR tasks?",
+      "How does CtrsGen handle queries that are genuinely ambiguous and have multiple valid intents — does it generate a single description or can it produce multiple?",
+      "What automatic metrics were used to evaluate the quality of generated intent descriptions, and how do they correlate with human judgment of description quality?"
+    ],
+    "interview_answers": [
+      "This is the core practical limitation. In practice you'd bootstrap with an initial retrieval pass (BM25 or a weak dense model), use those results as approximate relevant/irrelevant splits, generate the intent description, then re-retrieve with the enriched query. It's an iterative refinement loop, but the first-pass retrieval quality creates a ceiling on description quality — a known bootstrapping problem in IR.",
+      "Standard contrastive learning (DPR/ANCE) applies contrastive loss on encoder representations to pull positives close and push negatives apart in embedding space. CtrsGen applies the contrast at generation time: the decoder is conditioned on a contrast signal (relevant enc - irrelevant enc or a gating mechanism) so the generated tokens are steered away from content explained by irrelevant docs. It's contrast-as-conditioning rather than contrast-as-loss.",
+      "Classification/clustering loses fine-grained information — two queries in the same intent class may need very different documents. A natural language description preserves nuance (specificity of domain, subtask, constraints) that a class label discards. It also enables use in downstream NLP pipelines (query expansion, reranking prompts, explanation generation) that can consume free text but not categorical labels.",
+      "The paper likely generates a single description per query, which is a limitation for ambiguous queries. A more robust approach would involve multi-hypothesis generation (beam search with diversity penalty) or clustering generated candidates. This is an open problem — single-intent assumption is inherited from TREC-style evaluation where one canonical description exists per query.",
+      "Standard NLG metrics like ROUGE, BLEU, and possibly BERTScore against human-written descriptions from TREC/SemEval. The correlation with actual IR utility (does a better ROUGE score lead to better downstream retrieval?) is typically weak for these metrics, which is a known problem in conditional generation evaluation — and a likely gap this paper doesn't fully close."
+    ],
+    "generated_at": "2026-03-30T12:30:56Z"
+  }
+}
