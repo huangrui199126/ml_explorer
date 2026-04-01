@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MetaTT introduces a parameter-efficient fine-tuning framework that uses a single shared Tensor Train (TT) decomposition across all transformer sub-modules, indexing structural dimensions like layer, matrix type, heads, and tasks. This global sharing causes parameter count to scale with the sum rather than product of dimensions, yielding a much more compact adapter than existing methods.",
+    "key_idea": "By sharing one Tensor Train across all transformer layers and matrix types, MetaTT amortizes parameters globally so the adapter grows additively rather than multiplicatively with model depth and width.",
+    "why_it_matters": "Practitioners fine-tuning large language models on constrained hardware or across multiple tasks simultaneously can achieve competitive accuracy with far fewer trainable parameters than LoRA or other decomposition methods, and the built-in DMRG-inspired rank-adaptive optimizer removes the need to hand-tune rank hyperparameters.",
+    "possible_use_cases": [
+      "Multi-task fine-tuning of LLMs where a single compact adapter must generalize across diverse NLP tasks",
+      "On-device or edge deployment scenarios requiring minimal adapter storage and memory overhead",
+      "Iterative experimentation workflows where automatic rank adaptation via the DMRG optimizer reduces costly hyperparameter search"
+    ],
+    "generated_at": "2026-04-01T11:00:31Z"
+  },
+  "deep": {
+    "method_breakdown": "MetaTT uses a single shared Tensor Train (TT) decomposition to factorize all transformer sub-modules simultaneously, indexing structural dimensions such as layer index, matrix type (Q/K/V/O/FFN), and optionally attention heads and task IDs as modes of the TT. Because parameters scale with the sum of mode dimensions rather than their product, the adapter remains compact even as the number of indexed dimensions grows. A DMRG-inspired rank-adaptive optimizer is also introduced, which dynamically adjusts TT ranks during training to improve optimization at a fixed target rank.",
+    "key_innovation": "Unlike LoRA and prior tensor-decomposition adapters (e.g., LoTR, FLoRA) that apply separate low-rank or TT factors per module, MetaTT uses one globally shared TT whose modes encode structural metadata (layer, matrix type, head, task). This global sharing collapses what would be a multiplicative parameter blowup into an additive one, enabling a much more compact parameterization. The DMRG-inspired rank-adaptive optimizer for TT-structured adapters is also novel.",
+    "technical_insight": "The critical design choice is treating the transformer's structural axes (layer index, matrix type, task) as explicit tensor modes rather than learning independent adapters per module. This forces the model to learn shared low-dimensional structure across all sub-modules jointly, acting as a strong inductive bias that reduces redundancy. It works because transformer weight matrices across layers and heads are empirically highly correlated, so a shared factorization can capture most of the fine-tuning signal with far fewer parameters.",
+    "limitations": "The shared TT structure imposes a strong inductive bias that may hurt expressivity when sub-modules require highly heterogeneous updates, which could explain why gains over LoRA are modest on single-task benchmarks. The DMRG-inspired optimizer adds algorithmic complexity and its benefit over standard AdamW is only demonstrated at a fixed target rank. The method's advantage is most pronounced in multi-task settings; single-task results are merely competitive, not clearly superior. Scalability to very large models (70B+) and practical wall-clock overhead of the TT contractions are not thoroughly analyzed.",
+    "interview_questions": [
+      "How does MetaTT achieve parameter scaling with the sum rather than product of mode dimensions, and why is this significant?",
+      "What is the role of the DMRG-inspired rank-adaptive optimizer, and how does it differ from standard AdamW applied to TT parameters?",
+      "Why does the global shared TT structure provide a stronger benefit in multi-task settings compared to single-task fine-tuning?",
+      "How does MetaTT handle the trade-off between expressivity and compactness when different transformer layers or matrix types require very different adaptation magnitudes?",
+      "What are the computational costs of contracting a shared TT during forward and backward passes compared to LoRA, and how does this affect practical usability?"
+    ],
+    "interview_answers": [
+      "Each mode (layer, matrix type, head, task) contributes a small TT core of size r×d_mode×r. The total parameters are O(sum_i d_i × r²) rather than O(prod_i d_i) for a full tensor, making it feasible to index many structural dimensions simultaneously without combinatorial blowup. This is significant because it allows a single adapter to cover all sub-modules of a large transformer with a budget comparable to a single LoRA.",
+      "The DMRG optimizer sweeps through TT cores sequentially, locally optimizing each core while keeping others fixed, and uses singular value truncation to adaptively set per-bond ranks toward a target. Unlike AdamW which treats all parameters uniformly, this approach respects the tensor-network geometry and can redistribute rank (expressivity) across bonds during training, leading to better optimization trajectories at a fixed parameter budget.",
+      "In multi-task settings, tasks share the same pretrained backbone but require different output behaviors. MetaTT encodes task identity as an explicit TT mode, so the adapter naturally learns a shared latent structure across tasks while allowing task-specific variation through that mode's core. This structured sharing is precisely the inductive bias needed for multi-task generalization, whereas in single-task settings the shared structure offers less advantage over per-module LoRA adapters.",
+      "MetaTT does not have an explicit mechanism to assign different effective ranks to different sub-modules — the TT rank is uniform across all modes by default. The DMRG rank-adaptive optimizer partially addresses this by redistributing rank across bond dimensions during training, but the global sharing inherently constrains how heterogeneous the per-module updates can be. This is a fundamental tension in the design.",
+      "Contracting a TT-structured adapter requires sequential matrix multiplications through the TT cores, which is O(r² × prod d_i) per forward pass slice, compared to LoRA's O(r × d) per module. For small ranks the overhead is manageable, but for large models with many layers the sequential TT contraction can be slower than parallel LoRA computations. The paper does not provide detailed wall-clock comparisons, which is a gap in the practical evaluation."
+    ],
+    "generated_at": "2026-04-01T11:01:01Z"
+  }
+}

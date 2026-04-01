@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey unifies inference-time compute methods for LLMs across three categories: token-level decoding algorithms, meta-generation algorithms (e.g., chain-of-thought, backtracking, tool use), and efficient generation techniques. It provides a shared mathematical framework bridging NLP, modern LLM, and ML systems research communities.",
+    "key_idea": "Scaling compute at inference time—through smarter decoding, search, and meta-generation strategies—can improve LLM outputs without retraining, analogous to how scaling training compute improves base models.",
+    "why_it_matters": "Practitioners can squeeze significantly better performance from existing models by choosing the right inference-time algorithm, enabling cost-quality tradeoffs without expensive fine-tuning or retraining.",
+    "possible_use_cases": [
+      "Improving reasoning accuracy in production LLMs via beam search or best-of-N sampling without model changes",
+      "Reducing inference costs through speculative decoding or token pruning for latency-sensitive applications",
+      "Enabling complex multi-step problem solving via tree search and backtracking for coding or math assistants"
+    ],
+    "generated_at": "2026-04-01T11:10:10Z"
+  },
+  "deep": {
+    "method_breakdown": "This survey unifies inference-time compute scaling under a single mathematical formalism covering three domains: token-level decoding algorithms (greedy, beam search, sampling variants that operate on logits/distributions), meta-generation algorithms (chain-of-thought, self-consistency, tree search, retrieval-augmented methods that operate on partial or full sequences), and efficient generation techniques (speculative decoding, KV-cache optimization, quantization). The formalism treats each approach as a different strategy for navigating the output space, parameterized by access level to model internals and the granularity of the search unit.",
+    "key_innovation": "The primary contribution is the unified mathematical framework that reconciles three previously siloed research communities — classical NLP decoding, modern LLM prompting/reasoning, and ML systems — under a single lens. Prior surveys treated these as distinct problem classes; this work shows they are all instances of inference-time compute allocation with different trade-offs between exploration breadth, domain knowledge incorporation, and computational cost.",
+    "technical_insight": "The most important design insight is the distinction between token-level methods (which require white-box access to logits) and meta-generation methods (which can operate black-box on sequence outputs). This separation clarifies when techniques like beam search and speculative decoding are applicable versus when self-consistency or process reward model reranking must be used, enabling practitioners to select the right tool based on deployment constraints rather than conflating fundamentally different algorithmic regimes.",
+    "limitations": "As a survey, it inherits the limitation of being a snapshot in a rapidly evolving field and does not empirically validate the proposed unified formalism. The coverage of efficient generation is less theoretically unified than the decoding sections. The framework assumes a single autoregressive model architecture, leaving out diffusion-based and non-autoregressive LMs. Practical guidance on how to choose among methods for a given latency/quality budget is largely absent.",
+    "interview_questions": [
+      "What is the key distinction between token-level generation algorithms and meta-generation algorithms, and why does it matter in practice?",
+      "How does speculative decoding achieve speedup without changing the output distribution, and what are its failure modes?",
+      "Self-consistency improves accuracy by sampling multiple chain-of-thought paths and taking a majority vote — what assumption does this rely on, and when does it break?",
+      "What trade-off does beam search make compared to greedy decoding, and why do larger beams not always yield better outputs for open-ended generation?",
+      "How do process reward models (PRMs) differ from outcome reward models (ORMs) in the context of inference-time search, and which is harder to train?"
+    ],
+    "interview_answers": [
+      "Token-level algorithms operate at each autoregressive step, selecting or scoring the next token using logits or probability distributions — they require white-box model access. Meta-generation algorithms operate over full or partial sequences (e.g., reasoning chains, candidate outputs) and can be applied black-box. The distinction matters because it determines what model access is required and the computational granularity of the search.",
+      "Speculative decoding uses a small draft model to propose K tokens, then the large target model verifies them in a single parallel forward pass using rejection sampling — accepted tokens are kept, the first rejected token is resampled from the corrected distribution. This maintains the exact target distribution. Failure modes include low draft acceptance rates (when draft and target model distributions diverge significantly) and overhead from the draft model dominating latency on short sequences.",
+      "Self-consistency assumes that correct reasoning paths are more likely to converge on the same final answer than incorrect ones, making the majority answer a proxy for correctness. It breaks when (1) the correct answer is genuinely ambiguous or multi-valued, (2) the model has systematic biases that cause incorrect paths to consistently agree, or (3) the task requires exact symbolic outputs where near-misses do not cluster.",
+      "Beam search maintains a set of B partial sequences and expands the top-B candidates at each step, trading linear compute overhead for higher-likelihood outputs. Larger beams find higher log-probability sequences but these often exhibit degenerate repetition or generic text for open-ended tasks, because maximum likelihood does not align with human preference for diversity and creativity — a phenomenon called the beam search curse.",
+      "ORMs score only the final answer (correct/incorrect), making them easier to obtain labels for but providing no learning signal about intermediate reasoning quality. PRMs score each reasoning step, enabling finer-grained search guidance and credit assignment but requiring step-level annotations which are expensive to collect. PRMs are more powerful for tree search (e.g., MCTS over reasoning steps) but significantly harder to train due to annotation cost and the challenge of defining what constitutes a correct intermediate step."
+    ],
+    "generated_at": "2026-04-01T11:10:40Z"
+  }
+}
