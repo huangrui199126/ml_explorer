@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DPR introduces a dual-encoder framework that learns dense vector representations of questions and passages from a small number of labeled pairs, replacing traditional sparse retrieval methods like BM25 for open-domain QA. The learned embeddings enable fast nearest-neighbor search that significantly outperforms BM25 on multiple benchmarks.",
+    "key_idea": "Two separate BERT encoders independently embed questions and passages into a shared dense vector space, where retrieval is performed by maximum inner product search at inference time.",
+    "why_it_matters": "Dense retrieval with DPR dramatically improves passage recall (9-19% absolute over BM25) and is now the foundational backbone for RAG pipelines, enabling practitioners to build more accurate knowledge-intensive NLP systems with relatively small amounts of training data.",
+    "possible_use_cases": [
+      "Building retrieval-augmented generation (RAG) systems for enterprise knowledge bases",
+      "Powering open-domain chatbots and virtual assistants that answer questions from large document corpora",
+      "Semantic document search and FAQ matching in customer support or legal document review systems"
+    ],
+    "generated_at": "2026-04-01T06:49:35Z"
+  },
+  "deep": {
+    "method_breakdown": "DPR trains two separate BERT-based encoders — one for questions and one for passages — using a dual-encoder framework where the dot product of their embeddings measures relevance. Training uses in-batch negatives plus hard negatives (BM25 retrieved passages that don't contain the answer) with a contrastive loss (NLL over positive passage). At inference, all passage embeddings are pre-computed and indexed with FAISS for efficient maximum inner product search (MIPS).",
+    "key_innovation": "Prior work assumed dense retrieval required large-scale supervised data or complex architectures; DPR shows that a simple dual-encoder trained on relatively small QA datasets (tens of thousands of question-passage pairs) can substantially outperform BM25, which requires no training at all. The key departure is replacing sparse lexical matching entirely with learned dense similarity, proving that semantic retrieval at scale is practical with approximate nearest neighbor search.",
+    "technical_insight": "Using in-batch negatives combined with hard BM25 negatives is the critical design choice — random negatives are too easy and don't teach the model to distinguish semantically related but non-answering passages. Hard negatives force the encoders to learn fine-grained semantic distinctions rather than just surface-level topic matching, which is why DPR generalizes across diverse QA datasets despite modest training data.",
+    "limitations": "DPR requires training data in the form of (question, relevant passage) pairs, making it less applicable to zero-shot or domain-shift scenarios where such supervision is unavailable. The static offline index cannot incorporate real-time document updates without full re-encoding. It also struggles with exact lexical matching (rare entities, codes, product names) where BM25 trivially succeeds, and the 768-dim FAISS index has significant memory overhead at web scale.",
+    "interview_questions": [
+      "Why does DPR use dot product similarity rather than cosine similarity, and what are the trade-offs?",
+      "How does the choice of negatives (random vs. in-batch vs. BM25 hard negatives) affect training, and why do hard negatives matter most?",
+      "What is the role of FAISS in DPR's inference pipeline, and what approximate search trade-offs does it introduce?",
+      "In what scenarios would BM25 still outperform DPR, and how might you combine both approaches?",
+      "How would you adapt DPR for a domain where labeled (question, passage) pairs are unavailable?"
+    ],
+    "interview_answers": [
+      "Dot product is used because it maps directly to the MIPS problem that FAISS optimizes, enabling efficient GPU-accelerated search. Cosine similarity adds a normalization step that decouples magnitude from direction — empirically the authors found dot product performs comparably or better, likely because the training loss already implicitly regularizes embedding norms, and avoiding normalization keeps the FAISS index simpler.",
+      "Random negatives are trivially easy — the model learns to avoid completely off-topic passages but not semantically close ones. In-batch negatives are cheap (reuse forward passes of other questions' passages) and moderately hard. BM25 hard negatives are passages that lexically match the question but don't answer it, forcing the model to learn true semantic relevance beyond keyword overlap. Ablations show hard negatives give the largest accuracy gains, especially on datasets with tricky distractors.",
+      "FAISS (Facebook AI Similarity Search) builds an approximate nearest neighbor index over all pre-computed passage embeddings, enabling sub-linear retrieval over millions of vectors. The trade-off is recall: approximate search may miss the true nearest neighbor, introducing a small accuracy loss versus exact search. Index types like IVF-Flat partition the space into Voronoi cells so only a subset is searched, trading some recall for orders-of-magnitude speedup needed at production scale.",
+      "BM25 excels when the answer passage shares rare or unique lexical tokens with the question — e.g., searching for a specific person's name, a technical acronym, or a product ID where semantic paraphrase adds nothing. A hybrid retriever (e.g., combining BM25 and DPR scores linearly, or using DPR to re-rank BM25 candidates) captures both lexical precision and semantic generalization. Systems like HYBRID or later RAG variants adopt exactly this strategy.",
+      "Without labeled pairs, you can use weak supervision: mine (question, passage) pairs from Wikipedia using anchor-text hyperlinks, generate synthetic questions from passages using a seq2seq model (as in PAQ or GPL), or leverage cross-lingual transfer from a resource-rich language. Another approach is to initialize with a strong pre-trained bi-encoder (e.g., Sentence-BERT) and fine-tune with whatever weak signal exists, such as click-through data or document co-occurrence."
+    ],
+    "generated_at": "2026-04-01T06:50:05Z"
+  }
+}

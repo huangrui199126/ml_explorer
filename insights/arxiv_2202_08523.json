@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CML (Contrastive Meta Learning) addresses multi-behavior recommendation by modeling diverse user interaction types (views, favorites, purchases) with personalized dependency patterns. It uses contrastive learning to transfer knowledge across behavior types and a meta-network to capture user-specific behavior heterogeneity.",
+    "key_idea": "A contrastive meta-network encodes personalized cross-behavior dependencies so that sparse target behaviors (e.g., purchases) can leverage signals from richer auxiliary behaviors (e.g., page views) in a user-customized way.",
+    "why_it_matters": "Most real-world recommendation systems have abundant implicit signals (clicks, views) but sparse conversion signals (purchases); CML shows how to systematically bridge that gap with personalized transfer, directly improving recommendation quality where it matters most.",
+    "possible_use_cases": [
+      "E-commerce platforms boosting purchase predictions using browsing and cart-add signals",
+      "Social media recommendation leveraging likes, shares, and comments to predict content saves or follows",
+      "Streaming services using watch-time and search behavior to improve explicit ratings or playlist additions"
+    ],
+    "generated_at": "2026-04-01T06:52:23Z"
+  },
+  "deep": {
+    "method_breakdown": "CML constructs a multi-behavior contrastive learning framework that treats different interaction types (view, favorite, purchase) as multiple views of user preference, using contrastive loss to transfer knowledge from auxiliary behaviors to sparse target behaviors. A contrastive meta network generates user-specific behavior dependency weights by meta-learning personalized heterogeneity encoders conditioned on each user's multi-behavior history. The meta network outputs customized transformation parameters per user, allowing the model to capture that different users exhibit different cross-behavior dependency patterns.",
+    "key_innovation": "Prior multi-behavior methods (MBGCN, MATN) learn a single global cross-behavior dependency shared across all users. CML's key novelty is the contrastive meta network that produces personalized, user-specific cross-behavior dependency models — recognizing that for some users views reliably predict purchases, while for others they do not. Additionally, applying contrastive learning specifically across behavior types to create a self-supervised signal that mitigates purchase-label sparsity is more principled than simple auxiliary task weighting.",
+    "technical_insight": "The most important design choice is using the meta network to condition cross-behavior transfer on individual user behavior profiles rather than learning a global transfer function. This works because user heterogeneity in shopping intent means aggregate statistics obscure signal: a user who views 100 items and buys 90 is fundamentally different from one who views 100 and buys 1, and a single shared dependency model conflates these. By generating user-adaptive parameters, the model avoids negative transfer where spurious auxiliary behavior correlations hurt target behavior prediction.",
+    "limitations": "The meta network adds significant parameter overhead and computational cost per user, making it less scalable to platforms with hundreds of millions of users. The approach requires all behavior types to be observed at training time; cold-start users with only one behavior type cannot benefit from cross-behavior transfer. The contrastive loss construction relies on heuristic negative sampling strategies that may not generalize across domains. The model was evaluated on relatively small datasets (three), and performance on industrial-scale sparse graphs is unverified.",
+    "interview_questions": [
+      "How does the contrastive meta network generate user-specific behavior dependency weights, and what is its architectural design?",
+      "Why is contrastive learning across behavior types more effective than simply using auxiliary behavior prediction as a multi-task loss?",
+      "How does CML handle a new user who has only one type of behavior interaction at inference time?",
+      "What negative sampling strategy is used in the contrastive loss, and how sensitive is performance to this choice?",
+      "How does CML compare to graph-based multi-behavior methods like MBGCN, and what complementary signals might combining them provide?"
+    ],
+    "interview_answers": [
+      "The meta network takes a user's aggregated multi-behavior embedding as input and outputs transformation parameters (e.g., scaling and shifting vectors) that modulate how each auxiliary behavior type contributes to the target behavior representation. Architecturally it is a small MLP that produces these parameters conditioned on the user context, effectively performing fast adaptation similar to hypernetworks or MAML-style meta-learning.",
+      "Auxiliary task losses still require labeled auxiliary interactions and optimize a weighted sum of losses, which can dominate gradient updates and hurt target behavior performance. Contrastive learning instead creates a self-supervised signal by maximizing agreement between representations derived from different behavior views of the same user, extracting transferable preference signals without requiring explicit auxiliary labels to be directly optimized against the target metric.",
+      "Cold-start users with only one behavior type cannot leverage the cross-behavior meta network effectively since the meta network's input (multi-behavior profile) is degenerate. The model would fall back to single-behavior recommendation, losing its primary advantage — this is a concrete limitation the paper does not fully address.",
+      "The paper uses uniformly sampled unobserved items as negatives within the contrastive loss. Performance is moderately sensitive to negative sampling: hard negatives (items the user viewed but did not purchase) would create more informative contrastive pairs but risk false negatives. The paper does not extensively ablate sampling strategies, leaving this as an open design question.",
+      "Graph-based methods like MBGCN propagate multi-hop neighborhood signals across a behavior-typed graph, capturing structural co-purchase patterns. CML captures personalized behavior dependency via meta-learning but operates on user-item embeddings without explicit graph structure. Combining them — using graph-propagated embeddings as input to CML's meta network — could capture both structural relational patterns and personalized cross-behavior transfer, likely yielding additive gains."
+    ],
+    "generated_at": "2026-04-01T06:52:53Z"
+  }
+}

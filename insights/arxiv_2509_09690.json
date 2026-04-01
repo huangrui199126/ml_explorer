@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents a unified LLM-based query understanding framework for job search that replaces multiple fragmented NER models with a single model that jointly processes user queries and profile context to generate structured job search facets. It demonstrates improved relevance in A/B tests while reducing system complexity.",
+    "key_idea": "A single LLM jointly encodes both the search query and user profile signals to produce structured query interpretations, replacing a brittle pipeline of task-specific NER models.",
+    "why_it_matters": "Practitioners maintaining multi-model NLP pipelines for entity extraction can replace them with a single LLM that is easier to update, handles taxonomy drift naturally, and delivers better personalization by conditioning on user context.",
+    "possible_use_cases": [
+      "Job search platforms replacing legacy NER pipelines with a unified LLM query parser",
+      "E-commerce or marketplace search systems that need to extract structured facets from short, ambiguous queries",
+      "Personalized recommendation engines that want to incorporate user profile context directly into query understanding"
+    ],
+    "generated_at": "2026-04-01T06:48:10Z"
+  },
+  "deep": {
+    "method_breakdown": "The framework replaces multiple task-specific NER models with a single LLM that jointly processes the user query alongside contextual signals (e.g., user profile attributes like location, skills, experience level) to produce structured facet extractions such as job title, skills, location, and seniority in one unified inference pass. The LLM is prompted or fine-tuned to output structured interpretations that feed downstream ranking and retrieval components. By conditioning on profile context, the model generates personalized query interpretations rather than treating all queries identically.",
+    "key_innovation": "The key novelty is replacing a fragmented ensemble of task-specific NER models with a single LLM that performs joint, context-aware query understanding — simultaneously handling entity extraction, taxonomy normalization, and personalization in one step. Prior work treated each facet (title, skill, location) as an independent extraction task, losing cross-facet interactions and ignoring user context. The unified model captures inter-facet dependencies and adapts interpretations based on the searcher's profile.",
+    "technical_insight": "The most important design choice is conditioning the LLM on user profile attributes alongside the raw query. Job search queries are notoriously ambiguous ('engineer' could mean mechanical, software, or civil) and the profile provides a strong prior to disambiguate intent. This personalized conditioning shifts the system from generic entity extraction to intent-aware structured understanding, which is why it achieves relevance gains beyond what better NLP alone would provide.",
+    "limitations": "The paper is light on technical specifics — it is an industry paper without full methodological disclosure, making reproducibility difficult. Key unknowns include the LLM size, whether it is fine-tuned or prompt-based, and how taxonomy updates are handled at inference time. Latency and cost of LLM inference at job-search scale (millions of QPS) are acknowledged as challenges but not fully resolved. The A/B test metrics and gains are not quantified in the abstract, limiting external validation. The approach may also degrade for cold-start users with sparse profiles.",
+    "interview_questions": [
+      "How does jointly conditioning on user profile attributes improve query understanding compared to query-only NER?",
+      "What are the latency and throughput trade-offs of replacing lightweight NER models with an LLM in a high-QPS search system, and how would you mitigate them?",
+      "How would you handle taxonomy evolution — for example, a new job title category emerging — in this LLM-based framework versus the old NER approach?",
+      "What training data would you need to fine-tune the LLM for structured facet extraction, and how would you handle label noise from user behavior signals?",
+      "How would you evaluate the quality of query understanding in isolation, independent of downstream ranking metrics?"
+    ],
+    "interview_answers": [
+      "Profile attributes provide a personalized prior that resolves lexical and semantic ambiguity in short queries. For example, 'manager' from a user with a software engineering profile likely means engineering manager, whereas from a retail background it likely means store manager. The LLM can model this joint distribution over query and profile, producing facet predictions conditioned on searcher context rather than treating query understanding as a context-free NLP task.",
+      "A single LLM call is orders of magnitude slower than running small NER models, which matters at millions of QPS. Mitigations include: (1) caching structured interpretations for frequent or repeated queries, (2) using a smaller distilled model fine-tuned specifically for facet extraction, (3) asynchronous pre-computation for logged-in users whose profiles are known, and (4) batching requests. The tradeoff is that caching reduces personalization benefit for common queries.",
+      "In the NER approach, taxonomy changes require re-labeling training data and retraining each affected model — expensive and slow. With an LLM, new taxonomy entries can be introduced via prompt updates or a small number of fine-tuning examples, since the model already has broad language understanding. The LLM can generalize to unseen job titles through semantic similarity, whereas NER requires explicit training examples for each new label.",
+      "Training data can be constructed from: (1) query-to-structured-facet pairs labeled by human annotators or crowdsourcing, (2) click and application logs used as weak supervision (e.g., if a user applies to 'Senior Software Engineer' roles after querying 'senior swe', that's a title signal), and (3) synthetic data generated by the LLM itself and verified by SMEs. Label noise from behavioral signals is handled via confidence thresholds, denoising models, or learning from aggregated signals rather than individual clicks.",
+      "Offline evaluation should include: (1) facet-level precision/recall against a human-annotated gold set covering ambiguous and tail queries, (2) taxonomy coverage — what fraction of extracted entities map correctly to canonical taxonomy entries, (3) personalization consistency — whether the same query returns different but appropriate interpretations for different user profiles, and (4) A/B testing on a retrieval-only stage (holding the ranker fixed) to isolate query understanding quality from ranking effects."
+    ],
+    "generated_at": "2026-04-01T06:48:41Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FRAMES is a unified evaluation dataset for retrieval-augmented generation (RAG) systems that tests factuality, retrieval, and multi-hop reasoning together in a single benchmark. It reveals that even state-of-the-art LLMs achieve only 40% accuracy without retrieval, improving to 66% with a multi-step retrieval pipeline.",
+    "key_idea": "A single benchmark that jointly measures factuality, retrieval quality, and reasoning over multi-hop questions exposes weaknesses in RAG pipelines that isolated benchmarks miss.",
+    "why_it_matters": "Practitioners building RAG systems lack a comprehensive evaluation harness that reflects real-world complexity; FRAMES provides a realistic, end-to-end test to identify bottlenecks across retrieval, reasoning, and answer accuracy simultaneously.",
+    "possible_use_cases": [
+      "Benchmarking and comparing RAG pipeline architectures before production deployment",
+      "Identifying whether failures in a RAG system stem from retrieval quality or LLM reasoning capability",
+      "Guiding fine-tuning and prompt engineering efforts by revealing specific weaknesses in multi-hop question answering"
+    ],
+    "generated_at": "2026-04-01T06:56:27Z"
+  },
+  "deep": {
+    "method_breakdown": "FRAMES constructs a benchmark of multi-hop questions requiring integration of information from multiple sources, designed to simultaneously evaluate factuality, retrieval quality, and reasoning in end-to-end RAG pipelines. Each question demands that a model both retrieve relevant documents and perform multi-step reasoning to synthesize a correct answer. A multi-step retrieval pipeline is proposed as a baseline, where the LLM iteratively issues sub-queries to gather supporting evidence before generating a final response.",
+    "key_innovation": "Prior benchmarks evaluated factuality, retrieval, and reasoning in isolation; FRAMES is the first unified evaluation framework that assesses all three capabilities together in a single end-to-end RAG setting, exposing compounding failure modes that siloed benchmarks cannot detect.",
+    "technical_insight": "The most important design choice is the multi-hop question structure requiring evidence synthesis across multiple sources — this forces evaluation of the full RAG pipeline under realistic conditions where single-document retrieval is insufficient, revealing that retrieval strategy (iterative vs. one-shot) is the dominant performance lever, not just model capability.",
+    "limitations": "The benchmark is static and may become saturated as models improve; multi-hop questions may inadvertently reward certain retrieval heuristics over genuine reasoning; the dataset construction process may introduce annotator bias in what counts as a 'correct' multi-hop reasoning chain; and the evaluation does not account for retrieval corpus quality or latency trade-offs relevant to production systems.",
+    "interview_questions": [
+      "Why does evaluating RAG components in isolation fail to capture real-world system performance?",
+      "What makes multi-hop questions particularly challenging for current LLMs in a RAG setting?",
+      "How does the multi-step retrieval pipeline improve accuracy, and what are its trade-offs?",
+      "How did the authors ensure FRAMES questions are genuinely challenging and not solvable by parametric knowledge alone?",
+      "What does the gap between 0.40 (no retrieval) and 0.66 (multi-step retrieval) tell us about where current RAG systems fail?"
+    ],
+    "interview_answers": [
+      "Isolated benchmarks mask compounding errors: a model may retrieve well but reason poorly, or reason well given perfect context but fail when retrieval is noisy. End-to-end evaluation captures how these failure modes interact and amplify each other in practice.",
+      "Multi-hop questions require the model to decompose the query, recognize that no single document contains the full answer, iteratively retrieve sub-answers, and chain them into a coherent final answer — each step is a potential point of failure, and errors compound across hops.",
+      "The multi-step pipeline breaks the original query into sub-queries, retrieves evidence for each, and feeds accumulated context into subsequent retrieval steps. This improves recall of relevant evidence but introduces latency, more retrieval calls, and risk of error propagation if an early sub-query is malformed.",
+      "Questions were designed to require information synthesis across multiple Wikipedia articles, and the 0.40 baseline with no retrieval confirms that models cannot answer from parametric memory alone, validating that retrieval is necessary and the questions are not trivially memorized.",
+      "The large gap shows that reasoning is not the primary bottleneck — models can reason correctly given sufficient context, but the core failure mode is inadequate retrieval. This implies that improving retrieval strategies yields more gains than scaling model size alone for RAG tasks."
+    ],
+    "generated_at": "2026-04-01T06:56:48Z"
+  }
+}
