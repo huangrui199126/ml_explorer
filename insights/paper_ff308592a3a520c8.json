@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper investigates selection bias in Pinterest's ads retrieval system, where training data distribution differs significantly from inference-time candidates. The authors evaluate transfer learning, adversarial learning, and unsupervised domain adaptation methods, finding that their modified UDA (MUDA) approach yields the best online A/B test improvements.",
+    "key_idea": "Unsupervised domain adaptation can be modified to effectively close the distribution gap between labeled training samples and the full candidate pool in multi-stage ad retrieval systems.",
+    "why_it_matters": "Selection bias in multi-stage ranking pipelines silently degrades model quality at retrieval stages; practitioners running ads or recommendation systems at scale face this exact problem and need principled methods beyond naive transfer learning.",
+    "possible_use_cases": [
+      "Reducing selection bias in two-tower retrieval models for e-commerce or social media ads",
+      "Adapting domain adaptation techniques to correct exposure bias in recommendation system upper funnels",
+      "Benchmarking debiasing methods (transfer learning vs. adversarial vs. UDA) before deploying a new retrieval model in production"
+    ],
+    "generated_at": "2026-04-01T07:12:51Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper addresses selection bias in Pinterest's multi-stage ads retrieval system, where training data (impressed/clicked items) differs from the full candidate pool at inference. They benchmark transfer learning, adversarial learning, and unsupervised domain adaptation (UDA) approaches, then propose MUDA — a modified UDA variant that aligns feature distributions between the biased training set and the full candidate pool without requiring labels on the unbiased data.",
+    "key_innovation": "MUDA extends standard unsupervised domain adaptation (e.g., DANN-style) specifically for the ads retrieval funnel by introducing modifications tailored to the industrial multi-cascade setting — treating logged impression data as the source domain and the full retrieval candidate pool as the unlabeled target domain, enabling bias correction without ground-truth labels on the broader candidate space.",
+    "technical_insight": "The critical design choice is treating the retrieval stage's selection bias as a domain adaptation problem rather than a reweighting or propensity scoring problem. This works because UDA can implicitly align the feature distributions of impressed items (biased) and all candidate items (unbiased) via adversarial or moment-matching objectives, bypassing the need to explicitly estimate hard-to-compute propensity scores in sparse, high-dimensional ad spaces.",
+    "limitations": "The method relies on the assumption that the unlabeled candidate pool is a reasonable proxy for the true inference distribution, which may not hold if the retrieval index itself is biased. The online A/B results are reported without detailed statistical significance breakdowns, and the approach may not generalize cleanly to lower-funnel stages (ranking, re-ranking) where label sparsity is even more extreme. Computational overhead of adversarial training at retrieval scale is also not fully characterized.",
+    "interview_questions": [
+      "What is selection bias in the context of a multi-stage recommendation system, and why is it particularly severe at the retrieval stage?",
+      "How does unsupervised domain adaptation address selection bias differently than propensity score reweighting (IPW)?",
+      "What are the source and target domains in MUDA, and why is this framing valid for ads retrieval?",
+      "What modifications does MUDA make over standard UDA, and what motivated those changes?",
+      "How would you evaluate whether a bias correction method is truly working in an online ads system, beyond standard CTR/RPM A/B metrics?"
+    ],
+    "interview_answers": [
+      "In multi-stage systems, each stage filters candidates, so training data for downstream models only covers items that passed upstream filters — a highly non-representative sample. At retrieval, the bias is worst because the labeled set (impressed ads) is a tiny fraction of all indexed ads, and the selection mechanism (prior models, business rules) systematically excludes certain items, causing the model to underfit on underexplored regions of the candidate space.",
+      "IPW reweights training examples by the inverse probability of being selected, requiring an explicit propensity model that is hard to estimate accurately in high-dimensional spaces and can have high variance. UDA instead learns a feature representation that is domain-invariant — indistinguishable between the biased training distribution and the unbiased target distribution — without needing propensity estimates, making it more stable and scalable in practice.",
+      "The source domain is the logged impression/click data (biased, labeled), and the target domain is the full retrieval candidate pool (unbiased, unlabeled). This framing is valid because the retrieval model's inference-time input comes from the full candidate pool, so closing the feature distribution gap between impressed items and all candidates directly addresses the covariate shift the model encounters at serving time.",
+      "MUDA introduces task-specific modifications to standard adversarial domain adaptation, likely including adjustments to the gradient reversal layer weighting, auxiliary loss terms suited to the ranking objective, or selective alignment of only certain feature subspaces relevant to ad quality — motivated by the observation that naive UDA can degrade ranking performance if it over-aligns irrelevant distributional differences between source and target.",
+      "Beyond CTR and RPM, you should monitor calibration of predicted scores across different ad cohorts (new ads vs. established ads, niche vs. broad targeting), check for coverage improvements in the retrieval set (are previously suppressed ads now surfacing appropriately), and run counterfactual offline evaluations using held-out impression logs. Long-term, tracking auction competitiveness and revenue diversity signals whether bias correction is improving exploration or just shifting the same traffic."
+    ],
+    "generated_at": "2026-04-01T07:13:18Z"
+  }
+}
