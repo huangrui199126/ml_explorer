@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "IRCoT interleaves retrieval steps with chain-of-thought reasoning so each retrieved passage informs the next reasoning step and vice versa, rather than retrieving once upfront. Applied to GPT-3 on four multi-hop QA benchmarks, it improves retrieval by up to 21 points and final QA accuracy by up to 15 points.",
+    "key_idea": "Retrieval and reasoning should be co-dependent and iterative: each CoT sentence can trigger a new retrieval, and each retrieved passage steers the next reasoning step.",
+    "why_it_matters": "Single-shot RAG fails on questions requiring chained reasoning across multiple documents; IRCoT provides a training-free, prompt-only fix that works even on smaller models like Flan-T5-large and reduces hallucination.",
+    "possible_use_cases": [
+      "Multi-hop question answering over large document corpora where answers require combining facts from several sources",
+      "Agentic research assistants that iteratively search and reason to answer complex user queries",
+      "Knowledge-intensive QA systems that need to stay current without retraining, by grounding each reasoning step in freshly retrieved external knowledge"
+    ],
+    "generated_at": "2026-04-01T11:34:28Z"
+  },
+  "deep": {
+    "method_breakdown": "IRCoT interleaves retrieval and chain-of-thought reasoning in a step-by-step loop: at each step, the model generates one CoT sentence using previously retrieved passages, then uses that sentence as a query to retrieve new relevant passages, repeating until a final answer is reached. The retrieved documents are prepended to the prompt context, and the CoT serves as a dynamic, context-aware query reformulation mechanism. A separate QA model then reads the full CoT and all retrieved passages to produce the final answer.",
+    "key_innovation": "Prior RAG approaches retrieve once using the original question, which fails for multi-hop questions where intermediate reasoning determines what needs to be retrieved next. IRCoT's key novelty is using each generated CoT sentence as a retrieval query, creating a bidirectional feedback loop where reasoning guides retrieval and retrieval grounds reasoning — without any fine-tuning or architectural changes, purely through prompting.",
+    "technical_insight": "The critical design choice is using the most recently generated CoT sentence (not the full question or full CoT) as the retrieval query, because it encodes the specific information gap at that reasoning step. This works because CoT sentences naturally articulate sub-questions and intermediate conclusions in natural language, which are semantically closer to the supporting passages needed than the original complex question is.",
+    "limitations": "Retrieval errors compound across steps — an early bad retrieval can derail the entire reasoning chain with no recovery mechanism. Latency scales linearly with reasoning steps due to sequential retrieval calls. Performance on single-hop questions is unchanged or slightly worse due to unnecessary retrieval overhead. The approach relies on BM25/dense retrieval quality, which struggles with implicit or highly inferential information needs. Additionally, very long CoT chains risk exceeding context length limits.",
+    "interview_questions": [
+      "How does IRCoT differ from standard retrieve-then-read RAG, and why is that difference critical for multi-hop QA?",
+      "What specific mechanism does IRCoT use to decide when to stop retrieving and generate a final answer?",
+      "How does IRCoT reduce hallucination compared to standard CoT prompting, and what evidence supports this?",
+      "What are the failure modes of interleaved retrieval, and how might you mitigate compounding retrieval errors?",
+      "How would you extend IRCoT to handle questions requiring numerical reasoning or structured data retrieval beyond text passages?"
+    ],
+    "interview_answers": [
+      "Standard RAG retrieves once using the original question, which works for single-hop QA but fails for multi-hop questions because the relevant passage for step N depends on conclusions derived in steps 1 through N-1. IRCoT retrieves after each CoT sentence, using that sentence as a targeted query — for example, if step 1 establishes 'Entity X was founded in City Y', step 2 can retrieve facts specifically about City Y rather than guessing from the original question.",
+      "IRCoT uses a fixed prompt structure where the model continues generating CoT sentences until it produces a terminal marker (typically 'So the answer is...'), at which point retrieval stops and a separate QA module reads the accumulated CoT plus all retrieved passages. The stopping condition is model-driven through in-context examples rather than a learned classifier.",
+      "IRCoT grounds each reasoning step in retrieved evidence, making it harder for the model to fabricate facts. When the model must generate the next sentence given actual retrieved passages, confabulated intermediate facts are corrected or overridden by real information. The paper measures this via factual accuracy of CoT sentences against gold annotations, showing significant reduction in unsupported claims.",
+      "The main failure mode is retrieval drift — a slightly wrong CoT sentence retrieves irrelevant passages, which then mislead subsequent CoT steps, creating a compounding error cascade. Mitigations include re-ranking retrieved passages with cross-encoders, maintaining a retrieval confidence threshold to skip low-quality retrievals, using beam search over multiple CoT trajectories, or training a small verifier to flag suspicious CoT sentences before they are used as queries.",
+      "For numerical reasoning, you would augment IRCoT with tool-use: when a CoT sentence implies a calculation, route it to a calculator or code interpreter rather than a retrieval call. For structured data, you would swap the retrieval backend from a text corpus to a SQL or knowledge-graph query engine, translating CoT sentences into structured queries via a text-to-SQL module, keeping the interleaving loop intact but changing the retrieval modality."
+    ],
+    "generated_at": "2026-04-01T11:34:56Z"
+  }
+}

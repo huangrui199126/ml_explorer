@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Chain of thought prompting improves complex reasoning in large language models by providing a few examples that include intermediate reasoning steps, rather than just input-output pairs. This simple technique enables emergent reasoning capabilities in large models across arithmetic, commonsense, and symbolic tasks.",
+    "key_idea": "Providing a handful of worked-out reasoning chain examples in the prompt unlocks multi-step reasoning in sufficiently large language models without any fine-tuning.",
+    "why_it_matters": "Practitioners can dramatically improve LLM performance on complex reasoning tasks with zero additional training cost — just by changing the prompt format to include step-by-step examples.",
+    "possible_use_cases": [
+      "Math word problem solvers and tutoring systems that need step-by-step explanations",
+      "Multi-hop question answering and RAG pipelines requiring intermediate reasoning over retrieved context",
+      "Code generation and debugging assistants that benefit from explicit reasoning traces before producing output"
+    ],
+    "generated_at": "2026-04-01T11:32:31Z"
+  },
+  "deep": {
+    "method_breakdown": "Chain of thought prompting augments standard few-shot prompting by including intermediate reasoning steps alongside each input-output exemplar pair. At inference time, the model is prompted to generate its own reasoning chain before producing the final answer, decomposing multi-step problems into sequential intermediate steps. No fine-tuning is required — the capability is elicited purely through the structure of the prompt.",
+    "key_innovation": "Prior few-shot prompting work used flat input→output exemplars with no intermediate steps. The key novelty is demonstrating that simply showing worked reasoning chains in the prompt unlocks latent multi-step reasoning that exists in large models but is not accessible via standard prompting, and that this ability emerges as an emergent property only above ~100B parameters.",
+    "technical_insight": "The critical design choice is requiring the model to externalize its reasoning process before committing to an answer. This works because it forces the model to allocate additional computation (tokens) to problem decomposition, effectively turning a single hard prediction step into a sequence of easier sub-steps, each conditioned on prior correct reasoning.",
+    "limitations": "Chain of thought only emerges reliably in very large models (100B+ parameters), making it inaccessible for smaller deployments. The method is sensitive to prompt quality — poorly written exemplar chains can hurt performance. It also offers no guarantee of faithful reasoning: the generated chain may be post-hoc rationalization rather than the actual computation path. Performance gains are harder to realize on tasks requiring precise symbolic manipulation or factual recall.",
+    "interview_questions": [
+      "What is the core hypothesis behind chain of thought prompting and how do the authors validate it empirically?",
+      "Why does chain of thought prompting fail or provide minimal benefit for small language models?",
+      "How does chain of thought prompting differ from scratchpad methods and standard few-shot prompting?",
+      "What are the risks of treating the generated chain of thought as a faithful explanation of the model's reasoning?",
+      "How would you extend chain of thought prompting to agentic or RAG settings where the model must interact with external tools?"
+    ],
+    "interview_answers": [
+      "The hypothesis is that prompting LLMs with explicit intermediate reasoning steps unlocks complex problem-solving that flat prompting cannot. The authors validate this by comparing standard few-shot vs. chain-of-thought few-shot across arithmetic (GSM8K, SVAMP), commonsense (StrategyQA), and symbolic reasoning benchmarks, showing consistent gains especially at 540B scale.",
+      "Small models lack sufficient capacity to have internalized generalizable reasoning procedures during pretraining. Chain of thought prompting does not inject new knowledge — it only steers generation format. If the underlying reasoning capability is absent, providing a reasoning template produces incoherent or wrong intermediate steps that propagate errors rather than correct them.",
+      "Scratchpad methods train the model to use intermediate steps via supervised fine-tuning on annotated reasoning traces. Chain of thought prompting requires zero fine-tuning and works purely through in-context learning with a handful of exemplars, making it much cheaper to apply but potentially less reliable since it relies on emergent behavior rather than trained behavior.",
+      "The generated chain of thought may not reflect the model's actual internal computation — it can be a plausible-sounding but causally disconnected narrative. This is dangerous in high-stakes settings because it creates an illusion of interpretability and auditability. Studies have shown LLMs can reach correct answers via flawed chains and incorrect answers via seemingly valid chains.",
+      "In RAG settings, chain of thought can be extended by interleaving retrieval calls within the reasoning chain (as in ReAct or IRCoT), where each reasoning step can trigger a retrieval query and the retrieved context is incorporated before the next step. For agents, chain of thought becomes the planning backbone, with tool-use actions substituted for certain reasoning steps, enabling the model to ground its reasoning in real-world observations."
+    ],
+    "generated_at": "2026-04-01T11:32:55Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey traces the evolution of Meta's LLaMA model family from LLaMA 1 through LLaMA 4, covering architectural advances and five parameter-efficient fine-tuning (PEFT) methods including LoRA, QLoRA, and LLaMA-Adapter variants. It benchmarks these approaches and reviews real-world applications in domains like law and medicine.",
+    "key_idea": "Large pre-trained models can be cheaply adapted to new tasks by updating only a tiny fraction of parameters (via low-rank or adapter-based methods), preserving most of the original model's knowledge while drastically reducing compute and memory costs.",
+    "why_it_matters": "Practitioners can fine-tune powerful LLaMA models on domain-specific data without needing massive GPU clusters, making production-grade LLM customization accessible for specialized industries and resource-constrained teams.",
+    "possible_use_cases": [
+      "Fine-tuning LLaMA for medical QA or clinical note summarization with limited GPU resources",
+      "Adapting LLaMA to legal document analysis and contract review using QLoRA on a single GPU",
+      "Building multimodal instruction-following assistants by applying LLaMA-Adapter to vision-language tasks"
+    ],
+    "generated_at": "2026-04-01T11:29:42Z"
+  },
+  "deep": {
+    "method_breakdown": "This survey traces the LLaMA model family from 7B-65B parameter LLaMA 1 through the 288B multimodal/MoE LLaMA 4, documenting architectural evolutions including RoPE positional embeddings, grouped-query attention, and native multimodality. It then systematically reviews five PEFT methods—LoRA, LLaMA-Adapter V1/V2, LLaMA-Excitor, and QLoRA—each of which freezes the base model and inserts lightweight trainable modules (low-rank matrices, adapter layers, or quantized representations) to achieve task-specific adaptation at a fraction of full fine-tuning cost.",
+    "key_innovation": "The survey's contribution is a unified, structured comparison of PEFT methods specifically benchmarked against the LLaMA family, filling a gap where prior PEFT surveys (e.g., He et al. 2022) were model-agnostic. It also covers LLaMA 4's MoE and multimodal architecture as targets for PEFT, which is novel territory—most prior PEFT literature focuses on dense, text-only transformers.",
+    "technical_insight": "QLoRA's most critical design choice is combining 4-bit NormalFloat quantization of frozen base weights with LoRA adapters trained in BF16, using double quantization and paged optimizers to fit 65B+ models on a single consumer GPU without meaningful accuracy loss. This works because quantization error in frozen weights is a fixed, learnable bias that the low-rank adapter updates can compensate for during training.",
+    "limitations": "As a survey, it does not produce new empirical results, so claims about relative method performance depend on heterogeneous benchmarks across cited papers. Coverage of very recent PEFT variants (DoRA, LoRA+, GaLore) and LLaMA 4's sparse MoE fine-tuning dynamics is likely incomplete. Domain-specific results (legal, medical) come from small studies with limited reproducibility, and the survey does not address catastrophic forgetting or multi-task PEFT settings.",
+    "interview_questions": [
+      "What architectural change from LLaMA 1 to LLaMA 2 most improved inference efficiency, and why?",
+      "Explain the mathematical formulation of LoRA and why constraining updates to low-rank matrices is justified.",
+      "How does QLoRA achieve near full fine-tuning accuracy despite 4-bit quantization of base weights?",
+      "What is the key difference between LLaMA-Adapter V1 and V2, and what problem does V2 solve?",
+      "When would you choose QLoRA over standard LoRA, and what are the trade-offs?"
+    ],
+    "interview_answers": [
+      "LLaMA 2 introduced Grouped-Query Attention (GQA), which shares key-value heads across multiple query heads. This reduces the KV cache memory footprint during autoregressive inference proportionally to the number of groups, enabling longer context and larger batch sizes without proportional memory growth.",
+      "LoRA decomposes the weight update ΔW ∈ R^(d×k) as the product of two low-rank matrices A ∈ R^(d×r) and B ∈ R^(r×k) where r << min(d,k). The justification is the intrinsic dimensionality hypothesis: fine-tuning loss landscapes have low intrinsic rank, meaning task-specific adaptation directions live in a low-dimensional subspace of the full parameter space, so rank-r updates capture most of the signal at a fraction of the parameter cost.",
+      "QLoRA quantizes the frozen base model to 4-bit NormalFloat (NF4), which is information-theoretically optimal for normally distributed weights. The LoRA adapters remain in BF16 and absorb the systematic error introduced by quantization during forward/backward passes. Double quantization further compresses the quantization constants themselves. Because only adapter parameters are updated, gradient computation is exact in BF16 even though base weights are stored in 4-bit.",
+      "V1 inserts zero-initialized adapter tokens prepended to each transformer layer's attention context, learning only these tokens while freezing the backbone—but this causes interference between adapter signals and language modeling signals in shared layers. V2 decouples these concerns by adding independent visual projection layers and distributing adapters to higher layers only, improving multimodal task performance without degrading language generation quality.",
+      "Choose QLoRA when GPU memory is the binding constraint—e.g., fine-tuning a 70B model on a single 80GB A100 is feasible with QLoRA but not standard LoRA. The trade-offs are: slower training throughput due to dequantization overhead on each forward pass, marginally higher implementation complexity, and a small but nonzero accuracy gap on tasks requiring precise numerical representations. Standard LoRA is preferred when memory is not the bottleneck and training speed matters."
+    ],
+    "generated_at": "2026-04-01T11:30:15Z"
+  }
+}
