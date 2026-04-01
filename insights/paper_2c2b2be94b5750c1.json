@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "DC2B is an interactive recommendation model that balances accuracy and diversity using determinantal point processes (DPP) combined with a Thompson sampling algorithm built on variational Bayesian inference. It addresses the common problem of recommendation systems over-optimizing for accuracy at the expense of variety in results.",
+    "key_idea": "By embedding a determinantal point process into a contextual combinatorial bandit framework, the model explicitly penalizes redundant item selections, promoting diverse yet relevant recommendation slates from implicit user feedback.",
+    "why_it_matters": "Most production recommender systems suffer from filter bubbles and repetitive suggestions that erode user engagement over time; DC2B offers a principled, theoretically grounded way to tune the accuracy-diversity trade-off without requiring explicit user ratings.",
+    "possible_use_cases": [
+      "E-commerce product discovery where surfacing varied item categories prevents customer fatigue and increases basket diversity",
+      "News or content feed curation that avoids echo chambers by mixing topics while still matching user interests",
+      "Music or video streaming playlist generation that balances familiar favorites with novel recommendations to sustain long-term user engagement"
+    ],
+    "generated_at": "2026-04-01T11:14:23Z"
+  },
+  "deep": {
+    "method_breakdown": "DC2B models interactive recommendation as a contextual combinatorial bandit problem where at each round a slate of items is recommended. It uses a Determinantal Point Process (DPP) to define a joint probability distribution over item subsets that naturally encourages diversity by penalizing similar items via a kernel matrix encoding both quality and similarity. Model parameters are learned online via a Thompson sampling algorithm where posterior distributions over unknown parameters are approximated using variational Bayesian inference, allowing efficient uncertainty-aware exploration.",
+    "key_innovation": "The core novelty is integrating DPP-based diversity directly into the bandit reward model rather than post-processing ranked lists. Prior interactive recommendation methods (e.g., LinUCB, neural bandits) optimize per-item scores independently and apply diversity as a re-ranking heuristic; DC2B makes diversity a first-class citizen in the probabilistic model so accuracy-diversity trade-off is learned end-to-end under implicit feedback with theoretical regret guarantees.",
+    "technical_insight": "Using a DPP kernel that factors item quality (user preference score) and item similarity (feature-based repulsion) is the critical design choice. The DPP log-likelihood decomposes into a log-determinant term that directly penalizes redundancy in the recommended set, making the diversity objective differentiable and compatible with variational inference. This avoids the combinatorial search problem of greedy re-ranking while preserving submodular structure that enables tractable regret analysis.",
+    "limitations": "The DPP kernel matrix requires computing an L×L determinant per candidate set evaluation, making exact inference O(L³) and expensive at scale. The variational Bayesian approximation introduces approximation error in the posterior that can degrade exploration quality in cold-start or highly non-stationary settings. The method assumes a fixed parametric kernel for item similarity which may not capture complex feature interactions, and regret bounds likely have large constants that may not translate to practical advantages in finite-horizon deployment.",
+    "interview_questions": [
+      "How does the Determinantal Point Process enforce diversity in the recommended set, and what is the computational complexity of evaluating it?",
+      "Why is Thompson sampling chosen over UCB-style exploration for this bandit formulation, and what role does variational Bayesian inference play?",
+      "What is the regret bound derived for DC2B and what assumptions does it rely on?",
+      "How does DC2B handle implicit feedback (e.g., clicks) as opposed to explicit ratings, and why is this challenging for diversity-aware models?",
+      "What are the practical failure modes of DPP-based recommendation when the item feature space poorly reflects actual user-perceived similarity?"
+    ],
+    "interview_answers": [
+      "The DPP assigns probability to a subset S proportional to det(L_S), where L is a kernel matrix encoding both item quality and pairwise similarity. High determinant values correspond to diverse, high-quality subsets because the determinant is maximized when selected items span different directions in feature space. Exact computation is O(k³) for a size-k set, but approximations like greedy MAP inference or fast DPP sampling bring this to O(kN) in practice.",
+      "Thompson sampling is preferred because it naturally integrates uncertainty from the variational posterior by sampling model parameters each round, enabling principled exploration without manually tuning a confidence bound. Variational Bayesian inference provides a tractable Gaussian approximation to the intractable true posterior over bandit parameters, which is critical when the DPP likelihood makes exact Bayesian updating analytically infeasible.",
+      "The regret bound is typically sublinear (e.g., Õ(√T)) in the number of rounds T, derived under assumptions that the true reward function lies in the model class, the kernel matrix is well-conditioned, and the variational approximation error is bounded. The combinatorial nature of set selection introduces an additional factor related to the size of the recommendation slate k.",
+      "Implicit feedback provides binary signals (click/no-click) rather than graded preferences, making it noisy and subject to exposure bias — users cannot express preference for items they never saw. For diversity-aware models this is doubly challenging because a lack of click on a diverse item may reflect unfamiliarity rather than dislike, requiring the model to distinguish exploration-induced non-clicks from genuine negative feedback.",
+      "If item features (e.g., TF-IDF of descriptions) do not align with how users perceive similarity, the DPP will diversify along irrelevant axes — recommending items that look different on paper but feel redundant to the user, or penalizing genuinely complementary items. This mismatch degrades both diversity and accuracy simultaneously and cannot be corrected without richer user interaction signals or learned embedding spaces."
+    ],
+    "generated_at": "2026-04-01T11:14:53Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper presents lessons learned from integrating A/B testing as a native product feature (called 'A/B integrations') in platforms like Azure PlayFab and Outreach, based on multiple case studies at Microsoft. It provides practical guidance for teams embedding experimentation capabilities into their own products rather than building standalone testing tools.",
+    "key_idea": "Embedding A/B testing as a first-class product feature in non-experimentation platforms requires different architectural and organizational trade-offs than building a dedicated experimentation platform.",
+    "why_it_matters": "As more SaaS platforms compete on enabling data-driven decisions for their customers, knowing how to correctly integrate experimentation infrastructure—balancing ease of use, statistical rigor, and product fit—becomes a critical engineering and product competency.",
+    "possible_use_cases": [
+      "SaaS platforms adding built-in experimentation features to help customers test product changes without external tools",
+      "Game backends (e.g., PlayFab-style services) offering A/B testing for game mechanics, monetization, and UX variations",
+      "Sales or marketing platforms embedding experimentation to let customers optimize outreach sequences and messaging"
+    ],
+    "generated_at": "2026-04-01T11:26:47Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper presents a multi-case study analysis of 'A/B integrations' — embedding experimentation platforms as a product feature within third-party software (e.g., Azure PlayFab, Outreach). It synthesizes 7 lessons learned from real deployments where organizations act as 'integrators' offering A/B testing capabilities to their own customers. Each lesson is grounded in concrete motivating examples and trade-off analysis.",
+    "key_innovation": "The key novelty is framing A/B testing not as an internal tool but as an embeddable product feature offered to downstream customers — a three-tier model (platform provider → integrator → end customer) that introduces new challenges around configuration simplicity, metric ownership, and trust that do not exist in traditional two-tier experimentation setups.",
+    "technical_insight": "The most critical design choice is abstracting complexity for integrators while preserving statistical rigor — integrators cannot be expected to understand variance estimation, p-values, or CUPED corrections, so the platform must auto-configure guardrail metrics, handle multiple testing corrections, and surface actionable decisions rather than raw statistics. This works because it shifts the cognitive burden from the integrator to the platform, enabling adoption without sacrificing validity.",
+    "limitations": "The findings are derived from a small number of case studies (primarily Microsoft-adjacent products), limiting generalizability. The paper is practitioner-focused and lacks rigorous empirical validation of the lessons. It also does not address adversarial scenarios where customers might game experiments, nor does it quantify the statistical power trade-offs introduced by simplified auto-configuration.",
+    "interview_questions": [
+      "What is the three-tier model in A/B integrations and how does it differ from traditional internal experimentation?",
+      "What are the main challenges when an integrator embeds A/B testing into their product for end customers?",
+      "How should metric ownership and guardrail metrics be handled in an A/B integration context?",
+      "What trade-offs arise between statistical rigor and usability when designing experimentation platforms for non-expert integrators?",
+      "How do the lessons from this paper apply to ML model evaluation and online experimentation in production AI systems?"
+    ],
+    "interview_answers": [
+      "In traditional experimentation, a single organization runs tests on its own users. The three-tier model adds an intermediary 'integrator' layer: an experimentation platform provider (e.g., Microsoft) supplies infrastructure to an integrator (e.g., PlayFab), who then exposes A/B testing as a feature to their own end customers. This creates new accountability, configuration, and trust challenges at each handoff.",
+      "Key challenges include: integrators lack deep statistical expertise so defaults must be safe; end customers have heterogeneous use cases making one-size-fits-all metrics impossible; the integrator must translate platform capabilities into a simplified UX without exposing statistical internals; and debugging experiment validity becomes harder across organizational boundaries.",
+      "The platform should provide pre-configured guardrail metrics that protect against unintended regressions (e.g., crashes, latency) automatically, while allowing integrators to define custom success metrics relevant to their domain. Metric ownership should be layered — platform-level guardrails are non-negotiable, while integrator- and customer-level metrics are configurable.",
+      "The core tension is that statistically correct experimentation (proper randomization, sufficient sample sizes, correction for multiple comparisons) requires expertise that most integrators do not have. The recommended approach is progressive disclosure: safe, opinionated defaults that work correctly out of the box, with advanced configuration available for expert users. This sacrifices some flexibility but dramatically reduces misconfiguration risk.",
+      "For ML systems, the lessons map directly to online evaluation of model updates: treating model rollouts as A/B tests with automated guardrails (latency, error rate) prevents silent regressions; simplifying the decision interface helps ML engineers focus on business metrics rather than statistical mechanics; and the three-tier model is analogous to ML platforms (e.g., SageMaker) offering experiment tracking to teams deploying models — the same abstraction and trust challenges apply."
+    ],
+    "generated_at": "2026-04-01T11:27:12Z"
+  }
+}

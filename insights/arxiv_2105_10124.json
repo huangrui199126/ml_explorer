@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "RLIRank is a reinforcement learning framework for dynamic search that adapts document ranking as user information needs evolve during a session. It combines an LSTM-based Learning to Rank model with a word-embedding variant of the Rocchio Algorithm to incorporate user feedback and previously shown results.",
+    "key_idea": "By treating dynamic search as a sequential decision problem and using LSTM to estimate per-document gain from interaction history plus embedding-enhanced relevance feedback, the system continuously refines ranking to match shifting user intent.",
+    "why_it_matters": "Real-world search sessions are rarely single-shot — users refine queries and needs evolve — so a ranker that adapts to feedback and avoids redundancy delivers substantially more relevant results over the course of a session.",
+    "possible_use_cases": [
+      "Exploratory research tools where users iteratively narrow down a broad topic",
+      "Enterprise document search systems that personalize results based on session-level engagement signals",
+      "Conversational search assistants that rerank candidate documents after each user clarification turn"
+    ],
+    "generated_at": "2026-04-01T11:18:37Z"
+  },
+  "deep": {
+    "method_breakdown": "RLIRank frames dynamic search as a reinforcement learning problem where an agent iteratively ranks documents, receives user feedback, and updates its ranking strategy. At each iteration, an LSTM-based Learning to Rank model estimates the marginal gain of each candidate document given previously displayed results, capturing sequential dependencies across search iterations. User feedback is incorporated via a word-embedding adaptation of the Rocchio Algorithm, which adjusts the query representation toward relevant documents and away from irrelevant ones in embedding space.",
+    "key_innovation": "The combination of RL with an LSTM-based LTR model for dynamic search is novel — prior work treated each ranking iteration independently, while RLIRank explicitly models the sequential nature of the search session and the diminishing returns of redundant information. The word-embedding Rocchio variant is also new, extending the classic pseudo-relevance feedback algorithm from sparse bag-of-words to dense semantic embedding space.",
+    "technical_insight": "Using LSTM to estimate per-document gain conditioned on the full history of displayed documents is the critical design choice: it allows the model to learn coverage and novelty implicitly from training data rather than hand-crafting diversity penalties, which makes it adaptive to domain-specific relevance patterns captured during TREC training.",
+    "limitations": "The model requires iterative user feedback at each search step, making it dependent on interaction quality and unsuitable for single-shot retrieval. LSTM training on TREC Dynamic Domain data is limited in scale, risking overfitting to specific topic structures. The Rocchio-based feedback update assumes feedback signals are reliable, which breaks down with noisy or adversarial users. Evaluation is restricted to TREC benchmarks, leaving generalization to web-scale or conversational search unvalidated.",
+    "interview_questions": [
+      "How does RLIRank define the state, action, and reward in its RL formulation for dynamic search?",
+      "Why is an LSTM used instead of a simpler feedforward network for the LTR model, and what sequential information does it capture?",
+      "How does the word-embedding Rocchio update differ from classic Rocchio, and what problem does this solve?",
+      "What are the failure modes of the RL training procedure — specifically, how does reward sparsity or delayed feedback affect learning?",
+      "How would RLIRank scale to a retrieval corpus of millions of documents given that it scores each candidate at every iteration?"
+    ],
+    "interview_answers": [
+      "The state encodes the current query representation plus the set of documents ranked so far; the action is selecting the next document to present; the reward is the marginal relevance gain of that document given what has already been shown, operationalized via nugget-based or subtopic coverage metrics from TREC.",
+      "LSTM maintains a hidden state that summarizes the entire ranking history, allowing the gain estimate for a new document to be conditioned on all prior ranked documents implicitly. A feedforward network would require an explicit fixed-size feature vector for history, losing order information and struggling with variable-length sessions.",
+      "Classic Rocchio updates TF-IDF query vectors; the embedding variant moves the query vector in a dense semantic space (e.g., Word2Vec/GloVe centroid) toward relevant document embeddings and away from irrelevant ones. This captures semantic similarity rather than lexical overlap, improving feedback signal when relevant documents use different vocabulary than the original query.",
+      "Reward sparsity is a real issue since relevance judgments are only available at the end of a session in some settings. The paper mitigates this with per-iteration nugget-based partial rewards, but credit assignment across iterations remains noisy; early ranking mistakes compound and are hard to correct because the LSTM state propagates errors forward.",
+      "At web scale, scoring every candidate document with an LSTM at each iteration is computationally prohibitive. The approach would need a two-stage pipeline — fast retrieval (BM25/ANN) to produce a candidate set of hundreds of documents, followed by LSTM-based reranking — which is not addressed in the paper and introduces retrieval error as a new failure mode."
+    ],
+    "generated_at": "2026-04-01T11:19:02Z"
+  }
+}
