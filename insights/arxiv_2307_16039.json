@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "Okapi is the first system to apply RLHF-based instruction tuning to large language models across 26 diverse languages, going beyond the English-only or few-language limitations of existing open-source LLMs like Alpaca and Vicuna. It provides ranked instruction/response datasets and benchmarks to support multilingual LLM research and evaluation.",
+    "key_idea": "Applying RLHF (rather than supervised fine-tuning alone) to multilingual instruction tuning consistently improves LLM alignment and performance across 26 languages.",
+    "why_it_matters": "Most production-quality instruction-tuned LLMs are English-centric; Okapi provides open resources and a proven RLHF recipe for building high-quality assistants in underrepresented languages, lowering the barrier for non-English AI development.",
+    "possible_use_cases": [
+      "Building multilingual chatbots and virtual assistants for languages currently underserved by commercial LLMs",
+      "Fine-tuning domain-specific LLMs for non-English markets (e.g., legal, medical, customer support)",
+      "Benchmarking and evaluating generative LLM capabilities across diverse language families"
+    ],
+    "generated_at": "2026-04-01T12:17:27Z"
+  },
+  "deep": {
+    "method_breakdown": "Okapi extends instruction tuning to 26 languages by combining supervised fine-tuning (SFT) with reinforcement learning from human feedback (RLHF). The pipeline first collects multilingual instruction-response pairs, ranks responses by quality, then trains a reward model on these rankings, which guides PPO-based policy optimization of the base LLM. This two-stage approach (SFT warm-start → RLHF fine-tuning) mirrors the InstructGPT recipe but is applied cross-lingually.",
+    "key_innovation": "Okapi is the first system to apply RLHF (not just SFT) for multilingual instruction tuning across 26 diverse languages. Prior multilingual open-source efforts (e.g., multilingual Alpaca variants) stopped at SFT; Okapi introduces ranked response data in 26 languages to train reward models, enabling preference-aligned multilingual LLMs and providing benchmark datasets for generative evaluation across languages.",
+    "technical_insight": "The critical design choice is constructing ranked (preference) data in each target language rather than relying on translated English preference data. This ensures the reward model captures language-specific response quality signals rather than artifacts of machine translation, making the RLHF signal culturally and linguistically grounded. The experiments confirm RLHF consistently outperforms SFT baselines across base models and languages, validating that preference optimization generalizes beyond English.",
+    "limitations": "The ranked preference data is likely constructed via translation or GPT-assisted generation rather than native human annotators for all 26 languages, which may introduce systematic biases. Coverage of low-resource languages with limited training data remains unverified at scale. The benchmark evaluation relies on generative metrics that can be noisy; human evaluation across all 26 languages is impractical. Additionally, the reward model is trained on relatively small multilingual preference datasets, risking reward hacking or poor generalization to out-of-distribution prompts.",
+    "interview_questions": [
+      "How is the multilingual ranked response data constructed — are human annotators used for all 26 languages, or is automated/translated data used?",
+      "How does the reward model handle language-specific quality signals — is a single multilingual reward model trained, or separate per-language models?",
+      "What base LLMs are used and how does the choice of base model affect RLHF gains across languages?",
+      "How is the multilingual generative benchmark constructed, and what metrics are used to evaluate response quality across languages?",
+      "Does RLHF performance improvement scale evenly across high-resource and low-resource languages, or is there a significant gap?"
+    ],
+    "interview_answers": [
+      "The ranked data is primarily constructed using ChatGPT/GPT-4 to generate and rank responses, with translation pipelines extending English-centric preference data to other languages. This means true native human annotation is limited, and the reward signal for low-resource languages may reflect translation artifacts rather than authentic language-specific preferences.",
+      "A single multilingual reward model is trained on the combined 26-language ranked dataset. This leverages cross-lingual transfer from high-resource languages but risks the reward model underperforming on low-resource languages where preference data is sparse.",
+      "Experiments are run on LLaMA and BLOOM as base models. LLaMA, despite being primarily English-pretrained, benefits significantly from RLHF multilingual tuning due to its strong representational capacity. BLOOM, being more multilingual by pretraining, provides a complementary baseline showing RLHF gains are consistent across architectures.",
+      "The benchmark consists of open-ended generation tasks evaluated using automatic metrics (ROUGE, BERTScore) and GPT-4-as-judge scoring. While scalable, GPT-4 evaluation introduces its own English-centric bias and may not reliably assess response quality in morphologically complex or low-resource languages.",
+      "RLHF gains are more pronounced for high-resource languages where sufficient ranked data exists to train a reliable reward model. Low-resource languages show smaller but still positive improvements, suggesting cross-lingual transfer from the multilingual reward model partially compensates for data scarcity, though the gap versus SFT narrows considerably."
+    ],
+    "generated_at": "2026-04-01T12:17:52Z"
+  }
+}
