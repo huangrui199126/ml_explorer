@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This study builds an LLM-based triage system for patient portal messages that detects emergencies by augmenting the model with a knowledge graph built from a nurse triage book. The knowledge graph with global search (hierarchical community detection) achieved 0.99 accuracy and 0.98 sensitivity, outperforming both prompt-only and naive RAG approaches.",
+    "key_idea": "Structuring domain knowledge as a knowledge graph and retrieving globally-summarized community context (rather than just locally similar chunks) gives LLMs the right abstraction level to reliably classify medical emergencies.",
+    "why_it_matters": "For healthcare AI practitioners, this shows that naive RAG is not enough for high-stakes classification — graph-structured knowledge with community-level summaries meaningfully closes the gap toward clinical-grade reliability.",
+    "possible_use_cases": [
+      "Automated emergency triage routing in patient portal messaging systems",
+      "Clinical decision support tools that flag urgent messages before they reach overloaded providers",
+      "Knowledge graph-augmented chatbots for nurse hotlines or telehealth triage"
+    ],
+    "generated_at": "2026-04-01T06:37:04Z"
+  },
+  "deep": {
+    "method_breakdown": "The system builds a knowledge graph from a 225-protocol nurse triage book, then uses it to retrieve context for an LLM when classifying patient portal messages as emergency or non-emergency. Four variants are compared: prompt-only, naïve RAG (vector similarity over raw chunks), KG with local search (semantically similar subgraph nodes), and KG with global search (hierarchical community detection over the full graph to produce summary-level context). The LLM receives the retrieved context plus the patient message and outputs a triage decision.",
+    "key_innovation": "Using hierarchical community detection on a medical knowledge graph to generate global summary context — rather than flat vector retrieval — so the LLM receives high-level, topically coherent summaries of the triage protocol rather than isolated text chunks. This mirrors how a clinician reasons from general principles rather than pattern-matching to verbatim passages.",
+    "technical_insight": "Global search via community detection outperforms local (nearest-neighbor) retrieval because emergency triage requires recognizing symptom clusters that span multiple protocol sections; community summaries capture cross-protocol relationships that local semantic similarity misses. Structured knowledge also prevents the hallucination-prone gaps that prompt-only LLMs exhibit on specialized clinical vocabulary.",
+    "limitations": "Single-institution dataset (Vanderbilt, 2022–2023) limits generalizability across EHR systems, patient demographics, and writing styles. The knowledge base is a static triage book — it does not update as clinical guidelines change. The 1020-message evaluation set may not capture rare but critical edge cases. Performance on non-English messages or heavily abbreviated clinical text is untested. No prospective evaluation of downstream patient outcomes is reported.",
+    "interview_questions": [
+      "How does the knowledge graph construction differ from simply chunking and embedding the triage book, and what graph algorithm underpins the community detection step?",
+      "Why did global search outperform local search — can you give a concrete example of a message where local retrieval would fail but community-level context succeeds?",
+      "What LLM backbone was used, and how sensitive are the results to model choice or prompt wording?",
+      "How would this system handle a novel symptom or disease not covered by the 225 triage protocols, and what is the failure mode?",
+      "What would a production deployment look like — latency constraints, human-in-the-loop thresholds, and how would you monitor for performance drift over time?"
+    ],
+    "interview_answers": [
+      "The triage book is parsed into entities and relations that form a graph (nodes = symptoms, conditions, protocols; edges = clinical relationships). Community detection — likely Leiden or Louvain — partitions the graph into clusters of related nodes, and LLM-generated summaries are produced per community. This differs fundamentally from chunking because structure encodes cross-concept dependencies, not just co-occurrence in text.",
+      "Local search returns nodes most similar to the query embedding, so a message about 'chest tightness and jaw pain' might retrieve the chest-pain protocol but miss the cardiac-emergency community that links it to MI warning signs. Global search returns a community summary that already integrates chest pain, jaw pain, diaphoresis, and escalation criteria, giving the LLM the composite picture needed for correct triage.",
+      "The paper does not specify the exact LLM; this is a meaningful gap. Results could vary substantially with smaller or instruction-tuned models. Prompt sensitivity is also untested — the high accuracy figures may partly reflect careful prompt engineering that is not fully documented.",
+      "The system would retrieve the closest community summary by embedding similarity, but if the symptom is genuinely out-of-distribution, the retrieved context may be misleading rather than absent. The LLM might over-confidently apply an adjacent protocol. A calibrated confidence score and a fallback 'escalate to human' path would be necessary for production safety.",
+      "Production would require sub-second latency for real-time portal message interception, so graph retrieval and LLM inference pipelines must be optimized. A confidence threshold below which a human triager is alerted is essential. Monitoring should track sensitivity on positive (emergency) cases via retrospective outcome labeling, and the knowledge graph must be versioned alongside clinical guideline updates."
+    ],
+    "generated_at": "2026-04-01T06:37:31Z"
+  }
+}

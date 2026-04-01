@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "FTP (Follow the Prophet) tackles the delayed feedback problem in online advertising CVR prediction by training a set of multi-task models that each capture different feedback delay windows, then learning an aggregation policy to approximate what a 'prophet' model would predict if all feedback were instant.",
+    "key_idea": "Approximate an oracle model (the 'prophet') that sees instantaneous feedback by aggregating predictions from multiple models trained on different temporal feedback windows.",
+    "why_it_matters": "Delayed conversions (clicks that convert hours or days later) cause training data to be systematically incomplete, leading to underestimated CVR models; FTP offers a principled way to correct this bias in real-time bidding systems without waiting for feedback to fully materialize.",
+    "possible_use_cases": [
+      "Real-time bidding systems where conversion attribution is delayed (e.g., mobile app installs, purchase funnels)",
+      "Subscription or lead-generation ad campaigns with multi-day conversion windows",
+      "Any online learning pipeline that needs to update CVR models continuously despite incomplete label information"
+    ],
+    "generated_at": "2026-04-01T06:34:10Z"
+  },
+  "deep": {
+    "method_breakdown": "FTP defines a 'prophet' model as the oracle CVR model trained with instantaneous feedback (no delay). Since this oracle is unobservable during online learning, FTP trains a set of multi-task sub-models, each specializing in feedback patterns captured within a different observation window (e.g., 1 hour, 6 hours, 1 day). A learned aggregation policy then combines these multi-task predictions to imitate the prophet's output, using logged data where eventual ground-truth labels become available to supervise the policy.",
+    "key_innovation": "Prior work treats delayed feedback as a label noise / missing data problem and applies fixes like importance weighting (FSIW), survival models (ES-DFM), or fake-negative correction (DFM). FTP reframes the problem as knowledge distillation from an oracle: instead of correcting for delay, it learns to predict what a delay-free model would predict. The aggregation-over-time-windows strategy replaces ad-hoc delay distributions with a data-driven policy, making no parametric assumptions about the delay distribution.",
+    "technical_insight": "The most important design choice is decomposing the single hard problem (predict CVR under unknown, heterogeneous delay) into multiple easier sub-problems (predict CVR given feedback observed up to window k), then learning an aggregation policy. This works because each sub-task has a well-defined, stationary label: 'was there a conversion within window k?' Even with short windows, the sub-models see clean, unambiguous labels early, and the policy learns how to weight their outputs based on how predictive each window is for final conversion — effectively exploiting the partial information structure of delay.",
+    "limitations": "The aggregation policy is trained on historical logged data, so it may underperform on distribution shifts in delay patterns (e.g., new ad formats or seasonal events with atypical conversion timelines). The method still requires waiting for sufficient ground-truth conversions to supervise the policy, introducing a cold-start lag for new campaigns. The multi-task architecture increases model complexity and serving latency. The prophet framing assumes eventual label availability; scenarios with permanently censored labels (users who never return) are not explicitly addressed.",
+    "interview_questions": [
+      "Why is the delayed feedback problem especially hard for online learning systems compared to offline batch training?",
+      "How does FTP define the 'prophet' and why can't it be used directly during online serving?",
+      "What is the role of the multi-task sub-models in FTP, and how are the observation windows chosen?",
+      "How is the aggregation policy trained, and what loss objective does it optimize to imitate the prophet?",
+      "How does FTP compare to importance-sampling-based methods like FSIW, and in what scenarios would each approach be preferred?"
+    ],
+    "interview_answers": [
+      "In offline training, you can wait for all conversions to arrive before computing labels, so delayed feedback only affects data freshness. In online learning, the model must update continuously on streaming data, but labels arrive with variable delays of minutes to days. Treating delayed samples as negatives causes systematic bias; holding samples until confirmed wastes fresh data. The non-identical delay across ad types makes it hard to apply a single correction strategy.",
+      "The prophet is defined as the model you would obtain if every logged impression had its true final conversion label available instantly at the time of logging. It cannot be used directly because, at serving and training time, conversions for recent impressions have not yet occurred — you only observe the prophet's labels retrospectively after the full delay window has elapsed, making it an oracle with access to future information.",
+      "Each sub-model is trained with a fixed observation window T_k (e.g., 1h, 6h, 24h), labeling a sample as positive if a conversion occurred within T_k of the impression. This gives each sub-model clean, unambiguous labels quickly. The windows are chosen to span the empirical delay distribution of conversions; together they capture the temporal structure of feedback arrival. Each sub-model specializes in a different slice of the delay spectrum.",
+      "The aggregation policy is a learned function that takes the vector of sub-model predictions as input and outputs a single CVR estimate. It is trained by minimizing the discrepancy between its output and the prophet's prediction (or the eventual ground-truth label) on held-out logged samples where true labels have been observed. The objective is a cross-entropy or MSE loss against the prophet target, and the policy parameters are updated online as more ground-truth labels become available.",
+      "FSIW and similar importance-sampling methods reweight samples to correct for the bias introduced by delayed labels, relying on an accurate model of the delay distribution. They work well when the delay distribution is known and stationary but degrade under distribution shift. FTP avoids modeling the delay distribution explicitly — instead it learns empirically which time windows are informative. FTP is preferred when delay patterns are heterogeneous and hard to model parametrically; FSIW may be simpler and faster when the delay distribution is well-characterized and stable."
+    ],
+    "generated_at": "2026-04-01T06:34:49Z"
+  }
+}
