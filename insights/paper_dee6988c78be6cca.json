@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper tackles the delayed feedback problem in conversion rate (CVR) prediction for online advertising, where there's often a days-to-weeks gap between ad clicks and actual conversions that causes false negatives in training data. The authors reframe this as an unsupervised domain adaptation (UDA) problem, enabling models to learn from fresh but noisily-labeled data while leveraging existing CTR/CVR models.",
+    "key_idea": "By treating fresh (potentially mislabeled) data as a different domain from historical (accurately labeled) data, UDA techniques can align their distributions and reduce the impact of false negatives without requiring strong assumptions about conversion delay distributions.",
+    "why_it_matters": "Conversion rate models in production must balance using recent data (fresh but noisy) vs. older data (accurate but stale), and this framework offers a principled, modular way to do both — it can plug into existing CTR/CVR architectures and improve prediction accuracy without overhauling the entire pipeline.",
+    "possible_use_cases": [
+      "E-commerce retargeting campaigns where purchase conversions may occur days after an ad click",
+      "Subscription service advertising where trial-to-paid conversions have variable and long delay windows",
+      "Financial product ads (e.g., credit cards, loans) where application completions are delayed and sparse"
+    ],
+    "generated_at": "2026-04-01T07:25:24Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper reframes CVR prediction under delayed feedback as an unsupervised domain adaptation (UDA) problem, where the source domain is older data with accurate labels and the target domain is fresh data with potentially false-negative labels. A pretraining step leverages recently observed conversions to warm-start the model before UDA alignment. The framework is modular, allowing plug-in integration with existing CTR/CVR models and any UDA algorithm (e.g., adversarial domain adaptation or MMD-based methods).",
+    "key_innovation": "Prior work addresses delayed feedback via importance weighting (e.g., DFM, ES-DFM), pipeline-based label correction, or survival analysis — all of which either require strong distributional assumptions or implicitly handle false negatives. This paper is the first to explicitly cast delayed feedback as a UDA problem, treating the noisy-label fresh data as an unlabeled target domain and bypassing the need for explicit label correction entirely. This reframing allows leveraging the full arsenal of UDA techniques without modifying the loss function for false negatives directly.",
+    "technical_insight": "The most critical design choice is the customized pretraining step using recent observed conversions (a small but high-quality subset of fresh data where conversions are already confirmed). This initializes the model close to the target distribution before UDA fine-tuning begins, preventing the domain aligner from being misled by a randomly initialized feature extractor. Without this step, the UDA alignment would be noisy because the source and target feature distributions would diverge from a poor starting point.",
+    "limitations": "The UDA framing assumes the fresh (target) data is essentially unlabeled, discarding observed positive labels in the target domain during alignment — potentially wasting signal. The method's performance is coupled to the quality and diversity of the chosen UDA algorithm, introducing a new hyperparameter search dimension. It also does not explicitly model the conversion delay distribution, so it may struggle in settings where the delay window is extremely long or highly variable across user segments. Finally, evaluation on only three datasets limits generalizability claims.",
+    "interview_questions": [
+      "Why is delayed feedback in CVR prediction framed as an unsupervised domain adaptation problem rather than a semi-supervised or label-noise problem?",
+      "What is the role of the pretraining step, and what would happen if it were removed?",
+      "How does this approach differ from importance-weighting methods like DFM or ES-DFM?",
+      "What defines the source and target domains in this UDA formulation, and why is the target domain treated as unlabeled?",
+      "What are the practical deployment considerations when integrating this framework into a daily-updated production CVR pipeline?"
+    ],
+    "interview_answers": [
+      "The fresh data has unreliable negative labels (clicks that haven't converted yet may still convert later), making it unsuitable as a supervised source. Treating it as an unlabeled target domain avoids explicitly correcting or weighting noisy labels, and allows UDA to align feature distributions between trusted old data and fresh data without requiring label information from the noisy set.",
+      "The pretraining step initializes the model using recently confirmed conversions in the fresh window — a small but clean positive signal. Without it, the feature extractor starts from a random or stale state, making the initial domain gap too large for UDA to bridge effectively. It acts as a warm-start that puts the model near the target distribution before adversarial or MMD-based alignment begins.",
+      "Importance-weighting methods like DFM assign higher weights to recent data based on estimated delay distributions, effectively reweighting the loss. They still train on noisy labels and require accurate modeling of the conversion delay distribution. This UDA approach sidesteps delay distribution estimation entirely by treating fresh data as unlabeled and using distribution alignment instead of loss reweighting.",
+      "The source domain is historical click data with reliable, fully-observed conversion labels (the conversion window has elapsed). The target domain is recent click data where labels are incomplete due to the delay. It is treated as unlabeled because the observed labels are systematically false negatives — using them as negatives would corrupt the signal, and using only confirmed positives wastes the distributional information the clicks carry.",
+      "In production, the pipeline must define a clear cutoff for what counts as 'source' versus 'target' data based on the expected conversion window. The UDA algorithm adds computational overhead at training time, which must fit within the daily retraining budget. Model versioning is also important — the pretraining checkpoint and the final UDA-adapted model must both be tracked. Additionally, monitoring for distribution shift between source and target is needed, since if the gap grows (e.g., seasonal events), UDA alignment may degrade."
+    ],
+    "generated_at": "2026-04-01T07:25:53Z"
+  }
+}

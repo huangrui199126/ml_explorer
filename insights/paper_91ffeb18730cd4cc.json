@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "BayesMAB is a Bayesian Multi-Armed Bandit algorithm that helps advertisers optimally shade their bids in first-price auction ad systems, even when losing bidders receive no information about the winning price. It progressively infers market price distributions to find the optimal bid that balances win probability against cost savings.",
+    "key_idea": "By treating each price interval as a bandit arm and using Bayesian updating to infer hidden market prices from partial feedback, BayesMAB estimates winning rates well enough to derive cost-optimal shaded bids under information asymmetry.",
+    "why_it_matters": "As ad exchanges migrate from second-price to first-price auctions, advertisers who naively bid their true value systematically overpay; BayesMAB offers a deployable, data-efficient solution that reduced CPM by 13% and improved ROI by 12% at Tencent scale.",
+    "possible_use_cases": [
+      "Programmatic display advertising bid optimization on DSP platforms transitioning to first-price auctions",
+      "Budget-constrained campaign management where minimizing CPM/CPA while maintaining target win rates is critical",
+      "Real-time bidding infrastructure where market price signals are partially censored or unavailable to losing bidders"
+    ],
+    "generated_at": "2026-04-01T07:26:47Z"
+  },
+  "deep": {
+    "method_breakdown": "BayesMAB treats each discrete bid price interval as an arm in a multi-armed bandit, maintaining a Bayesian posterior over the winning probability of each interval using only win/loss feedback (no losing-bid price revealed). When an advertiser loses, it updates the posterior by inferring which price intervals could have been above the market price, progressively refining the hidden market price distribution maintained by the SSP. At decision time, the optimal shaded bid is selected by maximizing expected utility — balancing estimated win probability against cost savings — using Thompson Sampling or a UCB-style acquisition over the posterior.",
+    "key_innovation": "Prior bid shading work assumes access to the losing bid or full auction clearing price; BayesMAB is novel in handling the censored-feedback setting where losers receive zero price signal. It exploits the structural constraint of FPA — that the winner pays exactly their bid — to derive a likelihood update for the latent market price distribution even from loss events, effectively turning censored observations into partial information via interval elimination.",
+    "technical_insight": "The critical design choice is modeling winning price as a latent variable with a conjugate prior over discretized price buckets, so each win/loss event tightens the posterior over which intervals are above/below the true market price. This works because FPA's payment rule creates a hard threshold: a loss at bid b certifies the market price exceeded b, enabling a monotone likelihood update that is computationally cheap and provably consistent under mild stationarity assumptions.",
+    "limitations": "The discretization of bid space introduces approximation error — coarse buckets reduce computation but degrade optimality, while fine buckets slow posterior convergence. The method assumes a stationary or slowly-drifting market price distribution; abrupt shifts (e.g., competitor budget resets, seasonality) can cause the posterior to lag reality. It also does not model advertiser-specific value heterogeneity or budget constraints, and the semi-simulated offline evaluation relies on SPA data re-labeled as FPA, which may not fully capture FPA equilibrium dynamics.",
+    "interview_questions": [
+      "How does BayesMAB update its posterior when an advertiser loses an auction and receives no price signal?",
+      "Why does the shift from second-price to first-price auctions necessitate bid shading, and what is the strategic equilibrium implication?",
+      "What are the convergence guarantees of BayesMAB, and under what distributional assumptions do they hold?",
+      "How does the choice of price interval granularity affect the exploration-exploitation trade-off in BayesMAB?",
+      "How would you extend BayesMAB to handle non-stationary market price distributions or budget-constrained advertisers?"
+    ],
+    "interview_answers": [
+      "A loss at bid b is treated as a censored observation certifying the market clearing price exceeded b. BayesMAB updates the Bayesian posterior over price intervals by zeroing out (or downweighting) the probability mass on intervals at or below b and renormalizing, effectively using the structural FPA payment rule as a monotone constraint to perform likelihood-based inference without observing the actual clearing price.",
+      "In SPA, truth-telling is a dominant strategy because the winner pays the second-highest bid regardless of their own bid. In FPA, the winner pays their own bid, so bidding true value yields zero surplus; rational bidders shade down to balance win probability against payment. The Nash equilibrium in FPA involves symmetric bid shading as a function of value and beliefs about competitors, making the problem non-trivial without knowledge of the market price distribution.",
+      "BayesMAB achieves sublinear cumulative regret under the assumption that the market price distribution is stationary and the prior has full support over the true distribution. Formal guarantees follow from standard Bayesian bandit regret bounds (e.g., Thompson Sampling regret of O(sqrt(KT log T)) for K arms and T rounds), but these degrade under distribution shift. The paper validates empirically rather than providing tight theoretical guarantees for the censored-feedback variant.",
+      "Coarser intervals mean fewer arms, faster posterior concentration, and less exploration overhead, but the optimal shaded bid can only be resolved to the bucket width, introducing a bias floor. Finer intervals allow near-exact bid optimization but require more impressions per bucket to achieve reliable posterior estimates, increasing the exploration cost and potentially causing underbidding during the learning phase. The authors choose granularity empirically by trading off these factors on historical data.",
+      "Non-stationarity could be addressed by adding a forgetting mechanism — exponential discounting of past observations or a sliding window — or by switching to a Bayesian change-point model (e.g., a Dirichlet process prior that allows the market distribution to evolve). For budget constraints, one could augment the utility function with a Lagrangian penalty on spend rate, dynamically adjusting the shading factor to deplete the budget smoothly across a campaign flight using a dual-variable controller layered on top of BayesMAB's arm selection."
+    ],
+    "generated_at": "2026-04-01T07:27:19Z"
+  }
+}

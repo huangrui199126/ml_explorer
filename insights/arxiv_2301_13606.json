@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MINUTE is a two-stage model for video corpus moment retrieval (VCMR) that ranks candidate moments across multiple videos using multimodal cues. It addresses moment prediction bias by applying Shared Normalization consistently during both training and inference, and uses Multimodal Clue Mining to identify modality-specific key content for more accurate moment localization.",
+    "key_idea": "Applying Shared Normalization at both training and inference time, combined with multimodal clue mining, enables fairer cross-video moment ranking and more precise temporal localization in large video corpora.",
+    "why_it_matters": "Practitioners building video search or retrieval systems benefit from a method that reduces bias toward top-ranked videos and leverages complementary visual and textual signals, leading to more accurate retrieval of specific moments from large uncurated video collections.",
+    "possible_use_cases": [
+      "Natural language search over large video libraries (e.g., finding a specific scene in a movie or lecture archive)",
+      "Highlight extraction from sports or news broadcasts using text queries",
+      "Video QA systems that must localize evidence clips within a large corpus"
+    ],
+    "generated_at": "2026-04-01T07:28:12Z"
+  },
+  "deep": {
+    "method_breakdown": "MINUTE is a two-stage VCMR model that first retrieves candidate videos and then re-ranks moments across multiple videos simultaneously using Shared Normalization at both training and inference time, unlike prior work that only applied it during training. The Multimodal Clue Mining (MCM) module identifies modality-specific salient content (e.g., visual vs. textual cues) to improve temporal localization precision within candidate videos. By ranking moments from the full set of retrieved videos jointly rather than per-video independently, MINUTE corrects the systematic bias toward top-retrieved videos.",
+    "key_innovation": "The core novelty is applying Shared Normalization consistently at inference time, not just training, which eliminates the train-inference mismatch that caused moment prediction bias toward top-ranked videos. Prior VCMR two-stage models scored moments within each video independently, so a highly-ranked video always dominated; MINUTE normalizes scores across all candidate videos simultaneously, giving lower-ranked videos a fair chance. MCM is an additional contribution that performs modality-aware attention to extract complementary cues from visual and textual streams.",
+    "technical_insight": "The most critical design choice is the train-inference consistency of Shared Normalization. The original Shared Normalization was designed to let the model learn cross-video moment comparison during training, but at inference the normalization scope was effectively local per video, breaking that learned comparison signal. By maintaining the same global normalization scope at inference, MINUTE ensures the model's learned ranking function is actually exercised, which directly corrects the rank bias without requiring architectural changes.",
+    "limitations": "The two-stage pipeline still inherits recall ceiling from the first-stage retrieval — if the target video is not retrieved at all, MINUTE cannot recover it. MCM fusion strategy and its interaction with the re-ranking objective are not deeply ablated in the abstract, leaving questions about which modality contributes most in different scenarios. Scalability to very large corpora may be constrained by the joint cross-video moment scoring, which grows with corpus size. Evaluation is limited to TVR and DiDeMo, which may not represent diverse real-world retrieval conditions.",
+    "interview_questions": [
+      "What specific inconsistency in Shared Normalization causes moment prediction bias in prior two-stage VCMR methods?",
+      "How does MINUTE apply Shared Normalization at inference, and why does this differ from prior approaches?",
+      "What is Multimodal Clue Mining (MCM) and how does it help with temporal moment localization?",
+      "What are the computational trade-offs of jointly ranking moments across multiple videos compared to per-video ranking?",
+      "Why is the train-inference mismatch in normalization scope particularly harmful for VCMR versus other retrieval tasks?"
+    ],
+    "interview_answers": [
+      "Prior methods compute Shared Normalization loss during training across multiple sampled videos, teaching the model to compare moments globally. However, at inference they score each retrieved video's moments independently, so the global comparison capability learned during training is never used — the model defaults to biasing toward top-retrieved videos whose absolute scores are highest.",
+      "MINUTE pools all candidate moments from all retrieved videos into a single scoring context and applies the same normalization across that pool at inference, matching exactly what was done during training. This means the trained cross-video scoring function is faithfully applied, enabling moments from lower-ranked videos to compete fairly if they are more query-relevant.",
+      "MCM performs modality-specific attention over video features (e.g., RGB visual frames, subtitle/ASR text) to identify which modality carries the key localization signal for a given query. By weighting modalities dynamically per query, MCM avoids over-relying on one stream and extracts complementary temporal cues, leading to more precise moment boundary prediction.",
+      "Joint ranking requires scoring all moments from all K retrieved videos together, increasing memory and compute roughly linearly with K times the average video length. Per-video ranking is embarrassingly parallelizable and cheaper, but loses global context. MINUTE trades efficiency for ranking accuracy, which is acceptable in a two-stage pipeline where the first stage already prunes the corpus.",
+      "In VCMR the target moment may appear in any retrieved video, so relative cross-video scoring is essential — the model must decide not just where in a video a moment is, but which video's moment is best. A mismatch means the model never learns to make this cross-video comparison at test time. In single-video QA tasks, normalization scope doesn't affect cross-document decisions, so the inconsistency is less damaging."
+    ],
+    "generated_at": "2026-04-01T07:28:40Z"
+  }
+}
