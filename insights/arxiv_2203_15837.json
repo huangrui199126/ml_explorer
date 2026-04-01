@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes Learned Hash Functions, a technique that replaces random hashing of categorical IDs in recommendation system embedding tables with a learned mapping that deliberately collides semantically similar IDs together. By using historical access patterns and low-dimensional embeddings to guide collisions, the method reduces embedding table memory while better preserving model quality than standard hashing.",
+    "key_idea": "Instead of randomly colliding IDs via hashing, learn a mapping that clusters semantically similar IDs into the same bucket so that forced collisions hurt model quality less.",
+    "why_it_matters": "Embedding tables in production recommendation models can reach hundreds of GB; smarter compression that respects semantic similarity lets teams cut hardware costs and training expenses without the quality degradation that naive hashing introduces.",
+    "possible_use_cases": [
+      "Reducing embedding table size in large-scale e-commerce or ad-ranking models to lower serving infrastructure costs",
+      "Compressing recommendation models for on-device or edge deployment where memory is severely constrained",
+      "Improving model quality at a fixed memory budget by replacing random hash collisions with semantics-aware ones during training"
+    ],
+    "generated_at": "2026-04-01T11:58:24Z"
+  },
+  "deep": {
+    "method_breakdown": "Learned Hash Functions replaces random/fixed hash functions with a learned mapping that routes semantically similar categorical IDs to the same embedding table slot. The mapping is derived from historical access patterns (co-occurrence, frequency) and a learned low-dimensional embedding that captures semantic similarity. At inference, IDs are looked up via this learned mapping rather than a traditional modular hash, reducing embedding table size while minimizing quality-degrading collisions.",
+    "key_innovation": "Prior work (hashing trick, quotient-remainder, compositional embeddings) treats collisions as an unavoidable side effect to minimize or distribute. This work inverts the objective: collisions are deliberately engineered between semantically similar IDs, turning a compression liability into a regularization asset. The novelty is using embedding access frequency combined with a learned low-dim representation to inform which IDs should share a slot.",
+    "technical_insight": "The critical design choice is combining access frequency with learned embeddings for the mapping function. Frequency alone would collapse rare items incorrectly; embeddings alone ignore popularity skew. Their combination ensures that high-frequency items with distinct semantics get unique slots while rare items with similar behavior are safely merged — maximizing table utilization without sacrificing representation quality for popular IDs.",
+    "limitations": "The improvement over baselines is described as 'small', suggesting diminishing returns relative to implementation complexity. The mapping must be re-derived when the data distribution shifts (concept drift), adding training pipeline overhead. The approach requires a pre-training phase to obtain the low-dim embeddings used for similarity, creating a chicken-and-egg dependency. Evaluation is on a single production model, limiting generalizability claims.",
+    "interview_questions": [
+      "How does the learned hash function differ fundamentally from the standard hashing trick, and why does controlling collision targets matter?",
+      "What two signals are combined to derive the learned mapping, and what does each contribute?",
+      "What is the key trade-off when compressing embedding tables via hashing, and how does this paper reframe it?",
+      "What are the practical deployment challenges of using a learned hash function compared to a fixed hash in a production recommendation system?",
+      "How would you evaluate whether the learned mapping is actually capturing semantic similarity rather than just frequency patterns?"
+    ],
+    "interview_answers": [
+      "The hashing trick uses a fixed modular hash that arbitrarily collides IDs regardless of semantic relationship, degrading quality when dissimilar items share embeddings. Learned Hash Functions instead train a mapping that routes semantically similar IDs to the same slot, so collisions reinforce rather than corrupt representations — reframing compression as controlled semantic merging.",
+      "Access frequency and a learned low-dimensional embedding. Frequency identifies which IDs are popular enough to warrant unique slots versus mergeable. The low-dim embedding captures behavioral/semantic similarity so that only items with similar representation needs are collapsed together, minimizing quality loss from sharing.",
+      "The trade-off is memory reduction vs. representational fidelity: fewer unique slots mean smaller tables but more collisions that corrupt distinct item representations. This paper reframes it by making collisions intentional and semantically meaningful — if two IDs behave similarly, sharing a slot is not corruption but compression without loss.",
+      "The learned mapping must be computed offline and versioned alongside model weights, requiring a retraining pipeline dependency. If item semantics shift (new items, changing user behavior), the mapping becomes stale and must be regenerated. Unlike a hash function which is stateless and instantaneous, the learned mapping adds latency to the model update cycle and requires storage for the mapping table itself.",
+      "You would inspect whether IDs mapped to the same slot have high co-occurrence or similar downstream task signals (e.g., click-through rates on similar content). A held-out semantic benchmark — such as whether mapped-together IDs belong to the same category or genre — would validate semantic alignment. You could also ablate by swapping in random same-frequency groupings and measuring quality degradation to isolate the semantic signal contribution."
+    ],
+    "generated_at": "2026-04-01T11:58:49Z"
+  }
+}

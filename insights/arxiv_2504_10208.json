@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "GQR is a unified framework that adapts LLMs for query recommendation (suggestion, completion, clarification) by aligning them with user feedback via CTR-based preference optimization and co-occurrence query retrieval. It addresses cold-start and task-specific design limitations of traditional log-based approaches.",
+    "key_idea": "Train a query-wise CTR predictor as a process reward model and apply list-wise preference alignment to steer LLM-generated query lists toward maximizing click probability.",
+    "why_it_matters": "Practitioners building search or recommendation systems get a single generative framework that handles multiple query tasks and self-corrects toward real user engagement signals, reducing reliance on large historical logs.",
+    "possible_use_cases": [
+      "Autocomplete and query suggestion in enterprise or e-commerce search engines",
+      "Cold-start query recommendation for new users or low-traffic domains",
+      "Proactive search assistance that anticipates user intent before explicit queries are formed"
+    ],
+    "generated_at": "2026-04-01T12:05:12Z"
+  },
+  "deep": {
+    "method_breakdown": "GQR unifies query suggestion, completion, and clarification under a single universal prompt framework that leverages instruction-following LLMs for generation. It then aligns the LLM outputs with user preferences via a CTR-alignment module: a query-wise CTR predictor is trained as a process reward model, and list-wise preference optimization is applied to maximize click probability over the generated query list. A third alignment component retrieves co-occurrence queries from historical logs as side information to bridge the gap between LLM parametric knowledge and real user search intents.",
+    "key_innovation": "The core novelty is the dual-alignment design: (1) aligning LLM generation with observed user feedback signals (CTR) via a learned reward model rather than relying solely on LLM priors or few-shot heuristics, and (2) aligning with user initiative by injecting co-occurrence query context — together these move beyond prompt engineering toward trainable, feedback-grounded query recommendation.",
+    "technical_insight": "Using a query-wise CTR predictor as a process reward model for list-wise preference alignment is the critical design choice. It converts implicit user feedback (clicks) into a differentiable training signal that shapes which query candidates the LLM ranks highly, directly optimizing the metric that matters in deployment rather than a proxy like perplexity or BLEU.",
+    "limitations": "The CTR alignment depends on sufficient click log data, so cold-start and sparse-interaction scenarios — the very problems the paper claims to address — may still degrade alignment quality. List-wise preference training with a learned reward model can be noisy if the CTR predictor is miscalibrated. The co-occurrence retrieval component requires historical logs to be available, making the full pipeline inapplicable in truly cold-start settings. Finally, optimizing for CTR can amplify popularity or engagement biases rather than improving genuine information need satisfaction.",
+    "interview_questions": [
+      "How does the CTR predictor serve as a process reward model, and what training signal drives list-wise preference alignment?",
+      "How does the universal prompt framework unify query suggestion, completion, and clarification without task-specific architectures?",
+      "What are the fairness and bias implications of optimizing for CTR as a proxy for user satisfaction?",
+      "How does co-occurrence query retrieval differ from standard RAG, and when does it help versus hurt recommendation quality?",
+      "What happens to GQR's performance in a true cold-start scenario where neither click logs nor co-occurrence data exist?"
+    ],
+    "interview_answers": [
+      "The CTR predictor is trained on historical (query, context, click) triples to score the likelihood a candidate query gets clicked. During alignment, it scores each query in a generated list, producing per-item rewards. List-wise preference optimization (e.g., a listwise variant of DPO or RLHF) then fine-tunes the LLM to assign higher probability to lists that maximize aggregate predicted CTR, treating the predictor's scores as process-level rewards rather than a single terminal reward.",
+      "A universal prompt template encodes the task type (suggestion, completion, clarification), the user context, and any retrieved side information into a structured instruction that the LLM consumes identically regardless of task. Task identity becomes a conditioning signal in the prompt rather than a hard-coded architectural branch, allowing a single model to generalize across tasks via instruction following.",
+      "CTR reflects engagement, not relevance or fairness — optimizing it can entrench popularity bias (common queries surfaced more), demographic bias (majority-group preferences dominate click logs), and filter bubbles. Users from underrepresented groups or with niche information needs may receive systematically worse recommendations. The paper does not explicitly address these failure modes despite the fairness topic framing.",
+      "Co-occurrence retrieval fetches queries that historically co-appear in the same session or are clicked together with the seed query, providing behavioral context rather than document content. Unlike RAG, it injects query-space rather than document-space information. It helps when the LLM's parametric knowledge diverges from platform-specific user vocabulary or trending intents, but can introduce noise or stale patterns if the co-occurrence graph is outdated or sparse.",
+      "In true cold-start, the CTR alignment component cannot be trained (no click signal) and the co-occurrence retrieval falls back to empty context. The system degrades to the base universal prompt framework relying purely on LLM priors, which the paper acknowledges is the same limitation as prior LLM-based methods. The paper's cold-start mitigation is thus partial — it handles long-tail queries with some history but not genuinely new users or domains."
+    ],
+    "generated_at": "2026-04-01T12:05:42Z"
+  }
+}

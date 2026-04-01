@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper introduces VAE-IPS, a variational autoencoder-based recommendation model that applies inverse propensity scoring (IPS) to correct for selection biases (popularity, position, etc.) in implicit feedback data. The method is provably unbiased and outperforms existing debiasing baselines.",
+    "key_idea": "By reweighting training samples with inverse propensity scores inside the VAE objective, the model corrects for the systematic over-representation of popular or prominently displayed items in implicit feedback.",
+    "why_it_matters": "Most recommender systems trained on implicit feedback (clicks, views) inherit popularity and position biases, leading to models that reinforce existing trends rather than surfacing genuinely relevant items; this work provides a principled, drop-in debiasing approach for state-of-the-art VAE recommenders.",
+    "possible_use_cases": [
+      "E-commerce product recommendation where popular items dominate click logs and niche products are systematically under-recommended",
+      "News or content feed ranking where position bias causes top-displayed items to receive disproportionate engagement signals",
+      "Music or video streaming platforms seeking to reduce popularity bias and surface long-tail content to users with niche tastes"
+    ],
+    "generated_at": "2026-04-01T12:02:26Z"
+  },
+  "deep": {
+    "method_breakdown": "VAE-IPS applies inverse propensity scoring (IPS) to reweight the ELBO objective of a variational autoencoder, correcting for selection bias in implicit feedback. Each observed interaction is weighted by the inverse of its propensity score (probability of being observed), so underrepresented items/users receive higher weight during training. The propensity scores can be estimated from item popularity or position statistics, and the resulting estimator is provably unbiased under the standard missing-not-at-random (MNAR) assumption.",
+    "key_innovation": "Prior debiasing work (IPS, doubly robust estimators) was applied only to discriminative pointwise or pairwise models. This is the first work to integrate IPS into a generative VAE framework, requiring a reformulation of the ELBO loss with per-sample propensity weights rather than a simple uniform reconstruction term.",
+    "technical_insight": "The critical design choice is reweighting the per-item reconstruction loss inside the ELBO by inverse propensities rather than applying IPS post-hoc to rankings. This works because the VAE's generative process models the full user preference distribution, so correcting the training signal at the likelihood level propagates unbiased gradients through both the encoder and decoder, unlike discriminative models where bias correction only affects the scoring function.",
+    "limitations": "Propensity estimation is itself a hard problem — misspecified propensities can increase variance dramatically (the well-known IPS variance explosion issue) and may introduce new biases. The method assumes propensities are known or estimable, which is unreliable for long-tail items with few observations. The approach also inherits VAE limitations: the amortized inference gap and the tendency to over-smooth user preferences. Scalability of propensity-weighted mini-batching and sensitivity to propensity clipping thresholds are not thoroughly analyzed.",
+    "interview_questions": [
+      "Why does standard VAE training produce biased recommendations when trained on implicit feedback, and what assumption does IPS rely on to fix this?",
+      "How is the IPS weight incorporated into the VAE ELBO, and does reweighting the reconstruction term alone suffice or must the KL term also be adjusted?",
+      "What are the variance-bias tradeoffs of IPS estimators, and how do propensity clipping or self-normalized IPS variants address them in this context?",
+      "How would you estimate propensity scores in practice when you lack randomized exposure data, and what are the failure modes of popularity-based propensity proxies?",
+      "How does VAE-IPS compare to doubly robust (DR) estimators for recommendation, and under what conditions would DR be preferable?"
+    ],
+    "interview_answers": [
+      "Implicit feedback is missing-not-at-random (MNAR): users interact with items they were exposed to and liked, so the observed data is a biased sample of true preferences. Popular or prominently displayed items are over-observed. IPS assumes you know the propensity P(observed | user, item) and reweights each sample by its inverse, making the weighted empirical loss an unbiased estimator of the true loss over all user-item pairs.",
+      "The reconstruction loss (negative log-likelihood term) in the ELBO is reweighted per observed item by 1/propensity. The KL divergence term is a regularizer on the latent prior and does not directly model observed interactions, so it is typically left unweighted. This means bias correction is concentrated in the likelihood term, which is the primary source of selection bias in the training objective.",
+      "IPS has unbiased expectation but potentially infinite variance when propensities are near zero (rare items). Clipping propensities from below (e.g., min propensity threshold) trades a small bias for large variance reduction. Self-normalized IPS (SNIPS) normalizes weights to sum to 1, further reducing variance at the cost of introducing a small bias. In recommendation the clipping threshold is a critical hyperparameter since long-tail items have tiny propensities.",
+      "Common proxies include item popularity (frequency of interaction as a surrogate for exposure probability) or position-based models for position bias. Failure modes include: popularity conflating quality with exposure, non-stationarity (propensities change as the system evolves), and feedback loops where the recommender itself shapes future propensities, violating the static propensity assumption. Without randomized A/B exposure data, propensity estimation is fundamentally confounded.",
+      "DR estimators combine an imputation model (predicted reward for all items) with an IPS correction only for the residual error, reducing variance while maintaining unbiasedness when either the imputation or propensity model is correct. DR is preferable when propensities are noisy or near zero, as the imputation model provides a stable baseline. In the VAE context, DR would require a separate reward imputer, adding complexity; VAE-IPS is simpler but more variance-prone for rare items."
+    ],
+    "generated_at": "2026-04-01T12:02:56Z"
+  }
+}
