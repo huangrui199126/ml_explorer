@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "CoRAG trains RAG models to perform iterative, multi-step retrieval and reasoning before generating answers, rather than the conventional single-retrieval approach. It uses rejection sampling to generate intermediate retrieval chain training data and proposes test-time compute scaling via multiple sampled retrieval chains.",
+    "key_idea": "Instead of retrieving once and generating, CoRAG dynamically reformulates queries based on intermediate reasoning states, chaining multiple retrieval steps like a search-then-think loop until it has enough context to answer.",
+    "why_it_matters": "Single-shot RAG breaks down on complex multi-hop questions where the right follow-up query depends on what you just retrieved; CoRAG closes this gap with 10+ EM point gains and SOTA on KILT, making it practical for real-world knowledge-intensive applications.",
+    "possible_use_cases": [
+      "Multi-hop question answering over large knowledge bases (e.g., medical or legal research requiring cross-document reasoning)",
+      "Conversational AI assistants that need to iteratively gather facts before answering complex user queries",
+      "Enterprise search systems that must synthesize information across multiple documents or databases"
+    ],
+    "generated_at": "2026-04-01T07:43:32Z"
+  },
+  "deep": {
+    "method_breakdown": "CoRAG trains a model to iteratively retrieve and reason by generating intermediate retrieval chains: at each step, the model reformulates its query based on previously retrieved context, retrieves new documents, and updates its reasoning state before issuing the next query. Rejection sampling is used to automatically synthesize these multi-step retrieval chains from existing datasets that only annotate final answers, creating training signal for the intermediate steps. At inference, test-time compute is scaled by controlling the number and length of sampled retrieval chains, analogous to best-of-N or beam search over reasoning trajectories.",
+    "key_innovation": "The core novelty is framing multi-step RAG as a sequential decision process trained end-to-end with rejection sampling, rather than relying on hand-crafted retrieval pipelines or frozen retrievers. Prior work (e.g., IRCoT, FLARE) uses heuristic interleaving of retrieval and generation without jointly training the query reformulation policy; CoRAG learns this policy from data, and crucially introduces test-time compute scaling over retrieval chains — a paradigm borrowed from o1-style reasoning models but applied to grounded, retrieval-augmented generation.",
+    "technical_insight": "The most important design choice is rejection sampling to generate supervision for intermediate retrieval steps. Because existing RAG benchmarks only label final answers, there is no ground truth for which sub-queries to issue or in what order. Rejection sampling solves this by sampling many candidate retrieval chains, filtering those that lead to the correct final answer, and using survivors as training data — this bootstraps a policy for dynamic query reformulation without expensive human annotation of reasoning chains.",
+    "limitations": "CoRAG's quality is bounded by the retrieval corpus; errors in retrieved documents can propagate and compound across steps, unlike single-step RAG where the damage is contained. Rejection sampling is computationally expensive during training and may produce low-yield filtering on hard questions, limiting coverage of difficult cases. The approach assumes a static external corpus and does not handle temporal knowledge updates or retrieval over heterogeneous modalities. Test-time scaling by sampling many chains is also costly at inference, making real-time deployment non-trivial.",
+    "interview_questions": [
+      "How does CoRAG decide when to stop issuing retrieval queries and generate the final answer?",
+      "Why is rejection sampling preferred over RL or supervised chain-of-thought distillation for generating intermediate retrieval chains?",
+      "How does test-time compute scaling work in CoRAG, and what is the analogue to beam search in this framework?",
+      "What are the failure modes when retrieved documents across multiple hops are contradictory or noisy?",
+      "How does CoRAG compare to IRCoT and FLARE architecturally, and what does joint training buy over their heuristic interleaving?"
+    ],
+    "interview_answers": [
+      "CoRAG learns a termination condition implicitly via the training objective: the model generates a special end-of-retrieval token when it has sufficient context. The rejection sampling process produces chains of varying lengths, so the model sees examples of early termination (simple questions) and long chains (multi-hop), learning to match retrieval depth to question complexity.",
+      "RL requires a reward signal at each intermediate step which is unavailable without annotated sub-queries, and its variance makes training unstable for long chains. Supervised distillation from a stronger teacher would require that teacher to already solve the multi-step retrieval problem. Rejection sampling is self-supervised — it uses the final answer correctness as a weak signal to filter valid chains from the model's own outputs, making it practically feasible without additional annotation or a stronger oracle.",
+      "At test time, CoRAG samples multiple retrieval chains (varying in length and query formulations) and scores final answers across chains, selecting via majority vote or highest-confidence output — analogous to best-of-N sampling. Longer chains allow deeper reasoning at higher compute cost, and the number of sampled chains controls a second scaling axis, creating a 2D compute budget analogous to depth vs. width in tree search.",
+      "Contradictory retrieved passages can cause the model to oscillate in query reformulation or produce hallucinated reconciliations of conflicting facts. Because errors compound across hops, a single bad retrieval early in the chain can derail all subsequent queries. The model has no explicit conflict-resolution mechanism, so robustness degrades on adversarial or noisy corpora more severely than single-step RAG.",
+      "IRCoT and FLARE use fixed heuristics to decide when to retrieve and what to query, with no gradient flowing through retrieval decisions. CoRAG jointly trains the full policy — query reformulation, retrieval triggering, and answer generation — so the model learns retrieval strategies optimal for the downstream answer, not hand-designed proxies. Joint training allows the model to learn corpus-specific retrieval patterns and to trade off retrieval cost against answer quality in a data-driven way."
+    ],
+    "generated_at": "2026-04-01T07:44:04Z"
+  }
+}

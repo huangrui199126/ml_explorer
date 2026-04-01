@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "COLD is a pre-ranking system for industrial recommender systems and ad platforms that jointly optimizes model architecture and computing cost, rather than treating them as separate concerns. It enables complex deep models with cross features to run efficiently at pre-ranking scale through inference acceleration tricks and online learning.",
+    "key_idea": "Co-design the pre-ranking model and its compute budget together so that model complexity can be maximized within an explicit, controllable cost constraint — rather than arbitrarily simplifying the model to fit a fixed infrastructure.",
+    "why_it_matters": "Pre-ranking is a critical bottleneck in multi-stage retrieval pipelines; systems that blindly simplify ranking models lose significant quality, while COLD shows you can deploy expressive models at pre-ranking scale by treating compute cost as a first-class optimization objective.",
+    "possible_use_cases": [
+      "Display advertising pipelines that need to score millions of candidates quickly before a heavier ranking model",
+      "Recommender systems requiring online learning to combat data distribution shift (e.g., news feeds, e-commerce)",
+      "Teams running A/B tests on new ranking models who need a flexible, online-serving infrastructure to iterate rapidly"
+    ],
+    "generated_at": "2026-04-01T07:40:53Z"
+  },
+  "deep": {
+    "method_breakdown": "COLD reframes pre-ranking as a joint algorithm-system co-design problem rather than a model simplification problem. It introduces a computing-power-aware optimization framework that allows arbitrary deep models with cross features to run under explicit computational budgets, using inference acceleration tricks (e.g., operator fusion, pruning) to free up headroom for more expressive models. The system runs in a fully online learning and serving mode to continuously adapt to distribution shift.",
+    "key_innovation": "Prior pre-ranking systems forced architectural simplicity (e.g., inner-product models like DSSM) to meet latency budgets, accepting model quality loss as inevitable. COLD's novelty is decoupling model expressiveness from computational cost by making compute cost an explicit, differentiable constraint during joint optimization — enabling rich cross-feature deep models that were previously only feasible at the ranking stage.",
+    "technical_insight": "The most important design choice is treating computing power as a first-class optimization target rather than a hard architectural constraint. By explicitly modeling and minimizing FLOPs/latency alongside ranking loss, COLD can apply standard deep ranking architectures (with feature interactions) at the pre-ranking stage without violating serving SLAs — the system earns back computational budget through engineering optimizations and spends it on model capacity.",
+    "limitations": "The paper is primarily an industry deployment report from Alibaba's advertising system, so generalizability to other domains (e.g., sparse retrieval, cold-start) is unverified. The joint optimization of model quality and compute cost may require careful per-product tuning of the compute budget hyperparameter. Online learning infrastructure (feature pipelines, model update frequency) adds significant engineering overhead that smaller systems may not afford. Evaluation is largely on proprietary datasets, limiting reproducibility.",
+    "interview_questions": [
+      "COLD treats computing power as an optimization constraint rather than an architectural restriction — how exactly is this constraint enforced during training and model selection?",
+      "What specific inference acceleration techniques does COLD apply, and how do they interact with the model architecture choices?",
+      "How does COLD's online learning component handle the data distribution shift problem, and what are the risks of continuous online updates in a production advertising system?",
+      "In a multi-stage cascade (matching → pre-ranking → ranking → re-ranking), how does improving pre-ranking model quality translate to overall system-level gains given the funnel structure?",
+      "What are the trade-offs between using COLD-style joint optimization versus simply increasing the compute budget for a classical lightweight pre-ranking model?"
+    ],
+    "interview_answers": [
+      "The compute cost constraint is made explicit by profiling each model candidate's FLOPs or latency and incorporating this as a penalty or hard constraint in the model selection/training loop. In practice this means the system can enumerate or search over architectures and feature combinations while pruning those that exceed the per-request compute budget, rather than restricting to a fixed shallow topology upfront.",
+      "COLD applies operator fusion, quantization, and potentially feature selection/pruning to reduce wall-clock inference time. These optimizations are applied post-training or co-designed with the model, meaning the architectural choices (e.g., which cross features to include) are made with awareness of the acceleration gains available — effectively buying back latency budget that is then reinvested in richer feature interactions.",
+      "COLD uses streaming online learning where the model is updated continuously from real-time user feedback logs, reducing the lag between data generation and model update. The main risk is feedback loops and concept drift if the model adapts too quickly to short-term noise, which is mitigated by careful learning rate scheduling and monitoring. The fully online serving infrastructure also enables rapid A/B testing to catch regressions.",
+      "Pre-ranking acts as a filter that passes a candidate set to the more expensive ranking stage. A better pre-ranking model improves recall of high-quality items into the ranking funnel, meaning the final ranked list benefits even if the ranking model itself is unchanged. The key metric is not just pre-ranking AUC but the quality of the top-K items passed downstream, so gains compound across stages.",
+      "Increasing compute budget for a lightweight model hits diminishing returns because the model architecture itself limits expressiveness — you can run a dot-product model faster but it still cannot capture feature interactions. COLD's joint optimization is superior because it uses the same or lower compute budget but spends it on a genuinely more expressive model, achieving better quality-per-FLOP rather than just more FLOPs."
+    ],
+    "generated_at": "2026-04-01T07:41:22Z"
+  }
+}
