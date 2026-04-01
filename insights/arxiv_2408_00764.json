@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "AgentGen is a framework that automatically generates diverse environments and planning tasks (easy to hard) to create training data for LLM-based agents, eliminating the need for manual environment design. It uses an inspiration corpus for environmental diversity and a bidirectional evolution method (Bi-Evol) to produce tasks across a smooth difficulty curve.",
+    "key_idea": "Automatically synthesize varied environments and difficulty-graduated planning tasks using LLMs, then use the resulting trajectories for instruction-tuning to dramatically improve agent planning capabilities.",
+    "why_it_matters": "Manually designing training environments and tasks is a major bottleneck for agent training; AgentGen removes that bottleneck and enables fine-tuned open-source models (Llama-3.1-8B/70B) to match or exceed GPT-3.5/state-of-the-art on planning benchmarks.",
+    "possible_use_cases": [
+      "Fine-tuning smaller open-source LLMs for autonomous task execution in specific domains without expensive manual environment curation",
+      "Generating progressive training curricula for robotic or software agents that need to learn multi-step planning",
+      "Bootstrapping agent training data for new domains by seeding the inspiration corpus with domain-specific text"
+    ],
+    "generated_at": "2026-04-01T11:47:22Z"
+  },
+  "deep": {
+    "method_breakdown": "AgentGen is a framework that uses LLMs to automatically synthesize diverse planning environments and tasks for agent training via instruction tuning. It first generates environments conditioned on an inspiration corpus of domain-specific text, then generates planning tasks conditioned on those environments. A bidirectional evolution method (Bi-Evol) evolves tasks in both easier and harder directions to produce a smooth difficulty distribution, and expert trajectories are collected from these synthetic environments/tasks for fine-tuning target LLMs.",
+    "key_innovation": "Prior work synthesized trajectories only from manually designed environments and tasks, creating a bottleneck in diversity and scale. AgentGen's key novelty is the fully automated pipeline for environment generation (via inspiration corpus) combined with Bi-Evol, which explicitly constructs a curriculum with smooth difficulty gradients by evolving tasks bidirectionally—something not attempted in prior agent training work.",
+    "technical_insight": "The bidirectional evolution (Bi-Evol) is the most critical design choice: generating tasks only at uniform difficulty leads to suboptimal learning, whereas a smooth difficulty curve (curriculum learning) allows the model to progressively build planning skills. By evolving tasks both toward easier and harder variants from seed tasks, Bi-Evol fills in difficulty gaps that unidirectional or random generation would miss, better matching how humans learn complex sequential reasoning.",
+    "limitations": "The quality of generated environments and tasks is upper-bounded by the LLM doing the generation, so systematic biases or blind spots in the generator propagate to training data. Evaluation is confined to AgentBoard benchmarks, which may not capture real-world planning diversity. Bi-Evol's difficulty estimation relies on heuristics or the generator LLM's judgment, which may be miscalibrated. The framework also inherits the cost of running large LLMs for data synthesis at scale, and it is unclear how well the approach transfers to embodied or tool-use agents beyond text-based planning environments.",
+    "interview_questions": [
+      "How does Bi-Evol operationally determine what makes a task 'easier' or 'harder,' and how is this difficulty signal validated?",
+      "What prevents the inspiration corpus from introducing spurious or harmful biases into the generated environments and planning tasks?",
+      "How does AgentGen handle the distribution mismatch between synthetic environments used for training and the real benchmark environments used at evaluation?",
+      "Why is a smooth difficulty curve specifically better than simply generating a large number of tasks at random difficulty levels—what is the theoretical or empirical justification?",
+      "How does the framework ensure that generated expert trajectories are actually optimal or near-optimal, rather than encoding suboptimal planning strategies into the training signal?"
+    ],
+    "interview_answers": [
+      "Bi-Evol prompts the generator LLM to mutate a seed task in two directions: simplifying constraints/subgoals to create easier variants and adding dependencies/obstacles to create harder variants. Difficulty is implicitly validated by checking whether a capable solver (e.g., a strong LLM or planner) can solve easy variants and struggles on hard ones, though the paper acknowledges this remains an approximation tied to the generator's own competence.",
+      "The inspiration corpus is drawn from diverse domain-specific text, but filtering and curation steps are applied to exclude toxic or irrelevant content. However, since the generator LLM mediates all environment synthesis, any biases latent in that model can still surface; the paper does not present a comprehensive bias audit, which remains an open limitation.",
+      "AgentGen addresses this partially through diversity in environment generation—by using a broad inspiration corpus, generated environments span a range of structural types that partially overlap with benchmark environments. However, there is no explicit domain-adaptation step, so a residual distribution gap likely remains, and the strong benchmark results suggest the learned planning skills are general enough to transfer but do not prove zero gap.",
+      "A smooth difficulty curve implements implicit curriculum learning: starting from tasks that are too hard provides no useful gradient signal, while tasks that are too easy provide no new capability. Empirically, models trained on Bi-Evol data outperform those trained on uniformly or randomly distributed task difficulties, consistent with curriculum learning theory showing that ordered exposure accelerates convergence and final performance on hard tasks.",
+      "Expert trajectories are generated by prompting a capable frontier LLM (e.g., GPT-4 class) to solve the synthetic tasks, optionally with verification checks that the trajectory actually reaches the goal state. Tasks where no valid trajectory can be found are filtered out. This does not guarantee global optimality but ensures correctness, and the quality is limited by the frontier model's own planning capability on novel synthetic environments."
+    ],
+    "generated_at": "2026-04-01T11:47:51Z"
+  }
+}

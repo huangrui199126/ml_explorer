@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper conducts a large-scale systematic study examining how six key experimental factors affect the evaluation of top-N recommendation algorithms, testing 12 algorithms across 8 datasets using the RecBole library. It identifies which evaluation settings cause significant changes in algorithm performance rankings and provides concrete recommendations for reliable benchmarking.",
+    "key_idea": "Evaluation protocol choices (e.g., data splitting, negative sampling, metrics) can dramatically alter the relative performance ranking of recommendation algorithms, making the evaluation setup as important as the algorithm itself.",
+    "why_it_matters": "Practitioners and researchers risk drawing wrong conclusions about which recommendation algorithm is best if they use inappropriate evaluation settings — this paper provides a checklist of settings that must be carefully chosen to ensure reproducible, fair comparisons.",
+    "possible_use_cases": [
+      "Standardizing benchmarking protocols when publishing new recommendation algorithms to ensure fair comparison with baselines",
+      "Auditing existing recommendation system experiments to check whether reported results are reliable and reproducible",
+      "Selecting appropriate offline evaluation settings before deploying a new recommender system to better predict real-world ranking performance"
+    ],
+    "generated_at": "2026-04-01T11:48:45Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper conducts a large-scale empirical study evaluating 12 top-N recommendation algorithms across 8 datasets using the RecBole library, systematically varying six evaluation factors across three aspects: data splitting strategies, negative sampling approaches, and evaluation metrics. Each factor is isolated and tested to measure its impact on algorithm performance rankings, enabling controlled comparison of how evaluation choices affect conclusions drawn from experiments.",
+    "key_innovation": "Rather than proposing a new algorithm, the paper's novelty lies in its systematic, reproducible audit of evaluation protocol decisions — particularly identifying which specific choices (e.g., full-ranking vs. sampled evaluation, random vs. temporal splitting, popularity-based vs. uniform negative sampling) cause rank reversals among algorithms, something prior work addressed only partially or anecdotally.",
+    "technical_insight": "The most critical finding is that sampled-based evaluation (evaluating against a small subset of negatives rather than all items) introduces significant bias because sampling strategies interact non-uniformly with algorithm characteristics — popularity-biased models score artificially high under uniform sampling, making full-ranking evaluation the only reliable protocol for fair comparison.",
+    "limitations": "The study is purely empirical and descriptive, offering no theoretical guarantees about which settings generalize beyond the tested datasets and algorithms. The selected datasets and algorithms, while diverse, may not cover all practical deployment scenarios (e.g., session-based, cross-domain, or cold-start settings). Recommended settings may also shift as new algorithm families emerge.",
+    "interview_questions": [
+      "Why does sampled negative evaluation produce unreliable algorithm rankings, and what is the mechanism behind this bias?",
+      "What is the difference between random and temporal data splitting, and how does each affect the validity of offline evaluation?",
+      "How does the choice of evaluation metric (e.g., NDCG vs. HR vs. MRR) interact with algorithm type to affect performance rankings?",
+      "The paper recommends full-ranking evaluation — what are the computational trade-offs, and how can they be mitigated in practice?",
+      "How does popularity bias in datasets interact with negative sampling strategy, and what does this imply for evaluating debiasing algorithms?"
+    ],
+    "interview_answers": [
+      "Sampled evaluation ranks items within a small candidate set (e.g., 99 negatives + 1 positive), so the difficulty of the ranking task depends heavily on which negatives are sampled. Uniform sampling under-represents popular items, artificially inflating scores for models that exploit popularity signals; temporal or popularity-stratified sampling changes relative difficulty differently for each model, causing rank reversals that do not reflect true recommendation quality.",
+      "Random splitting assigns interactions to train/test uniformly at random, which can leak future signals into training and overestimates model performance on truly unseen items. Temporal splitting respects the chronological order of interactions, simulating real deployment conditions where a model must predict future behavior — it is stricter and more realistic, but requires timestamped data and tends to lower absolute metric scores across all models.",
+      "Metrics differ in what they reward: HR@K measures recall (was the item retrieved at all?), NDCG@K rewards higher-ranked correct predictions, and MRR focuses on the rank of the first hit. Models optimized for pointwise loss (e.g., MF with MSE) tend to perform relatively better on HR, while pairwise or listwise models often rank higher on NDCG. Choosing metrics without alignment to the deployment objective can misrepresent which algorithm is best.",
+      "Full-ranking evaluation scores every item in the catalog for each user, making it O(|U| × |I|) per evaluation pass, which is prohibitive for very large catalogs. Mitigation strategies include approximate nearest-neighbor retrieval for candidate generation before exact ranking, batched GPU-accelerated scoring, and restricting evaluation to a representative user subset. The paper acknowledges this cost but argues it is necessary for unbiased results.",
+      "High-popularity items appear frequently as negatives under popularity-proportional sampling, making the ranking task harder for models that do not explicitly model popularity. Conversely, uniform sampling makes the task easier for popularity-exploiting models. For debiasing algorithms specifically, this means evaluation under biased sampling will understate their benefit — they should be evaluated with full-ranking or with sampling distributions that mirror real exposure distributions to fairly measure their debiasing effect."
+    ],
+    "generated_at": "2026-04-01T11:49:12Z"
+  }
+}
