@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper proposes a federated learning framework for GNN-based recommendation systems that keeps user data local while using Intel SGX for secure subgraph sharing and Local Differential Privacy to expand local graphs. It further addresses data heterogeneity across clients using Prototype Networks and MAML for personalized, fast-adapting models.",
+    "key_idea": "Combine secure hardware enclaves (SGX) for privacy-preserving subgraph exchange with meta-learning (MAML + Prototype Networks) to train personalized GNN recommenders across distributed clients without centralizing sensitive user-item interaction data.",
+    "why_it_matters": "Practitioners building recommendation systems for regulated or privacy-sensitive domains (healthcare, finance, e-commerce) can leverage this to get the accuracy benefits of GNN-based collaborative filtering without violating data residency or privacy requirements.",
+    "possible_use_cases": [
+      "Privacy-compliant product recommendations in e-commerce platforms where user purchase graphs cannot leave individual devices or regional servers",
+      "Federated movie or content recommendations across competing streaming services that want to collaborate on model quality without sharing subscriber data",
+      "Healthcare recommendation systems (e.g., treatment or clinical trial matching) where patient interaction graphs must remain within hospital boundaries"
+    ],
+    "generated_at": "2026-04-01T07:06:03Z"
+  },
+  "deep": {
+    "method_breakdown": "Each client trains a GNN on its local user-item subgraph and shares only gradients with a central server for federated aggregation. To mitigate data scarcity, clients securely exchange subgraph neighborhoods using Intel SGX for trusted execution of node intersection computation, while Local Differential Privacy (LDP) adds noise to protect individual data during the exchange. Personalization is achieved by combining Prototype Networks (PN) for client-specific representation encoding with MAML-style meta-learning, enabling rapid fine-tuning to heterogeneous client distributions.",
+    "key_innovation": "The core novelty is the pairing of SGX-based secure subgraph expansion with LDP for privacy-preserving local graph augmentation in a federated GNN setting — prior federated GNN work either ignores graph sparsity or relies on weaker cryptographic guarantees. The secondary innovation is applying MAML+Prototype Networks jointly to federated GNN recommendation, addressing non-IID graph heterogeneity that standard FedAvg cannot handle.",
+    "technical_insight": "Using SGX to compute node set intersections enables clients to discover shared items/users and exchange relevant subgraph structure without exposing raw data — this directly attacks the cold-start/sparse-graph problem in federated settings while maintaining a hardware-enforced trust boundary. Without this expansion step, local GNNs would suffer severely from neighborhood truncation, making aggregation ineffective.",
+    "limitations": "SGX availability is a hard hardware dependency, limiting deployment to SGX-capable infrastructure and introducing a trusted hardware assumption that may be violated by known SGX side-channel attacks (e.g., Spectre, Foreshadow). LDP introduces a fundamental privacy-utility tradeoff that degrades recommendation quality at strong privacy budgets. MAML's bi-level optimization is computationally expensive per client, which may be prohibitive on mobile/edge devices. Experiments are on static graph snapshots, so the method's behavior under dynamic user-item graph evolution is untested.",
+    "interview_questions": [
+      "How does SGX enable subgraph expansion while preserving privacy, and what are its threat model assumptions?",
+      "Why is standard FedAvg insufficient for federated GNN-based recommendation, and how does MAML address this?",
+      "What is the role of Prototype Networks in this framework, and how do they interact with MAML?",
+      "How does Local Differential Privacy interact with gradient sharing, and what privacy budget tradeoffs are involved?",
+      "What are the scalability bottlenecks when the number of clients or graph size grows large?"
+    ],
+    "interview_answers": [
+      "SGX creates an isolated trusted execution environment (TEE) that computes the intersection of node sets (e.g., shared items) between clients without exposing the full node list to any party. The threat model assumes the SGX enclave itself is uncompromised — it does not protect against physical attacks or known microarchitectural side channels, which is a real-world limitation.",
+      "FedAvg aggregates model parameters by averaging, which implicitly assumes IID data across clients. In recommendation graphs, each client's user-item graph has highly heterogeneous structure and interaction patterns (non-IID), so averaging parameters degrades personalization. MAML learns a meta-initialization that can be rapidly fine-tuned per client with few gradient steps, making it robust to this heterogeneity.",
+      "Prototype Networks generate client-specific embedding prototypes that capture the local data distribution's semantic center. These prototypes serve as conditioning signals for the MAML meta-learner, allowing the fine-tuning phase to be guided by local distribution characteristics rather than starting from a generic initialization, improving convergence speed and recommendation quality on sparse local graphs.",
+      "LDP perturbs gradients or data locally before they leave the client device, providing a formal epsilon-differential privacy guarantee. The privacy budget epsilon governs the noise magnitude — smaller epsilon means stronger privacy but higher noise, degrading gradient signal quality and ultimately recommendation accuracy. The paper must calibrate epsilon per dataset to balance this tradeoff, and composition across training rounds further erodes the total privacy budget.",
+      "SGX-based node intersection requires pairwise secure computation between clients, which scales quadratically O(n^2) in the number of clients unless batched or approximated. MAML's inner-loop optimization requires storing second-order gradients, which is memory-intensive per client. Graph convolution operations scale with edge count, so dense user-item graphs on large datasets significantly increase per-round communication and compute costs."
+    ],
+    "generated_at": "2026-04-01T07:06:30Z"
+  }
+}

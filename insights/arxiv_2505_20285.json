@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "MaskSearch is a pre-training framework for LLMs that teaches models to use search tools by having them fill in masked spans in text using retrieved information, then fine-tunes them on downstream tasks with both SFT and reinforcement learning. This approach gives agents universal retrieval and reasoning capabilities that transfer well across domains.",
+    "key_idea": "By pre-training on a Retrieval Augmented Mask Prediction (RAMP) task—where the model must search for information to fill masked spans—the LLM learns generalizable search and reasoning skills before being specialized for any particular task.",
+    "why_it_matters": "Practitioners building RAG or agentic search systems can use this framework to produce models with stronger, more transferable retrieval-reasoning abilities that generalize beyond the narrow distribution of task-specific training data, reducing the need for large labeled datasets per task.",
+    "possible_use_cases": [
+      "Multi-hop open-domain question answering where answers require chaining multiple search queries",
+      "Building general-purpose research agents that can autonomously retrieve and synthesize information from the web",
+      "Improving retrieval-augmented code assistants that need to look up documentation or APIs before generating answers"
+    ],
+    "generated_at": "2026-04-01T07:04:41Z"
+  },
+  "deep": {
+    "method_breakdown": "MaskSearch introduces a pre-training task called RAMP (Retrieval Augmented Mask Prediction), where an LLM learns to use search tools to fill masked spans across large corpora, building general-purpose retrieval and reasoning skills before task-specific fine-tuning. After pre-training, the model is fine-tuned using SFT (via a multi-agent pipeline with planner/rewriter/observer roles plus a self-evolving teacher) and RL (via DAPO with hybrid answer+format rewards). Curriculum learning progressively increases difficulty by varying the number of masked spans.",
+    "key_innovation": "The core novelty is decoupling agentic search capability from task-specific supervision by grounding pre-training in a retrieval-augmented masking objective over general text — rather than relying solely on QA-style training data. This allows the model to generalize search behaviors to out-of-domain tasks, which prior RAG and agent training methods (tied to task-specific corpora) cannot do as effectively.",
+    "technical_insight": "The RAMP pre-training objective is the most critical design choice: by requiring the model to actively invoke search tools to recover masked information from diverse text, it forces the agent to learn when and how to retrieve — not just how to use retrieved content. This builds retrieval as a general cognitive skill rather than a task-conditioned reflex, which is why it transfers to out-of-domain benchmarks.",
+    "limitations": "The pre-training phase requires large-scale data with search tool integration, making it computationally expensive and dependent on the quality/coverage of the indexed knowledge source. The masking heuristic may not uniformly produce hard retrieval cases, so some masked spans may be resolvable without retrieval (trivial gradient signal). Curriculum learning based solely on span count is a weak proxy for actual reasoning difficulty. The evaluation is limited to open-domain multi-hop QA, leaving generalization to other agentic tasks (e.g., code, tool use, planning) unverified.",
+    "interview_questions": [
+      "How does RAMP differ from standard masked language modeling (e.g., BERT) in terms of what the model must learn?",
+      "Why is it important to pre-train on search-augmented masking rather than simply scaling up SFT data on downstream QA tasks?",
+      "How does the multi-agent SFT pipeline (planner, rewriter, observer) generate training data, and what role does the self-evolving teacher play?",
+      "What is DAPO and why was it chosen over PPO or other RL frameworks for the fine-tuning stage?",
+      "How does curriculum learning based on masked span count address the challenge of training stability in agentic RL settings?"
+    ],
+    "interview_answers": [
+      "Standard MLM predicts masked tokens using bidirectional context within the same document — no external tool use is needed. RAMP requires the model to issue search queries to an external retrieval system to recover masked spans, teaching it to recognize information gaps and formulate effective queries as an active skill rather than passive interpolation.",
+      "Task-specific SFT data encodes retrieval behavior tied to a particular domain's query distribution and answer format. Pre-training on diverse masked text forces the model to develop domain-agnostic retrieval intuitions — recognizing that a span is 'unknown from context' and worth retrieving — which transfers better to held-out tasks where the query distribution shifts.",
+      "The planner decomposes the question into sub-queries, the rewriter reformulates queries for better retrieval, and the observer evaluates whether retrieved content is sufficient. This pipeline generates multi-step search trajectories as SFT demonstrations. The self-evolving teacher is likely the model trained on initial demonstrations that then generates higher-quality trajectories for subsequent rounds of SFT, bootstrapping data quality without human annotation.",
+      "DAPO (likely a variant of group-relative policy optimization with decoupled clipping and dynamic sampling) is preferred over PPO for its training stability in long-horizon agentic tasks. PPO's value function estimation is noisy for sparse reward settings like multi-hop QA; DAPO's group-based advantage normalization reduces variance and avoids reward hacking, which is critical when the model must chain multiple retrieval steps.",
+      "Curriculum learning starts with single masked spans (easy: one retrieval step needed) and gradually increases to multiple spans (hard: multi-hop retrieval chains). This scaffolds the RL exploration problem — the model first learns basic retrieval invocation reliably before being asked to coordinate multi-step strategies. It prevents early-training collapse where the agent never discovers valid retrieval sequences and receives only zero rewards."
+    ],
+    "generated_at": "2026-04-01T07:05:08Z"
+  }
+}

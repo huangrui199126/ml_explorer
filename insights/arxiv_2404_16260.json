@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "OmniSearchSage is a multi-task embedding system that jointly learns a single query embedding space shared with pin and product embeddings for Pinterest search, enriched with LLM-generated image captions, engagement signals, and user boards. Deployed at 300k RPS, it achieved >8% relevance, >7% engagement, and >5% ads CTR gains over the prior system.",
+    "key_idea": "A single unified embedding space for heterogeneous search entities (queries, pins, products) trained with multi-task learning outperforms separate specialized models by enabling cross-entity compatibility and shared representation learning.",
+    "why_it_matters": "Practitioners building search or recommendation systems can learn how to unify retrieval across multiple entity types in one model without sacrificing compatibility with existing embeddings, while using cheap generative signals (LLM captions) to close the text-image gap.",
+    "possible_use_cases": [
+      "Unified semantic search across mixed content types (images, products, text queries) in e-commerce or social platforms",
+      "Replacing multiple specialized embedding models with a single multi-task model to reduce infrastructure cost and improve cross-domain retrieval",
+      "Enriching sparse or noisy content metadata using LLM-generated captions to improve embedding quality for visual items"
+    ],
+    "generated_at": "2026-04-01T07:07:27Z"
+  },
+  "deep": {
+    "method_breakdown": "OmniSearchSage jointly trains a unified query embedding space alongside pin and product embeddings using a multi-task learning framework, where diverse content signals (LLM-generated image captions, engagement history, user-curated boards) enrich entity representations. The model uses a shared embedding space so a single query vector can retrieve across both pins and products simultaneously. Compatibility constraints ensure the new embeddings interoperate with pre-existing pin/product embeddings already deployed in the stack.",
+    "key_innovation": "The key novelty is the unified multi-entity embedding space where one query embedding is jointly compatible with heterogeneous entity types (pins and products) rather than maintaining separate retrieval towers per entity type. Prior systems typically trained independent models per entity; OmniSearchSage shows that joint training with shared query representation improves all tasks simultaneously via cross-entity transfer.",
+    "technical_insight": "The most critical design choice is enriching entity representations with LLM-generated image captions. Pins are inherently visual but sparse in text; generative captions bridge the semantic gap between visual content and text-based queries, enabling the model to ground visual entities in the same language space as search queries — this directly explains the relevance gains beyond what engagement signals alone could provide.",
+    "limitations": "The system relies heavily on LLM-generated captions at indexing time, creating a dependency on caption quality and introducing latency/cost for new content ingestion. Compatibility constraints with pre-existing embeddings may limit how aggressively the new model can diverge from the old embedding geometry, potentially leaving accuracy on the table. The approach is also Pinterest-specific in data design (boards, repins) and may not transfer directly to domains without rich implicit engagement signals.",
+    "interview_questions": [
+      "How does OmniSearchSage ensure the query embedding is jointly compatible with both pin and product embeddings during training?",
+      "What role do LLM-generated image captions play and why are they more valuable than raw image features alone?",
+      "How do you handle the backward compatibility constraint with pre-existing pin/product embeddings already deployed in production?",
+      "What multi-task learning loss formulation allows a single model to improve relevance, engagement, and ads CTR simultaneously without trade-offs?",
+      "What are the key engineering challenges in serving these embeddings at 300k requests per second with low latency, and how were they addressed?"
+    ],
+    "interview_answers": [
+      "The model is trained with a shared query encoder whose output is placed in a common embedding space used by both pin and product encoders. The loss functions for pin retrieval and product retrieval both pull the query embedding toward relevant entities across types, forcing the query tower to learn representations that generalize across entity types rather than overfitting to one.",
+      "LLM-generated captions convert visual content into rich natural language descriptions that are semantically aligned with how users phrase search queries. Raw image features live in a different modality space and require a learned projection that can be noisy; captions provide high-quality text that directly overlaps with query vocabulary, enabling stronger token-level and semantic matching.",
+      "The authors design the new embedding space to be geometrically compatible with legacy embeddings, likely via a combination of alignment losses or by initializing from prior model checkpoints and constraining drift. This allows incremental rollout — new query embeddings can retrieve from both newly indexed entities using new embeddings and the existing index without requiring a full re-index.",
+      "The multi-task setup uses separate task-specific loss heads (e.g., contrastive losses for relevance, engagement-weighted losses for CTR) that all backpropagate through the shared query encoder. The joint training signal acts as a regularizer — each task prevents the model from overfitting to spurious correlations in another, and the combined gradient leads to a query representation that is robust across objectives.",
+      "Key challenges include ANN index freshness, embedding dimension constraints for memory, and inference latency for the encoder. Solutions typically involve quantization of embeddings, approximate nearest neighbor indices (e.g., FAISS or HNSW) tuned for recall/latency trade-offs, and model distillation or efficient transformer architectures to keep per-request encoder inference within latency budgets at that query volume."
+    ],
+    "generated_at": "2026-04-01T07:07:53Z"
+  }
+}
