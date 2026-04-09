@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def reshape_matrix(a: list[list[int|float]], new_shape: tuple[int, int]) -> list[list[int|float]]:\n    if not a or not a[0]:\n        return []\n    rows, cols = len(a), len(a[0])\n    total = rows * cols\n    new_rows, new_cols = new_shape\n    if total != new_rows * new_cols:\n        return []\n    flat = [a[i][j] for i in range(rows) for j in range(cols)]\n    return [[flat[i * new_cols + j] for j in range(new_cols)] for i in range(new_rows)]",
+    "explanation": "The core insight is that reshaping is just a reinterpretation of a flat sequence of elements. We first flatten the 2D matrix into a 1D list using row-major (C-style) order — left to right, top to bottom. Before doing so, we validate that the total element count matches the target shape's product; if not, reshaping is impossible and we return [].\n\nOnce flattened, we reconstruct the 2D result by slicing the flat list into chunks of new_cols. The index formula `i * new_cols + j` maps a 2D position back to its flat offset, which is the fundamental relationship between row-major storage and 2D indexing.\n\nEdge case handling is important here: an empty input matrix (empty outer list or empty inner rows) should return [] rather than crash, so we guard against that upfront.",
+    "key_learnings": [
+      "Reshape validity check: total elements must be conserved — rows*cols == new_rows*new_cols",
+      "Row-major (C) order: elements are stored/read left→right, top→bottom; column-major (Fortran) order is the transpose of this",
+      "Flat index ↔ 2D index: flat[i*cols + j] == matrix[i][j] — essential for manual indexing problems",
+      "Always handle edge cases first (empty input, incompatible shapes) before the main logic",
+      "Interview tip: interviewers often ask you to implement reshape without library calls to test your understanding of memory layout"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef reshape_matrix(a: list[list[int|float]], new_shape: tuple[int, int]) -> list[list[int|float]]:\n    arr = np.array(a)\n    if arr.size != new_shape[0] * new_shape[1]:\n        return []\n    return arr.reshape(new_shape).tolist()",
+    "explanation": "NumPy's `reshape` method reinterprets the underlying data buffer without copying it (when possible), making it extremely efficient. The array's contiguous memory block is simply viewed through a different shape lens — no element movement occurs unless the memory layout requires it.\n\nWe validate element count before calling reshape to avoid NumPy raising a ValueError, instead returning [] as the problem specifies. After reshaping, `.tolist()` converts the NumPy array back to a native Python list of lists, which is the required return type.\n\nNote that `np.reshape(arr, new_shape)` and `arr.reshape(new_shape)` are equivalent. NumPy defaults to C (row-major) order, matching the pure Python approach.",
+    "key_learnings": [
+      "`arr.reshape()` returns a view (not a copy) when memory layout allows — O(1) time/space in the best case",
+      "Always validate before reshape to control error behavior; NumPy raises ValueError, but the problem wants []",
+      "`-1` as a dimension in reshape lets NumPy infer that axis: `arr.reshape(-1, 4)` infers the row count automatically",
+      "`.tolist()` performs a deep conversion — nested NumPy arrays become nested Python lists with native int/float types",
+      "NumPy uses C order (row-major) by default; pass `order='F'` for Fortran (column-major) reshaping"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "3"
+}

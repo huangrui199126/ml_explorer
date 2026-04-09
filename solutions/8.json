@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def inverse_2x2(matrix: list[list[float]]) -> list[list[float]] | None:\n    a, b = matrix[0][0], matrix[0][1]\n    c, d = matrix[1][0], matrix[1][1]\n    \n    det = a * d - b * c\n    if det == 0:\n        return None\n    \n    inv_det = 1.0 / det\n    return [\n        [ d * inv_det, -b * inv_det],\n        [-c * inv_det,  a * inv_det]\n    ]",
+    "explanation": "The inverse of a 2x2 matrix [[a, b], [c, d]] follows a closed-form formula: swap the diagonal elements (a and d), negate the off-diagonal elements (b and c), and divide everything by the determinant (ad - bc). This formula is derived from the adjugate matrix divided by the determinant — for 2x2, the adjugate is simply [[d, -b], [-c, a]].\n\nThe determinant check is critical: a zero determinant means the matrix is singular (its rows/columns are linearly dependent), and no inverse exists. Geometrically, the transformation collapses space into a lower dimension, making it irreversible.\n\nUsing inv_det = 1.0 / det and multiplying avoids four separate divisions, which is a minor but clean optimization. Floating-point division by the determinant is done once rather than four times.",
+    "key_learnings": [
+      "The 2x2 inverse formula is: (1/det) * [[d, -b], [-c, a]] — swap diagonal, negate off-diagonal, scale by 1/det",
+      "Determinant = ad - bc; when det == 0, the matrix is singular and has no inverse",
+      "For larger matrices, Gaussian elimination or LU decomposition is used instead of closed-form formulas",
+      "In interviews, always handle the non-invertible edge case explicitly — returning None or raising ValueError are both acceptable with justification",
+      "A matrix is invertible iff its rows (and columns) are linearly independent — the determinant captures this in a single scalar"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef inverse_2x2(matrix: list[list[float]]) -> list[list[float]] | None:\n    mat = np.array(matrix, dtype=float)\n    det = np.linalg.det(mat)\n    \n    if np.isclose(det, 0.0):\n        return None\n    \n    return np.linalg.inv(mat).tolist()",
+    "explanation": "NumPy's np.linalg.inv uses LAPACK routines (typically LU decomposition) to compute the inverse, which generalizes beyond 2x2 matrices. For a 2x2 case it's equivalent to the closed-form formula but expressed through a general-purpose numerical linear algebra backend.\n\nThe key difference from the pure Python version is using np.isclose(det, 0.0) instead of det == 0. Floating-point arithmetic can produce very small but non-zero determinants for nearly-singular matrices — np.isclose applies a relative and absolute tolerance, making the singularity check numerically robust.\n\nIn practice, for production code you would typically use np.linalg.inv directly and catch np.linalg.LinAlgError for singular matrices rather than pre-checking the determinant. Both approaches are valid; the explicit det check mirrors the problem's intent more clearly.",
+    "key_learnings": [
+      "Use np.isclose() instead of == 0 for floating-point determinant checks — exact zero is rarely hit due to rounding errors",
+      "np.linalg.inv raises LinAlgError on singular matrices — catching it is an alternative to pre-checking the determinant",
+      "np.linalg.det and np.linalg.inv both use LAPACK under the hood, giving O(n³) complexity for general n×n matrices",
+      "For solving Ax = b, prefer np.linalg.solve(A, b) over computing A_inv @ b — it's faster and more numerically stable",
+      "Condition number (np.linalg.cond) measures how close a matrix is to singular — high condition number signals numerical instability even when det != 0"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "8"
+}

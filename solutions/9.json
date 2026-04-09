@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "def matrixmul(a: list[list[int|float]], b: list[list[int|float]]) -> list[list[int|float]]:\n    rows_a = len(a)\n    cols_a = len(a[0]) if rows_a > 0 else 0\n    rows_b = len(b)\n    cols_b = len(b[0]) if rows_b > 0 else 0\n\n    if cols_a != rows_b:\n        return -1\n\n    c = [[0] * cols_b for _ in range(rows_a)]\n    for i in range(rows_a):\n        for j in range(cols_b):\n            for k in range(cols_a):\n                c[i][j] += a[i][k] * b[k][j]\n    return c",
+    "explanation": "Matrix multiplication C = A·B is defined when A has shape (m, n) and B has shape (n, p), producing C with shape (m, p). The compatibility condition requires the number of columns in A to equal the number of rows in B — if this fails, we return -1 as specified.\n\nThe core computation uses three nested loops: the outer two iterate over the output cell (i, j), and the inner loop accumulates the dot product of row i of A with column j of B. Specifically, C[i][j] = sum(A[i][k] * B[k][j] for k in range(n)).\n\nThis naive O(m·n·p) algorithm is straightforward and correct. While not the most efficient for large matrices, it directly mirrors the mathematical definition and is the expected implementation in interviews when no library is allowed.",
+    "key_learnings": [
+      "Shape compatibility: cols(A) must equal rows(B); output shape is (rows(A), cols(B))",
+      "C[i][j] is the dot product of the i-th row of A and j-th column of B",
+      "Naive triple-loop is O(m·n·p) time, O(m·p) space for the output matrix",
+      "Returning a sentinel value (-1) for invalid input is a common pattern — watch for edge cases like empty matrices",
+      "Strassen's algorithm reduces complexity to ~O(n^2.81) but is rarely required in interviews"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef matrixmul(a: list[list[int|float]], b: list[list[int|float]]) -> list[list[int|float]]:\n    A = np.array(a)\n    B = np.array(b)\n\n    if A.ndim != 2 or B.ndim != 2 or A.shape[1] != B.shape[0]:\n        return -1\n\n    C = A @ B\n    return C.tolist()",
+    "explanation": "NumPy's `@` operator (or equivalently `np.matmul`) performs optimized matrix multiplication using BLAS/LAPACK routines under the hood, running in highly optimized C/Fortran code with SIMD vectorization. This makes it orders of magnitude faster than pure Python loops for large matrices.\n\nWe first convert the input lists to NumPy arrays, validate shapes via `.shape`, then apply `@`. The result is converted back to a Python list with `.tolist()` to match the expected return type.\n\nUnderstanding when to reach for `@` vs `*` is critical: `*` is element-wise (Hadamard product), while `@` is matrix multiplication. For dot products of 1D vectors, `np.dot` also works, but `@` is the modern, preferred syntax for matrix ops.",
+    "key_learnings": [
+      "`@` is the matrix multiplication operator in Python 3.5+ (PEP 465); `*` is element-wise",
+      "np.matmul and @ are equivalent for 2D arrays; np.dot behaves differently for higher dimensions",
+      "NumPy delegates to BLAS (e.g. OpenBLAS, MKL) — vastly faster than Python loops for large matrices",
+      "Always check `.shape` not `len()` when working with NumPy arrays for dimensionality safety",
+      "`.tolist()` converts ndarray back to nested Python lists — important for API compatibility"
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef matrixmul(a: list[list[int|float]], b: list[list[int|float]]) -> list[list[int|float]]:\n    A = tf.constant(a, dtype=tf.float32)\n    B = tf.constant(b, dtype=tf.float32)\n\n    if A.shape.rank != 2 or B.shape.rank != 2 or A.shape[1] != B.shape[0]:\n        return -1\n\n    C = tf.linalg.matmul(A, B)\n    return C.numpy().tolist()",
+    "explanation": "TensorFlow's `tf.linalg.matmul` (also accessible as `tf.matmul`) computes matrix multiplication on tensors, supporting execution on CPU, GPU, and TPU transparently. This is the foundation of every dense/linear layer in a neural network.\n\nWe create immutable `tf.constant` tensors from the input lists with explicit `float32` dtype. Shape validation uses TensorFlow's `.shape` attribute before the multiply. The result is a tensor; we call `.numpy()` to get a NumPy array, then `.tolist()` for plain Python output.\n\nIn practice, `tf.matmul` is used implicitly inside `tf.keras.layers.Dense`, where weight matrices are multiplied against input batches. Understanding the underlying matmul operation is essential for debugging shape errors in deep learning models.",
+    "key_learnings": [
+      "tf.linalg.matmul / tf.matmul is the core op behind every Dense layer: output = input @ weights + bias",
+      "TensorFlow uses static shape inference — shape mismatches can be caught at graph construction time",
+      "Always specify dtype explicitly (float32 vs float64) to avoid silent precision/performance issues",
+      ".numpy() bridges TensorFlow tensors back to NumPy — only works in eager execution mode (default in TF2)",
+      "Batched matmul: tf.matmul supports shape (batch, m, n) @ (batch, n, p) automatically"
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\n\ndef matrixmul(a: list[list[int|float]], b: list[list[int|float]]) -> list[list[int|float]]:\n    A = torch.tensor(a, dtype=torch.float32)\n    B = torch.tensor(b, dtype=torch.float32)\n\n    if A.dim() != 2 or B.dim() != 2 or A.shape[1] != B.shape[0]:\n        return -1\n\n    C = torch.mm(A, B)\n    return C.tolist()",
+    "explanation": "PyTorch provides `torch.mm` for strict 2D matrix multiplication and `torch.matmul` for broadcasting-aware multiplication across arbitrary dimensions. Here we use `torch.mm` since we're working with exactly 2D matrices, which makes the shape contract explicit.\n\nInput lists are converted to float32 tensors via `torch.tensor`. Shape validation uses `.dim()` for rank and `.shape` for dimensions. The result tensor is directly converted to a Python list with `.tolist()`, no intermediate NumPy step needed.\n\nIn neural networks, PyTorch's `nn.Linear` internally calls `F.linear(input, weight, bias)` which is effectively `input @ weight.T + bias`. Understanding `torch.mm` vs `torch.matmul` vs `@` is important: `torch.mm` is 2D-only (strict), while `torch.matmul` and `@` handle batches and broadcasting.",
+    "key_learnings": [
+      "torch.mm: strictly 2D × 2D; torch.matmul / @: handles batches and broadcasting (use for general cases)",
+      "nn.Linear is a learned matmul: output = input @ weight.T + bias — matmul is the core of all linear layers",
+      "Autograd tracks matmul ops: gradients flow through matrix multiplications during backpropagation",
+      "torch.bmm handles batched matmul (batch, m, n) @ (batch, n, p) without broadcasting complexity",
+      ".tolist() on a CPU tensor returns nested Python lists directly, no .numpy() conversion needed"
+    ]
+  },
+  "id": "9"
+}

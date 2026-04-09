@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def calculate_matrix_mean(matrix: list[list[float]], mode: str) -> list[float]:\n    if mode == 'row':\n        return [sum(row) / len(row) for row in matrix]\n    elif mode == 'column':\n        num_cols = len(matrix[0])\n        return [sum(matrix[r][c] for r in range(len(matrix))) / len(matrix) for c in range(num_cols)]\n    else:\n        raise ValueError(f\"Invalid mode '{mode}'. Expected 'row' or 'column'.\"))",
+    "explanation": "For row mode, we iterate over each row in the matrix and compute the arithmetic mean by dividing the sum of elements by the row length. This is straightforward since each row is already a Python list.\n\nFor column mode, we iterate over column indices and gather values from all rows at that column index. This requires transposing the access pattern — instead of iterating row-first, we iterate column-first using nested comprehensions.\n\nBoth cases use list comprehensions for conciseness and efficiency within pure Python. The time complexity is O(m*n) for both modes since every element is visited exactly once.",
+    "key_learnings": [
+      "Row-wise operations are natural in row-major storage (Python lists of lists); column-wise requires transposing the access pattern",
+      "List comprehensions with sum()/len() are the idiomatic pure Python approach for reductions",
+      "Always validate the mode parameter — raising ValueError with a descriptive message is better than silently returning wrong results",
+      "Column indexing via matrix[r][c] works but numpy's axis parameter is far more readable at scale",
+      "Time complexity is O(m*n) regardless of mode — every element must be read once"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef calculate_matrix_mean(matrix: list[list[float]], mode: str) -> list[float]:\n    arr = np.array(matrix)\n    if mode == 'row':\n        return arr.mean(axis=1).tolist()\n    elif mode == 'column':\n        return arr.mean(axis=0).tolist()\n    else:\n        raise ValueError(f\"Invalid mode '{mode}'. Expected 'row' or 'column'.\")",
+    "explanation": "NumPy's `mean()` method accepts an `axis` parameter that controls the reduction dimension. `axis=1` reduces across columns within each row (yielding one mean per row), while `axis=0` reduces across rows within each column (yielding one mean per column). This directly maps to the problem's 'row' and 'column' modes.\n\nInternally, NumPy performs this computation using optimized C/BLAS routines on contiguous memory, making it significantly faster than pure Python for large matrices. The `.tolist()` call converts the resulting NumPy array back to a plain Python list to match the expected return type.\n\nUnderstanding axis semantics is critical for NumPy — axis=0 means 'collapse rows' (move along axis 0), axis=1 means 'collapse columns' (move along axis 1). This is a common source of confusion in interviews.",
+    "key_learnings": [
+      "axis=0 collapses the row dimension → result has shape (n_cols,); axis=1 collapses the column dimension → result has shape (n_rows,)",
+      "np.mean(), np.sum(), np.std() all share the same axis convention — mastering one transfers to all",
+      "Always call .tolist() when the return type must be a plain Python list, not a numpy array",
+      "NumPy vectorized ops avoid Python-level loops, giving ~10-100x speedup on large matrices",
+      "np.array(matrix) creates a 2D array from a list of lists — this conversion is O(m*n) but enables all downstream vectorized operations"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "4"
+}

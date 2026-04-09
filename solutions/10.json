@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def calculate_covariance_matrix(vectors: list[list[float]]) -> list[list[float]]:\n    n_features = len(vectors)\n    n_obs = len(vectors[0])\n\n    means = [sum(v) / n_obs for v in vectors]\n\n    def covariance(v1, v2, mean1, mean2):\n        return sum((v1[i] - mean1) * (v2[i] - mean2) for i in range(n_obs)) / (n_obs - 1)\n\n    return [\n        [covariance(vectors[i], vectors[j], means[i], means[j]) for j in range(n_features)]\n        for i in range(n_features)\n    ]",
+    "explanation": "The covariance matrix is an n×n symmetric matrix where entry (i, j) represents the covariance between feature i and feature j. Covariance measures how two variables change together: cov(X, Y) = Σ(xi - x̄)(yi - ȳ) / (n-1), where n-1 is the Bessel correction for an unbiased sample estimate.\n\nThe algorithm first computes the mean of each feature vector in O(n·m) time. Then for every pair (i, j) of features, it applies the covariance formula. This results in an O(n²·m) overall complexity, where n is the number of features and m is the number of observations.\n\nThe diagonal entries cov(i, i) are simply the variance of feature i, since (xi - x̄)² gives squared deviations. The matrix is always symmetric because cov(X, Y) = cov(Y, X), which you can verify by the commutativity of multiplication in the formula.",
+    "key_learnings": [
+      "Bessel's correction (dividing by n-1 instead of n) corrects for bias when estimating population covariance from a sample — always clarify sample vs population in interviews",
+      "The covariance matrix diagonal holds variances; off-diagonal holds pairwise covariances — this structure is fundamental to PCA, Gaussian distributions, and Kalman filters",
+      "A covariance matrix is always symmetric (cov(i,j) = cov(j,i)) and positive semi-definite — these properties enable Cholesky decomposition and other optimizations",
+      "Normalizing covariance by std deviations yields the correlation matrix — interviewers often ask you to derive one from the other",
+      "This O(n²·m) algorithm is the naive approach; in practice, vectorized implementations (NumPy) are orders of magnitude faster for large datasets"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef calculate_covariance_matrix(vectors: list[list[float]]) -> list[list[float]]:\n    matrix = np.array(vectors)  # shape: (n_features, n_obs)\n    cov = np.cov(matrix)        # ddof=1 by default (Bessel's correction)\n    return cov.tolist()",
+    "explanation": "NumPy's np.cov() accepts a 2D array where each row is a variable and each column is an observation — exactly matching our input format. Internally, it centers the data by subtracting row means, then computes (X_centered @ X_centered.T) / (n-1) using highly optimized BLAS routines (typically LAPACK under the hood).\n\nThe default ddof=1 parameter applies Bessel's correction for unbiased sample covariance. For the full population covariance, you'd pass ddof=0. The result is a symmetric n×n ndarray which we convert back to a list of lists via .tolist().\n\nThis vectorized approach is dramatically faster than the pure Python loop for large datasets because the inner product is computed with contiguous memory and SIMD instructions, avoiding Python interpreter overhead entirely.",
+    "key_learnings": [
+      "np.cov() expects shape (n_features, n_obs) — transposing to (n_obs, n_features) and using rowvar=False is an equivalent but common alternative that matches scikit-learn's convention",
+      "The underlying formula is C = X_centered @ X_centered.T / (n-1), which is useful to know when implementing custom covariance estimators (e.g., shrinkage with Ledoit-Wolf)",
+      "ddof (delta degrees of freedom) controls the divisor: ddof=1 for sample covariance, ddof=0 for population — always verify which one your interviewer expects",
+      "np.corrcoef() wraps np.cov() and normalizes by standard deviations — understanding this relationship shows fluency with the stats-to-code pipeline",
+      "For ill-conditioned or near-singular covariance matrices (more features than samples), regularization like adding λI is standard practice in ML — pure np.cov() alone won't handle this"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "10"
+}

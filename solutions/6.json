@@ -1,0 +1,37 @@
+{
+  "python": {
+    "code": "import math\n\ndef calculate_eigenvalues(matrix: list[list[float|int]]) -> list[float]:\n    a, b = matrix[0][0], matrix[0][1]\n    c, d = matrix[1][0], matrix[1][1]\n    \n    trace = a + d\n    determinant = a * d - b * c\n    \n    discriminant = trace**2 - 4 * determinant\n    sqrt_disc = math.sqrt(abs(discriminant))\n    \n    lambda1 = (trace + sqrt_disc) / 2\n    lambda2 = (trace - sqrt_disc) / 2\n    \n    return sorted([lambda1, lambda2], reverse=True)",
+    "explanation": "For a 2x2 matrix, eigenvalues are found by solving the characteristic equation det(A - λI) = 0. Expanding this determinant yields the quadratic: λ² - tr(A)λ + det(A) = 0, where tr(A) is the trace (sum of diagonal elements) and det(A) is the determinant.\n\nApplying the quadratic formula gives λ = (tr(A) ± √(tr(A)² - 4·det(A))) / 2. The discriminant tr(A)² - 4·det(A) determines the nature of the eigenvalues: positive means two distinct real eigenvalues, zero means a repeated eigenvalue, and negative means complex eigenvalues.\n\nThis implementation handles real eigenvalues only (using abs() on the discriminant for sqrt safety). For a production system you'd want to handle complex eigenvalues using Python's complex type or cmath module. The result is sorted descending as required.",
+    "key_learnings": [
+      "Eigenvalues of a 2x2 matrix are the roots of λ² - tr(A)λ + det(A) = 0 — memorize this characteristic polynomial",
+      "The trace equals the sum of eigenvalues, and the determinant equals their product — useful for quick sanity checks",
+      "The discriminant sign tells you the eigenvalue type: positive → 2 real distinct, zero → repeated, negative → complex conjugate pair",
+      "For n×n matrices, this closed-form approach doesn't generalize — numerical methods (QR algorithm) are used instead",
+      "Eigenvalues are invariant under similarity transformations: if B = P⁻¹AP, then A and B share eigenvalues"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef calculate_eigenvalues(matrix: list[list[float|int]]) -> list[float]:\n    np_matrix = np.array(matrix, dtype=float)\n    eigenvalues, _ = np.linalg.eig(np_matrix)\n    return sorted(eigenvalues.real.tolist(), reverse=True)",
+    "explanation": "NumPy's `np.linalg.eig` computes eigenvalues (and optionally eigenvectors) using LAPACK routines under the hood — specifically the dgeev driver for general real matrices. It applies the QR algorithm iteratively to decompose the matrix into Schur form, from which eigenvalues are read off the diagonal.\n\nThe function returns a tuple: eigenvalues as a 1D array and eigenvectors as columns of a 2D array. We discard eigenvectors with `_`. For real symmetric matrices, `np.linalg.eigh` is preferred as it guarantees real outputs and is more numerically stable, but `eig` works for the general case.\n\nTaking `.real` handles the case where floating-point arithmetic produces tiny imaginary components (e.g., 1e-16j) for what should be real eigenvalues. The `.tolist()` converts NumPy scalars to Python floats for clean output.",
+    "key_learnings": [
+      "np.linalg.eig returns (eigenvalues, eigenvectors) — eigenvectors are column vectors, not rows",
+      "Use np.linalg.eigh for symmetric/Hermitian matrices: guaranteed real eigenvalues and faster O(n³) symmetric solver",
+      "The QR algorithm used internally is O(n³) and iterative — there's no general closed-form for n ≥ 5 (Abel–Ruffini theorem)",
+      "Eigenvalues from eig may have small floating-point imaginary parts even for real matrices — always take .real when you know eigenvalues are real",
+      "np.linalg.eigvals is a cheaper alternative when you only need eigenvalues and not eigenvectors"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": {
+    "code": "import torch\n\ndef calculate_eigenvalues(matrix: list[list[float|int]]) -> list[float]:\n    tensor = torch.tensor(matrix, dtype=torch.float64)\n    eigenvalues = torch.linalg.eigvals(tensor)\n    real_eigenvalues = eigenvalues.real.tolist()\n    return sorted(real_eigenvalues, reverse=True)",
+    "explanation": "PyTorch's `torch.linalg.eigvals` computes eigenvalues of a general square matrix using LAPACK routines (same underlying library as NumPy). We use `float64` precision to minimize floating-point error in the characteristic polynomial computation.\n\nThe function returns complex tensors even for real matrices, so we extract the `.real` component. Like NumPy, tiny imaginary residuals (numerical noise) can appear — taking `.real` discards these safely when we know the matrix has real eigenvalues.\n\nWhile PyTorch is primarily a deep learning framework, its `torch.linalg` module (added in PyTorch 1.9) provides a full suite of linear algebra operations useful in ML pipelines — for example, computing eigenvalues of covariance matrices or graph Laplacians without leaving the PyTorch ecosystem.",
+    "key_learnings": [
+      "torch.linalg mirrors numpy.linalg closely — if you know one, the other is straightforward (eigvals, eig, svd, solve all exist in both)",
+      "Always use float64 for numerical linear algebra in PyTorch; float32 can accumulate significant error in eigendecomposition",
+      "torch.linalg.eigh is preferred for symmetric matrices — real eigenvalues guaranteed, more stable, and eigenvectors are orthonormal",
+      "Eigendecomposition is used in ML for PCA (covariance matrix), spectral clustering (graph Laplacian), and understanding loss landscape curvature (Hessian)",
+      "torch.linalg operations are differentiable — you can backpropagate through eigendecomposition for meta-learning or optimization tasks"
+    ]
+  },
+  "id": "6"
+}
