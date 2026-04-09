@@ -3,8 +3,14 @@ import SwiftUI
 struct PaperListView: View {
     @StateObject private var vm = PapersViewModel()
     @StateObject private var bookmarks = BookmarkStore()
+    @EnvironmentObject var insightStore: InsightStore
+    @EnvironmentObject var questionStore: QuestionStore
     @State private var showFilters = false
     @State private var showBookmarks = false
+    @State private var showSettings = false
+    @State private var showInterview = false
+    @State private var showCompanyPrep = false
+    @State private var showChallenges = false
     @State private var searchPlaceholderIndex = 0
 
     private let placeholders = [
@@ -42,6 +48,22 @@ struct PaperListView: View {
         .sheet(isPresented: $showBookmarks) {
             BookmarksView(vm: vm)
                 .environmentObject(bookmarks)
+                .environmentObject(insightStore)
+                .environmentObject(questionStore)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showInterview) {
+            InterviewListView()
+                .environmentObject(questionStore)
+        }
+        .sheet(isPresented: $showCompanyPrep) {
+            CompanyInterviewView(papers: vm.papers)
+                .environmentObject(questionStore)
+        }
+        .sheet(isPresented: $showChallenges) {
+            MLChallengesListView()
         }
         .onAppear {
             // Rotate placeholder every 3s
@@ -62,6 +84,7 @@ struct PaperListView: View {
                 Section {
                     DailyPicksView(papers: vm.papers)
                         .environmentObject(bookmarks)
+                        .environmentObject(insightStore)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
@@ -89,7 +112,7 @@ struct PaperListView: View {
 
             // Paper cards
             ForEach(vm.filteredPapers) { paper in
-                NavigationLink(destination: PaperDetailView(paper: paper).environmentObject(bookmarks)) {
+                NavigationLink(destination: PaperDetailView(paper: paper, store: insightStore).environmentObject(bookmarks).environmentObject(insightStore).environmentObject(questionStore)) {
                     PaperCardView(paper: paper)
                         .environmentObject(bookmarks)
                 }
@@ -139,12 +162,48 @@ struct PaperListView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button {
-                showBookmarks = true
-            } label: {
-                Image(systemName: bookmarks.bookmarkedIDs.isEmpty ? "bookmark" : "bookmark.fill")
-                    .symbolVariant(bookmarks.bookmarkedIDs.isEmpty ? .none : .fill)
-                    .foregroundStyle(bookmarks.bookmarkedIDs.isEmpty ? .secondary : .yellow)
+            HStack(spacing: 6) {
+                UserStatusBadge()
+                Button {
+                    showBookmarks = true
+                } label: {
+                    Image(systemName: bookmarks.bookmarkedIDs.isEmpty ? "bookmark" : "bookmark.fill")
+                        .foregroundStyle(bookmarks.bookmarkedIDs.isEmpty ? Color.secondary : Color.yellow)
+                }
+                Button {
+                    showInterview = true
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "person.fill.questionmark")
+                            .foregroundStyle(questionStore.questions.isEmpty ? Color.secondary : Color.teal)
+                        if questionStore.newCount > 0 {
+                            Text("\(questionStore.newCount)")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(3)
+                                .background(Color.orange, in: Circle())
+                                .offset(x: 6, y: -6)
+                        }
+                    }
+                }
+                Button {
+                    showCompanyPrep = true
+                } label: {
+                    Image(systemName: "building.2")
+                        .foregroundStyle(Color.secondary)
+                }
+                Button {
+                    showChallenges = true
+                } label: {
+                    Image(systemName: "brain.head.profile")
+                        .foregroundStyle(Color.secondary)
+                }
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(Color.secondary)
+                }
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
