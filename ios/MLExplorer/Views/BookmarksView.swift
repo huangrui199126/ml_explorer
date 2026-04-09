@@ -3,6 +3,8 @@ import SwiftUI
 struct BookmarksView: View {
     @ObservedObject var vm: PapersViewModel
     @EnvironmentObject var bookmarks: BookmarkStore
+    @EnvironmentObject var insightStore: InsightStore
+    @EnvironmentObject var questionStore: QuestionStore
     @Environment(\.dismiss) private var dismiss
 
     private var bookmarkedPapers: [Paper] {
@@ -20,7 +22,7 @@ struct BookmarksView: View {
                     }
                 } else {
                     List(bookmarkedPapers) { paper in
-                        NavigationLink(destination: PaperDetailView(paper: paper).environmentObject(bookmarks)) {
+                        NavigationLink(destination: PaperDetailView(paper: paper, store: insightStore).environmentObject(bookmarks).environmentObject(insightStore).environmentObject(questionStore)) {
                             PaperCardView(paper: paper)
                                 .environmentObject(bookmarks)
                         }

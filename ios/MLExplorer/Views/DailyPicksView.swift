@@ -3,6 +3,8 @@ import SwiftUI
 struct DailyPicksView: View {
     let papers: [Paper]
     @EnvironmentObject var bookmarks: BookmarkStore
+    @EnvironmentObject var insightStore: InsightStore
+    @EnvironmentObject var questionStore: QuestionStore
 
     // Deterministic daily selection — rotates each day
     private var dailyPapers: [Paper] {
@@ -35,7 +37,7 @@ struct DailyPicksView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(dailyPapers) { paper in
-                        NavigationLink(destination: PaperDetailView(paper: paper)) {
+                        NavigationLink(destination: PaperDetailView(paper: paper, store: insightStore).environmentObject(bookmarks).environmentObject(insightStore).environmentObject(questionStore)) {
                             DailyPickCard(paper: paper)
                         }
                         .buttonStyle(.plain)
@@ -75,7 +77,7 @@ struct DailyPickCard: View {
                 } label: {
                     Image(systemName: bookmarks.isBookmarked(paper) ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 13))
-                        .foregroundStyle(bookmarks.isBookmarked(paper) ? .yellow : .secondary)
+                        .foregroundStyle(bookmarks.isBookmarked(paper) ? Color.yellow : Color.secondary)
                 }
                 .buttonStyle(.plain)
             }

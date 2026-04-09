@@ -5,34 +5,40 @@ struct MLChallengeDetailView: View {
     @State private var selectedTab = 0
     @State private var showPaywall = false
     @StateObject private var svc = SubscriptionService.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                headerSection
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 16)
-
-                // Tab picker
-                Picker("Tab", selection: $selectedTab) {
-                    Text("Problem").tag(0)
-                    Text("Example").tag(1)
-                    Text("Learn").tag(2)
-                }
-                .pickerStyle(.segmented)
+        VStack(spacing: 0) {
+            // Header badges
+            headerSection
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
 
-                // Tab content
+            // Segmented picker
+            Picker("Tab", selection: $selectedTab) {
+                Text("Problem").tag(0)
+                Text("Example").tag(1)
+                Text("Solution").tag(2)
+                Text("Learn").tag(3)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+
+            Divider()
+
+            // Tab content — each tab owns its own scrolling
+            Group {
                 switch selectedTab {
                 case 0: problemTab
                 case 1: exampleTab
-                case 2: learnTab
+                case 2: solutionTab
+                case 3: learnTab
                 default: EmptyView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle(challenge.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -77,50 +83,49 @@ struct MLChallengeDetailView: View {
         }
     }
 
-    // MARK: - Problem Tab
+    // MARK: - Problem Tab (WebView renders markdown + LaTeX)
 
     private var problemTab: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(challenge.description)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .lineSpacing(4)
-                .padding(.horizontal, 16)
+        VStack(spacing: 0) {
+            MathMarkdownView(markdown: challenge.cleanDescription, colorScheme: colorScheme)
 
             if !challenge.starterCode.isEmpty {
+                Divider()
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Starter Code")
+                    Label("Starter Code", systemImage: "chevron.left.forwardslash.chevron.right")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 16)
+                        .padding(.top, 12)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         Text(challenge.starterCode)
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.primary)
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
             }
         }
-        .padding(.bottom, 32)
     }
 
     // MARK: - Example Tab
 
     private var exampleTab: some View {
-        VStack(spacing: 12) {
-            exampleCard(title: "Input", icon: "arrow.right.circle", color: .blue, content: challenge.example.input)
-            exampleCard(title: "Output", icon: "arrow.left.circle", color: .green, content: challenge.example.output)
-            exampleCard(title: "Reasoning", icon: "lightbulb", color: .orange, content: challenge.example.reasoning)
+        ScrollView {
+            VStack(spacing: 12) {
+                exampleCard(title: "Input",     icon: "arrow.right.circle", color: .blue,   content: challenge.example.input)
+                exampleCard(title: "Output",    icon: "arrow.left.circle",  color: .green,  content: challenge.example.output)
+                exampleCard(title: "Reasoning", icon: "lightbulb",           color: .orange, content: challenge.example.reasoning)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 32)
     }
 
     private func exampleCard(title: String, icon: String, color: Color, content: String) -> some View {
@@ -141,87 +146,103 @@ struct MLChallengeDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    // MARK: - Solution Tab
+
+    private var solutionTab: some View {
+        Group {
+            if svc.isPro {
+                SolutionTabView(challenge: challenge)
+            } else {
+                solutionPaywall
+            }
+        }
+    }
+
+    private var solutionPaywall: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "lock.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(LinearGradient(colors: [.purple, .blue],
+                                                startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text("Pro Feature")
+                .font(.title3).fontWeight(.bold)
+            Text("Unlock Python, NumPy, TensorFlow, and PyTorch solutions with detailed explanations and key learnings.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            Button { showPaywall = true } label: {
+                Text("Unlock ML Explorer Pro")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity).frame(height: 48)
+                    .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal, 32)
+            Spacer()
+        }
+    }
+
     // MARK: - Learn Tab
 
     private var learnTab: some View {
         Group {
             if svc.isPro {
-                learnContent
+                MathMarkdownView(markdown: challenge.learnSection, colorScheme: colorScheme)
             } else {
                 learnPaywall
             }
         }
     }
 
-    private var learnContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let attributed = try? AttributedString(markdown: challenge.learnSection) {
-                Text(attributed)
-                    .font(.body)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 32)
-            } else {
-                Text(challenge.learnSection)
-                    .font(.body)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 32)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var learnPaywall: some View {
-        ZStack {
-            // Blurred preview
-            Text(challenge.learnSection.prefix(400))
-                .font(.body)
-                .lineSpacing(4)
-                .padding(.horizontal, 16)
-                .blur(radius: 6)
-                .allowsHitTesting(false)
+        ScrollView {
+            ZStack(alignment: .top) {
+                // Blurred preview
+                Text(challenge.learnSection.prefix(500))
+                    .font(.body)
+                    .lineSpacing(4)
+                    .padding(16)
+                    .blur(radius: 6)
+                    .allowsHitTesting(false)
 
-            // Overlay
-            VStack(spacing: 16) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.purple, .blue],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-
-                Text("Pro Feature")
-                    .font(.title3)
-                    .fontWeight(.bold)
-
-                Text("Unlock detailed explanations, math breakdowns, and algorithm walkthroughs for every challenge.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
-                Button {
-                    showPaywall = true
-                } label: {
-                    Text("Unlock ML Explorer Pro")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(
+                // Lock overlay
+                VStack(spacing: 16) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(
                             LinearGradient(colors: [.purple, .blue],
-                                           startPoint: .leading, endPoint: .trailing)
-                        )
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+
+                    Text("Pro Feature")
+                        .font(.title3).fontWeight(.bold)
+
+                    Text("Unlock detailed explanations, math breakdowns, and algorithm walkthroughs for every challenge.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+
+                    Button { showPaywall = true } label: {
+                        Text("Unlock ML Explorer Pro")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                LinearGradient(colors: [.purple, .blue],
+                                               startPoint: .leading, endPoint: .trailing))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.horizontal, 32)
                 }
-                .padding(.horizontal, 32)
+                .padding(.vertical, 40)
+                .frame(maxWidth: .infinity)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(16)
             }
-            .padding(.vertical, 40)
-            .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal, 16)
         }
-        .padding(.bottom, 32)
     }
 }

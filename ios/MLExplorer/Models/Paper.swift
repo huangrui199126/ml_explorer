@@ -45,6 +45,20 @@ struct Paper: Codable, Identifiable {
         }
         return authors.prefix(3).joined(separator: ", ") + " +\(authors.count - 3)"
     }
+
+    /// Derives a direct PDF URL where possible (arXiv → pdf link).
+    var pdfURL: URL? {
+        guard let urlStr = url else { return nil }
+        if urlStr.contains("arxiv.org/abs/") {
+            return URL(string: urlStr.replacingOccurrences(of: "/abs/", with: "/pdf/"))
+        }
+        if urlStr.contains("arxiv.org/pdf/") || urlStr.hasSuffix(".pdf") {
+            return URL(string: urlStr)
+        }
+        return nil
+    }
+
+    var hasPDF: Bool { pdfURL != nil }
 }
 
 struct SummaryBullet: Codable {

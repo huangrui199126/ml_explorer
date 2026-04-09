@@ -26,6 +26,15 @@ struct MLChallenge: Codable, Identifiable {
     }
 
     var difficultyLabel: String { difficulty.capitalized }
+
+    /// Description with the leading title prefix stripped (API sometimes prepends it).
+    var cleanDescription: String {
+        var text = description
+        if text.lowercased().hasPrefix(title.lowercased()) {
+            text = String(text.dropFirst(title.count))
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 struct MLExample: Codable {
