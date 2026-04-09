@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def transpose_matrix(a: list[list[int|float]]) -> list[list[int|float]]:\n    if not a or not a[0]:\n        return []\n    m, n = len(a), len(a[0])\n    return [[a[i][j] for i in range(m)] for j in range(n)]",
+    "explanation": "The transpose of an m×n matrix A is an n×m matrix where element at position (i, j) in the original becomes element at position (j, i) in the result. The outer list comprehension iterates over column indices j (0 to n-1), and the inner one iterates over row indices i (0 to m-1), effectively turning each original column into a row of the output.\n\nThe guard clause handles edge cases where the input matrix or its first row is empty, returning an empty list rather than crashing.\n\nAn alternative one-liner using zip is `list(map(list, zip(*a)))`. The `*a` unpacks the rows as separate arguments to `zip`, which then groups the i-th element from each row together — exactly the transpose operation. This is idiomatic Python and worth knowing for interviews.",
+    "key_learnings": [
+      "Transpose swaps indices: result[j][i] = original[i][j], so output shape is (n, m) for an (m, n) input",
+      "The zip(*matrix) idiom is the most Pythonic one-liner for transposing: it unpacks rows and re-zips by column position",
+      "Always handle edge cases: empty matrix or empty rows should return [] rather than raise an IndexError",
+      "List comprehension approach is O(m×n) time and O(m×n) space — you must allocate the full new matrix",
+      "In-place transpose is only possible for square matrices; rectangular matrices always require a new data structure"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef transpose_matrix(a: list[list[int|float]]) -> list[list[int|float]]:\n    return np.array(a).T.tolist()",
+    "explanation": "NumPy's `.T` attribute returns a transposed view of the array — not a copy. This means the data in memory is not moved; instead NumPy changes the strides (the step sizes used to traverse the array in each dimension). For a C-contiguous array of shape (m, n), the transposed view has shape (n, m) with swapped strides, making this an O(1) operation regardless of matrix size.\n\nCalling `.tolist()` at the end converts back to a nested Python list to match the function signature. In practice, you would skip this conversion and keep the NumPy array for further computation, since most numerical pipelines stay in NumPy.\n\nFor large matrices, using `np.transpose(a)` or `a.T` is dramatically faster than pure Python loops because it leverages contiguous memory layout and avoids Python interpreter overhead entirely.",
+    "key_learnings": [
+      "`.T` returns a view with swapped strides — O(1) time and O(1) extra space, no data is copied",
+      "`np.transpose()` is the explicit equivalent and also accepts an `axes` argument for higher-dimensional permutations",
+      "To force a memory-contiguous copy of the transpose, use `np.ascontiguousarray(a.T)` — useful before passing to C extensions",
+      "NumPy strides are the core mechanism behind views: understanding them is essential for writing high-performance numerical code",
+      "Keeping data as NumPy arrays throughout a pipeline avoids repeated `.tolist()` / `np.array()` conversion overhead"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "2"
+}

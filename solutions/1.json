@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def matrix_dot_vector(a: list[list[int|float]], b: list[int|float]) -> list[int|float]:\n    if len(a[0]) != len(b):\n        return -1\n    return [sum(row[i] * b[i] for i in range(len(b))) for row in a]",
+    "explanation": "The matrix-vector dot product works by taking each row of the matrix and computing its dot product with the vector. For an n×m matrix and a length-m vector, the result is a length-n vector where the i-th element equals the sum of element-wise products between row i and the vector.\n\nFirst we validate dimensions: the number of columns in the matrix (len(a[0])) must equal the length of the vector (len(b)). If not, we return -1 as required.\n\nThe list comprehension iterates over each row and uses sum() with a generator to accumulate the element-wise products. This is a clean, idiomatic Python approach that avoids nested for-loops while remaining readable.",
+    "key_learnings": [
+      "Always validate dimensions before matrix operations — incompatible shapes are a common source of bugs",
+      "Matrix-vector multiplication: (n×m) · (m,) → (n,); the inner dimensions must match",
+      "Use sum() with a generator expression for concise dot product computation in pure Python",
+      "The result vector length equals the number of rows in the matrix, not the number of columns",
+      "This operation is the core of a linear layer forward pass: y = Wx"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef matrix_dot_vector(a: list[list[int|float]], b: list[int|float]) -> list[int|float]:\n    mat = np.array(a)\n    vec = np.array(b)\n    if mat.shape[1] != vec.shape[0]:\n        return -1\n    return np.dot(mat, vec).tolist()",
+    "explanation": "NumPy's np.dot() dispatches to highly optimized BLAS routines (like OpenBLAS or MKL) that exploit vectorized CPU instructions (SIMD), making it orders of magnitude faster than pure Python loops for large matrices.\n\nAfter converting the inputs to NumPy arrays, we check mat.shape[1] (columns) against vec.shape[0] (vector length). np.dot(mat, vec) then performs the matrix-vector product in a single C-level call, returning a 1D ndarray which we convert back to a Python list with .tolist().\n\nIn practice, you would skip the .tolist() conversion and keep results as ndarrays to chain further NumPy operations efficiently.",
+    "key_learnings": [
+      "np.dot(A, b) handles matrix-vector multiplication; for matrix-matrix use np.matmul or the @ operator",
+      "Always check .shape[1] (columns) for dimension validation with NumPy arrays, not len()",
+      "BLAS-backed NumPy ops are ~100x faster than Python loops for large arrays due to vectorization",
+      "Use @ operator (A @ b) as a more readable alternative to np.dot for matrix multiplication",
+      ".tolist() converts ndarray back to native Python lists — useful when a specific return type is required"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "1"
+}
