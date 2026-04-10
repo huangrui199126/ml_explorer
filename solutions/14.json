@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef linear_regression_normal_equation(X: list[list[float]], y: list[float]) -> list[float]:\n    # Convert to numpy arrays for matrix operations\n    X_mat = [[1.0] + row for row in X]  # Add bias column\n    n = len(X_mat)\n    m = len(X_mat[0])\n\n    # Transpose X manually\n    X_T = [[X_mat[r][c] for r in range(n)] for c in range(m)]\n\n    # Compute X^T @ X\n    XTX = [[sum(X_T[i][k] * X_mat[k][j] for k in range(n))\n             for j in range(m)] for i in range(m)]\n\n    # Compute X^T @ y\n    XTy = [sum(X_T[i][k] * y[k] for k in range(n)) for i in range(m)]\n\n    # Gaussian elimination to solve XTX @ theta = XTy\n    aug = [XTX[i][:] + [XTy[i]] for i in range(m)]\n    for col in range(m):\n        # Partial pivoting\n        max_row = max(range(col, m), key=lambda r: abs(aug[r][col]))\n        aug[col], aug[max_row] = aug[max_row], aug[col]\n        pivot = aug[col][col]\n        if abs(pivot) < 1e-12:\n            continue\n        aug[col] = [v / pivot for v in aug[col]]\n        for row in range(m):\n            if row != col:\n                factor = aug[row][col]\n                aug[row] = [aug[row][j] - factor * aug[col][j] for j in range(m + 1)]\n\n    theta = [round(aug[i][m], 4) for i in range(m)]\n    return theta",
+    "explanation": "The normal equation derives the optimal linear regression weights analytically by minimizing the mean squared error cost function. Setting the gradient of the cost to zero yields the closed-form solution θ = (XᵀX)⁻¹Xᵀy. This avoids iterative optimization entirely — one matrix operation gives the exact global minimum.\n\nThis pure Python implementation manually handles the matrix transpose, matrix multiplication, and linear system solving via Gaussian elimination with partial pivoting. A bias column of ones is prepended to X so the intercept term θ₀ is naturally included in the solution vector alongside the feature weights.\n\nGaussian elimination with partial pivoting is used instead of directly computing the matrix inverse, which is numerically more stable. Swapping rows so the largest absolute value is the pivot reduces floating-point error accumulation during elimination.",
+    "key_learnings": [
+      "Normal equation θ = (XᵀX)⁻¹Xᵀy gives exact solution in O(n³) — no hyperparameters, no convergence issues",
+      "Always prepend a column of ones to X to fit the intercept (bias) term without special-casing it",
+      "Gaussian elimination is preferred over explicit matrix inversion for numerical stability",
+      "Partial pivoting (choosing the largest pivot) prevents division by near-zero values and reduces floating-point error",
+      "Normal equation is impractical for very large datasets (n >> 10⁴ features) due to O(n³) cost — gradient descent is preferred then"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef linear_regression_normal_equation(X: list[list[float]], y: list[float]) -> list[float]:\n    X_mat = np.array(X, dtype=float)\n    y_vec = np.array(y, dtype=float)\n\n    # Add bias (intercept) column of ones\n    X_b = np.column_stack([np.ones(X_mat.shape[0]), X_mat])\n\n    # Normal equation: theta = (X^T X)^{-1} X^T y\n    # Use lstsq for numerical stability (handles singular/near-singular XTX)\n    theta, _, _, _ = np.linalg.lstsq(X_b, y_vec, rcond=None)\n\n    return [round(float(t), 4) for t in theta]",
+    "explanation": "NumPy's linear algebra module makes the normal equation concise and numerically robust. Rather than explicitly computing (XᵀX)⁻¹, we use `np.linalg.lstsq` which solves the least-squares problem via SVD (Singular Value Decomposition). This handles rank-deficient or near-singular XᵀX matrices gracefully — situations where a naive matrix inverse would produce garbage results or raise an error.\n\nSVD-based least squares decomposes X = UΣVᵀ and computes the pseudoinverse X⁺ = VΣ⁺Uᵀ, giving θ = X⁺y. When XᵀX is invertible this is identical to the normal equation; when it is singular, it returns the minimum-norm solution instead of failing.\n\nA column of ones is prepended via `np.column_stack` to fit the bias term. This pattern — augmenting the feature matrix rather than handling the intercept separately — is idiomatic in both NumPy and scikit-learn (which uses the same approach internally).",
+    "key_learnings": [
+      "Prefer `np.linalg.lstsq` over `np.linalg.inv(X.T @ X) @ X.T @ y` — lstsq uses SVD and handles singular matrices",
+      "SVD-based pseudoinverse generalizes the normal equation: works even when features are collinear (rank-deficient X)",
+      "`np.column_stack([np.ones(n), X])` is the idiomatic way to add a bias column in NumPy",
+      "The four return values of lstsq are (solution, residuals, rank, singular values) — singular values reveal near-singularity",
+      "scikit-learn's LinearRegression uses the same SVD-based approach under the hood via scipy's lstsq"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "14"
+}

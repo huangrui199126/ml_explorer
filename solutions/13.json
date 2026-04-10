@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def determinant_4x4(matrix: list[list[int|float]]) -> float:\n    def determinant_3x3(m: list[list[int|float]]) -> float:\n        return (\n            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])\n            - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])\n            + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])\n        )\n\n    def get_minor(m: list[list[int|float]], row: int, col: int) -> list[list[int|float]]:\n        return [\n            [m[r][c] for c in range(len(m)) if c != col]\n            for r in range(len(m)) if r != row\n        ]\n\n    det = 0.0\n    for col in range(4):\n        cofactor = ((-1) ** col) * matrix[0][col] * determinant_3x3(get_minor(matrix, 0, col))\n        det += cofactor\n    return det",
+    "explanation": "Laplace's Expansion (cofactor expansion) computes the determinant of an n×n matrix by expanding along a row or column, reducing the problem to (n-1)×(n-1) determinants. Here we expand along row 0: for each element matrix[0][col], we compute its cofactor — the signed determinant of the 3×3 minor matrix formed by deleting row 0 and column col. The sign alternates as (-1)^(row+col), which for row 0 gives +, -, +, -.\n\nThe 3×3 determinant is computed directly using the Sarrus/cofactor formula along its own row 0, giving a closed-form expression. The get_minor helper builds the submatrix by list comprehension, excluding the target row and column. Combining the base case (3×3 closed form) with the 4×4 expansion gives a clean recursive decomposition.\n\nThis approach has O(n!) theoretical complexity for general n, but since n is fixed at 4 it's effectively O(1) in practice. The algorithm is numerically exact for integer inputs and sufficiently stable for floating-point inputs at small matrix sizes.",
+    "key_learnings": [
+      "Laplace expansion: det(A) = Σ_j (-1)^(i+j) * A[i][j] * det(M_ij), where M_ij is the minor after removing row i and column j",
+      "Cofactor sign pattern for row 0: +, -, +, - (follows (-1)^col since row index is 0)",
+      "Minor matrix construction via list comprehension is a clean pattern: exclude one row and one column",
+      "Recursion bottoms out at 3×3 (or 2×2) with a closed-form formula — always identify your base case",
+      "For interviews: expansion along a row/column with many zeros minimizes computation — strategic choice of expansion axis matters"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef determinant_4x4(matrix: list[list[int|float]]) -> float:\n    return float(np.linalg.det(np.array(matrix, dtype=float)))",
+    "explanation": "NumPy's np.linalg.det computes the determinant via LU decomposition, not Laplace expansion. The matrix is factored as A = P·L·U where P is a permutation matrix, L is lower triangular with 1s on the diagonal, and U is upper triangular. The determinant is then det(P) * det(L) * det(U) = ±1 * 1 * Π(U[i,i]) — just the product of U's diagonal entries with a sign from the permutation.\n\nThis approach is O(n³) versus O(n!) for Laplace expansion, making it drastically more efficient for large matrices. For a 4×4 the difference is negligible, but this is why production code always uses LU decomposition. The result is cast to float for a clean scalar return type.",
+    "key_learnings": [
+      "np.linalg.det uses LU decomposition internally — O(n³) vs O(n!) for cofactor expansion",
+      "LU decomposition: det(A) = det(P)·det(L)·det(U) = ±1 · 1 · product of U diagonal",
+      "For numerical stability, always pass dtype=float to avoid integer overflow in large matrices",
+      "np.linalg functions use LAPACK under the hood — same routines as MATLAB and SciPy",
+      "Know both algorithmic approaches: Laplace for understanding/interviews, LU for production"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "13"
+}

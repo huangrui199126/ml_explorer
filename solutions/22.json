@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "import math\n\ndef sigmoid(z: float) -> float:\n    result = 1 / (1 + math.exp(-z))\n    return round(result, 4)",
+    "explanation": "The sigmoid function maps any real number to the range (0, 1) using the formula σ(z) = 1 / (1 + e^(-z)). For large positive z, e^(-z) approaches 0, so the output approaches 1. For large negative z, e^(-z) becomes very large, so the output approaches 0. At z=0, the output is exactly 0.5, making it a smooth, differentiable threshold function.\n\nThis implementation uses Python's built-in math.exp for the exponential computation, which is precise and efficient for scalar inputs. The result is rounded to four decimal places using Python's built-in round() function as required.\n\nThe sigmoid is historically important as one of the earliest activation functions used in neural networks, particularly in logistic regression and early multilayer perceptrons. Its output can be interpreted as a probability, which makes it natural for binary classification tasks in the output layer.",
+    "key_learnings": [
+      "Sigmoid maps ℝ → (0, 1), never reaching exactly 0 or 1, making outputs interpretable as probabilities",
+      "Derivative is σ(z) * (1 - σ(z)), which is computationally cheap if you cache the forward pass output",
+      "Suffers from vanishing gradients for large |z|: derivative approaches 0 at the extremes, slowing deep network training",
+      "Preferred for binary classification output layers, but largely replaced by ReLU in hidden layers for deep networks",
+      "Numerically unstable for very large negative z (overflow in exp); production code often uses log-sum-exp tricks"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef sigmoid(z: float) -> float:\n    result = 1 / (1 + np.exp(-z))\n    return round(float(result), 4)",
+    "explanation": "NumPy's implementation mirrors the math module approach but uses np.exp, which is vectorized and works on scalars, arrays, and tensors alike. This makes it trivially extensible: pass in a NumPy array and you get element-wise sigmoid outputs across the entire array in one call, leveraging BLAS-level performance.\n\nConverting the result with float() ensures the return value is a plain Python float rather than a NumPy scalar, which keeps the function signature consistent. The round() call then applies the four-decimal precision requirement.\n\nIn practice, NumPy is the standard choice for implementing sigmoid in custom training loops or when working with raw arrays before adopting a full deep learning framework. It also handles edge cases like np.inf and -np.inf gracefully, returning 1.0 and 0.0 respectively.",
+    "key_learnings": [
+      "np.exp is vectorized — the same function body works for scalars and arrays without any code changes",
+      "NumPy sigmoid is the building block used internally by many ML libraries before GPU acceleration is needed",
+      "For batch processing, vectorized NumPy sigmoid is dramatically faster than a Python loop over elements",
+      "Wrap NumPy scalars with float() when a plain Python numeric type is required by the function contract",
+      "np.clip(-z, -500, 500) before exp prevents overflow for extreme inputs in production implementations"
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef sigmoid(z: float) -> float:\n    result = tf.math.sigmoid(tf.constant(z, dtype=tf.float32))\n    return round(float(result.numpy()), 4)",
+    "explanation": "TensorFlow provides tf.math.sigmoid as a first-class op that integrates with the computational graph and automatic differentiation system. Wrapping the scalar in tf.constant creates a 0-D tensor, and calling .numpy() converts the result back to a Python-compatible value for rounding.\n\nThe key advantage of using the TF op over a manual implementation is gradient support: within a tf.GradientTape context, TensorFlow automatically computes dσ/dz = σ(z)(1 - σ(z)) for backpropagation. This is critical for training neural networks where sigmoid appears in the computation graph.\n\nTensorFlow also applies numerically stable implementations internally, using log-sum-exp reformulations to avoid overflow for extreme inputs. This makes tf.math.sigmoid safer than a naive 1/(1+exp(-z)) in production training pipelines.",
+    "key_learnings": [
+      "tf.math.sigmoid integrates with tf.GradientTape for automatic differentiation — gradients flow through it automatically",
+      "TF ops work on CPU, GPU, and TPU transparently; the same code scales from laptop to data center",
+      "Keras layers like tf.keras.layers.Dense with activation='sigmoid' use this op under the hood",
+      "For output layers in binary classification, pair sigmoid with tf.keras.losses.BinaryCrossentropy(from_logits=False)",
+      "tf.nn.sigmoid_cross_entropy_with_logits is more numerically stable than applying sigmoid then log-loss separately"
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\n\ndef sigmoid(z: float) -> float:\n    result = torch.sigmoid(torch.tensor(z, dtype=torch.float32))\n    return round(result.item(), 4)",
+    "explanation": "PyTorch's torch.sigmoid applies the sigmoid function to a tensor and is fully integrated with the autograd engine. Converting the scalar to a tensor via torch.tensor and retrieving the value with .item() keeps the interface clean and consistent with the scalar float signature.\n\nWhen used in a neural network module (e.g., inside nn.Module.forward()), PyTorch records the sigmoid operation in the computation graph. Calling .backward() on a downstream loss then computes gradients through sigmoid automatically using the chain rule and its analytical derivative σ(z)(1-σ(z)).\n\nPyTorch also exposes torch.nn.Sigmoid() as a module, and F.sigmoid (deprecated in favor of torch.sigmoid) from torch.nn.functional, giving flexible usage patterns depending on whether you need a stateless function or a composable layer in an nn.Sequential.",
+    "key_learnings": [
+      "torch.sigmoid is an autograd-aware op — gradients propagate through it automatically during .backward()",
+      "Use .item() to extract a Python scalar from a 0-D tensor, avoiding accidental tensor-in-float-context errors",
+      "torch.nn.Sigmoid() is the module form, useful when building sequential models with nn.Sequential",
+      "For binary classification training, prefer nn.BCEWithLogitsLoss (applies sigmoid + BCE in one numerically stable op)",
+      "Sigmoid saturates at extremes (output ≈ 0 or 1), causing vanishing gradients — ReLU/GELU are preferred for hidden layers"
+    ]
+  },
+  "id": "22"
+}

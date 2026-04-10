@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\nfrom typing import List, Tuple\n\ndef k_fold_cross_validation(n_samples: int, k: int = 5, shuffle: bool = True) -> List[Tuple[List[int], List[int]]]:\n    indices = list(range(n_samples))\n    if shuffle:\n        np.random.shuffle(indices)\n    \n    # Distribute extra samples to the first folds\n    fold_sizes = [n_samples // k + (1 if i < n_samples % k else 0) for i in range(k)]\n    \n    # Build fold index ranges\n    folds = []\n    start = 0\n    for size in fold_sizes:\n        folds.append(indices[start:start + size])\n        start += size\n    \n    result = []\n    for i in range(k):\n        test_indices = folds[i]\n        train_indices = [idx for j, fold in enumerate(folds) if j != i for idx in fold]\n        result.append((train_indices, test_indices))\n    \n    return result",
+    "explanation": "The algorithm starts by creating an ordered index array [0, 1, ..., n_samples-1] and optionally shuffling it in-place using np.random.shuffle. Shuffling is critical in practice to prevent fold splits that are biased by any inherent ordering in the dataset (e.g., class labels sorted sequentially).\n\nFold sizes are computed using integer division with the remainder distributed one-per-fold to the earliest folds. For 10 samples and k=3, this yields sizes [4, 3, 3]. The indices list is then sliced into these contiguous chunks, forming the actual fold groups.\n\nFor each fold iteration i, that fold becomes the test set and all remaining folds are concatenated to form the training set. This ensures every sample appears in exactly one test set across all k iterations, which is the defining property of cross-validation.\n\nThe final output is a list of (train_indices, test_indices) tuples where the indices refer to positions in the original dataset. A model trainer would use these to slice X[train_indices] and y[train_indices] for fitting, then evaluate on X[test_indices].",
+    "key_learnings": [
+      "K-Fold guarantees every sample is used for testing exactly once — this is what makes the resulting metric estimate unbiased relative to a single train/test split",
+      "The remainder distribution trick (n_samples % k extra samples to the first folds) is the standard sklearn-compatible approach and worth memorizing for interviews",
+      "shuffle=True is almost always correct in practice; shuffle=False is used for time-series data where future data must never appear in training",
+      "The list comprehension `[idx for j, fold in enumerate(folds) if j != i for idx in fold]` is a clean way to flatten all folds except one — interviewers appreciate concise set-complement patterns",
+      "K-Fold with k=n_samples is Leave-One-Out Cross-Validation (LOOCV) — a useful edge case to mention when discussing bias-variance tradeoffs of k"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\nfrom typing import List, Tuple\n\ndef k_fold_cross_validation(n_samples: int, k: int = 5, shuffle: bool = True) -> List[Tuple[List[int], List[int]]]:\n    indices = np.arange(n_samples)\n    if shuffle:\n        np.random.shuffle(indices)\n    \n    # np.array_split handles uneven folds automatically:\n    # first (n_samples % k) folds get one extra element\n    folds = np.array_split(indices, k)\n    \n    result = []\n    for i in range(k):\n        test_indices = folds[i].tolist()\n        train_indices = np.concatenate([folds[j] for j in range(k) if j != i]).tolist()\n        result.append((train_indices, test_indices))\n    \n    return result",
+    "explanation": "The NumPy solution leverages np.array_split, which handles unequal fold sizes automatically using the same remainder-distribution logic: when n_samples is not divisible by k, the first (n_samples % k) subarrays receive one extra element. This eliminates the need to manually compute fold sizes.\n\nnp.concatenate efficiently merges all non-test folds into a single training array in one operation rather than using a Python-level list comprehension. For large datasets this is significantly faster due to NumPy's contiguous memory layout and C-level array operations.\n\nThe .tolist() calls at the end convert NumPy integer arrays to plain Python lists of ints as required by the return type. This is a common interview gotcha — np.int64 values look like Python ints but fail isinstance(x, int) checks and can cause issues with downstream libraries expecting native Python types.\n\nThis NumPy approach is the closest to how sklearn's KFold is implemented internally, making it the most production-relevant version to understand.",
+    "key_learnings": [
+      "np.array_split is the idiomatic NumPy tool for this problem — it handles remainder distribution automatically, unlike np.split which raises an error on uneven splits",
+      "np.concatenate on a list comprehension of arrays is the vectorized alternative to nested Python loops for combining folds — O(n) but with low constant factors",
+      "Always call .tolist() when the spec requires Python lists; np.int64 ≠ int in Python type checks and JSON serialization",
+      "np.arange(n) is preferred over list(range(n)) as the starting point when subsequent operations will be NumPy-based — avoids an unnecessary type conversion",
+      "This pattern (array_split → iterate, hold out one → concatenate rest) directly mirrors sklearn's KFold.split() internals and is worth understanding for debugging cross-validation pipelines"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "18"
+}

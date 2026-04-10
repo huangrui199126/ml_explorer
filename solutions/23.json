@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "import math\n\ndef softmax(scores: list[float]) -> list[float]:\n    max_score = max(scores)\n    exp_scores = [math.exp(s - max_score) for s in scores]\n    total = sum(exp_scores)\n    return [e / total for e in exp_scores]",
+    "explanation": "Softmax converts a vector of raw scores into a probability distribution where all values are in (0, 1) and sum to 1. For each element, we compute exp(x_i) / sum(exp(x_j)) over all j.\n\nThe key numerical stability trick is subtracting the maximum value before exponentiating. Without this, large scores like 1000 would cause exp(1000) to overflow to infinity. Subtracting max(scores) shifts the inputs so the largest becomes 0, making exp(0)=1 the largest exponent we compute. This does not change the output mathematically because the max constant cancels in the numerator and denominator: exp(x_i - c) / sum(exp(x_j - c)) = exp(x_i) / sum(exp(x_j)).\n\nThe pure Python implementation iterates twice over the input: once to compute shifted exponentials and once to normalize. This is O(n) time and O(n) space, which is optimal for this operation.",
+    "key_learnings": [
+      "Always subtract max(scores) before exp() to prevent numerical overflow — this is the standard production-safe softmax trick",
+      "Softmax outputs sum to exactly 1.0 and are all positive, making them valid probability distributions",
+      "The mathematical identity exp(x-c)/sum(exp(x_j-c)) == exp(x)/sum(exp(x_j)) is what makes the stability trick correct",
+      "For a single-element input, softmax returns [1.0] — useful edge case to verify correctness",
+      "Softmax is not applied element-wise independently; each output depends on all inputs (contrast with sigmoid)"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef softmax(scores: list[float]) -> list[float]:\n    x = np.array(scores, dtype=np.float64)\n    x -= x.max()  # numerical stability\n    exp_x = np.exp(x)\n    return (exp_x / exp_x.sum()).tolist()",
+    "explanation": "The NumPy version follows the same max-subtraction stability approach but leverages vectorized operations. Converting to a float64 array enables broadcasting: x -= x.max() subtracts a scalar from every element in-place without a Python loop, and np.exp(x) computes all exponentials in a single C-level call.\n\nUsing float64 (double precision) is important here. float32 can represent values up to ~3.4e38, but for softmax inputs in the hundreds, float32 is still safe after the max-subtraction. For production neural networks, float32 is typically used for speed; float64 is used when precision matters more.\n\nThe .tolist() call at the end converts the NumPy array back to a plain Python list of floats, matching the expected return type. In practice within a neural network framework you would skip this conversion and keep it as an ndarray.",
+    "key_learnings": [
+      "x -= x.max() modifies the array in-place, avoiding an extra allocation compared to x = x - x.max()",
+      "np.exp is vectorized and significantly faster than a Python list comprehension with math.exp for large inputs",
+      "keepdims=True is needed when working with batched 2D inputs: x.max(axis=1, keepdims=True) to broadcast correctly",
+      "For batched softmax over rows: exp_x / exp_x.sum(axis=1, keepdims=True) — a common interview follow-up",
+      "float64 vs float32 trade-off: float64 for numerical precision, float32 for GPU memory/throughput"
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef softmax(scores: list[float]) -> list[float]:\n    x = tf.constant(scores, dtype=tf.float32)\n    result = tf.nn.softmax(x)\n    return result.numpy().tolist()",
+    "explanation": "TensorFlow provides tf.nn.softmax which is numerically stable by default — it internally applies the max-subtraction trick. This is the function used inside Dense layers with softmax activation and in cross-entropy loss computations throughout the framework.\n\nThe function operates on tensors and is differentiable, meaning TensorFlow can automatically compute the Jacobian of softmax during backpropagation. The Jacobian of softmax is a full matrix (not diagonal) because each output depends on all inputs: dS_i/dx_j = S_i*(delta_ij - S_j), where delta_ij is the Kronecker delta.\n\nIn practice, tf.nn.softmax_cross_entropy_with_logits should be used when softmax is followed immediately by cross-entropy loss — it fuses both operations for better numerical stability and efficiency, avoiding the log(softmax(x)) cancellation issue.",
+    "key_learnings": [
+      "tf.nn.softmax is numerically stable internally — no need to manually subtract the max",
+      "The Jacobian of softmax is a full n×n matrix, not element-wise; backprop through it is more expensive than ReLU",
+      "Prefer tf.nn.softmax_cross_entropy_with_logits over softmax + log + sum for training — it's more stable and faster",
+      "tf.keras.layers.Dense(..., activation='softmax') applies softmax along the last axis by default",
+      "axis parameter matters for batched inputs: tf.nn.softmax(x, axis=-1) applies softmax over the last dimension"
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\nimport torch.nn.functional as F\n\ndef softmax(scores: list[float]) -> list[float]:\n    x = torch.tensor(scores, dtype=torch.float32)\n    result = F.softmax(x, dim=0)\n    return result.tolist()",
+    "explanation": "PyTorch's F.softmax requires an explicit dim argument specifying which axis to normalize over. For a 1D input vector, dim=0 is the only axis. This explicitness prevents silent bugs when working with batched inputs — a common source of errors in practice.\n\nLike TensorFlow's implementation, F.softmax is numerically stable internally. It is differentiable and tracked by autograd when inputs require gradients. For a tensor with requires_grad=True, calling .backward() after softmax propagates gradients through the full Jacobian automatically.\n\nFor training classifiers, PyTorch recommends using nn.CrossEntropyLoss which combines log_softmax and NLLLoss in a single numerically stable operation. This means in most training code you pass raw logits directly to the loss function and never explicitly call softmax at all.",
+    "key_learnings": [
+      "dim is required in F.softmax — forgetting it raises a deprecation warning or error, and wrong dim gives silently incorrect results",
+      "For batched inputs of shape (batch, classes), use F.softmax(x, dim=1) to normalize over the class dimension",
+      "F.log_softmax + F.nll_loss is equivalent to F.cross_entropy but the fused version is preferred for training stability",
+      "torch.nn.Softmax(dim=1) is the module form; F.softmax is the functional form — both are identical in computation",
+      "Never apply softmax before nn.CrossEntropyLoss — that loss expects raw logits and applies log_softmax internally"
+    ]
+  },
+  "id": "23"
+}

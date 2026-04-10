@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef feature_scaling(data: np.ndarray) -> (np.ndarray, np.ndarray):\n    data = np.array(data, dtype=float)\n    \n    # Standardization (Z-score normalization)\n    means = [sum(data[:, j]) / len(data[:, j]) for j in range(data.shape[1])]\n    stds = [\n        (sum((data[:, j] - means[j]) ** 2) / len(data[:, j])) ** 0.5\n        for j in range(data.shape[1])\n    ]\n    standardized_data = np.array([\n        [\n            round((data[i, j] - means[j]) / stds[j], 4) if stds[j] != 0 else 0.0\n            for j in range(data.shape[1])\n        ]\n        for i in range(data.shape[0])\n    ])\n    \n    # Min-Max Normalization\n    mins = [min(data[:, j]) for j in range(data.shape[1])]\n    maxs = [max(data[:, j]) for j in range(data.shape[1])]\n    normalized_data = np.array([\n        [\n            round((data[i, j] - mins[j]) / (maxs[j] - mins[j]), 4) if maxs[j] != mins[j] else 0.0\n            for j in range(data.shape[1])\n        ]\n        for i in range(data.shape[0])\n    ])\n    \n    return standardized_data, normalized_data",
+    "explanation": "Standardization (Z-score) transforms each feature to have zero mean and unit variance by subtracting the column mean and dividing by the column standard deviation. This produces values typically in [-3, 3] and is robust for algorithms that assume Gaussian-distributed inputs, such as linear regression, logistic regression, SVMs, and PCA.\n\nMin-Max normalization rescales each feature to the [0, 1] range by subtracting the column minimum and dividing by the column range (max - min). This preserves the relative distances between values within each feature and is preferred for algorithms sensitive to absolute magnitude, like k-NN and neural networks with bounded activation functions.\n\nBoth methods operate column-wise (per feature), not row-wise, because each feature lives on its own scale. The zero-division guards (when std == 0 or max == min) handle constant features gracefully, returning 0 instead of NaN.",
+    "key_learnings": [
+      "Standardization uses population std (divide by N, not N-1) — match sklearn's default behavior in interviews unless told otherwise.",
+      "Min-Max squashes outliers into [0,1] but is sensitive to them; standardization is more robust to outliers in practice.",
+      "Always scale per column (per feature), never per row — each feature has its own distribution.",
+      "Constant features (std=0 or min=max) must be handled explicitly to avoid division by zero — a common edge case in interviews.",
+      "In production, fit the scaler on training data only, then apply the same parameters to validation/test data to prevent data leakage."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef feature_scaling(data: np.ndarray) -> (np.ndarray, np.ndarray):\n    data = np.array(data, dtype=float)\n    \n    # Standardization (Z-score)\n    means = data.mean(axis=0)          # shape: (n_features,)\n    stds = data.std(axis=0)            # population std, ddof=0\n    stds_safe = np.where(stds == 0, 1, stds)  # avoid division by zero\n    standardized_data = np.round((data - means) / stds_safe, 4)\n    \n    # Min-Max Normalization\n    mins = data.min(axis=0)            # shape: (n_features,)\n    maxs = data.max(axis=0)\n    ranges = maxs - mins\n    ranges_safe = np.where(ranges == 0, 1, ranges)  # avoid division by zero\n    normalized_data = np.round((data - mins) / ranges_safe, 4)\n    \n    return standardized_data, normalized_data",
+    "explanation": "NumPy's broadcasting makes this implementation elegant: operations between a 2D array of shape (n_samples, n_features) and a 1D array of shape (n_features,) automatically broadcast along the sample axis, applying the per-feature statistics to every row simultaneously without explicit loops.\n\nUsing axis=0 on mean, std, min, and max collapses across rows to produce one statistic per column (feature). The np.where trick replaces zero denominators with 1 before division, ensuring constant features produce 0 after subtraction rather than NaN — this is cleaner than post-hoc NaN replacement.\n\nnp.round(..., 4) applies element-wise rounding in a single vectorized call, which is both concise and efficient compared to nested list comprehensions.",
+    "key_learnings": [
+      "axis=0 aggregates across rows (samples) → one value per column (feature); axis=1 would be the opposite — know this cold.",
+      "Broadcasting rule: (N, F) op (F,) works automatically; NumPy aligns trailing dimensions, eliminating explicit loops.",
+      "np.where(condition, true_val, false_val) is a vectorized ternary — useful for safe division without masking or try/except.",
+      "data.std(axis=0) defaults to ddof=0 (population std); use ddof=1 for sample std — matches pandas .std() default.",
+      "This pattern (subtract mean, divide by scale) is the backbone of sklearn's StandardScaler and MinMaxScaler internals."
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "16"
+}

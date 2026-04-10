@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef solve_jacobi(A: np.ndarray, b: np.ndarray, n: int) -> list:\n    rows = len(A)\n    x = [0.0] * rows\n\n    for _ in range(n):\n        x_new = [0.0] * rows\n        for i in range(rows):\n            sigma = sum(A[i][j] * x[j] for j in range(rows) if j != i)\n            x_new[i] = round((b[i] - sigma) / A[i][i], 4)\n        x = x_new\n\n    return x",
+    "explanation": "The Jacobi method is an iterative algorithm for solving a diagonally dominant system Ax = b. At each iteration, we solve for every variable x_i assuming all other variables x_j (j ≠ i) are held fixed at their values from the previous iteration. The update formula for component i is: x_i^(k+1) = (b_i - Σ_{j≠i} A_ij * x_j^(k)) / A_ii.\n\nA critical implementation detail is that we use a fresh x_new array each iteration rather than updating x in-place. This ensures that all updates in iteration k+1 are based purely on values from iteration k — that is the defining characteristic of Jacobi vs. Gauss-Seidel, which uses the latest available values.\n\nConvergence is guaranteed when A is strictly diagonally dominant (|A_ii| > Σ_{j≠i} |A_ij| for all i). The method converges because the spectral radius of the iteration matrix D^{-1}(L+U) is less than 1 under this condition, meaning the error shrinks with each step.\n\nRounding each element to 4 decimal places after each iteration is done as specified by the problem. In practice this introduces small truncation errors, but for a fixed n it produces a deterministic result.",
+    "key_learnings": [
+      "Jacobi uses values from iteration k to compute ALL of iteration k+1 — never mix old and new within the same sweep (that would be Gauss-Seidel).",
+      "Diagonal dominance (|A_ii| > Σ_{j≠i} |A_ij|) is the key convergence condition — interviewers often ask why the method fails on arbitrary matrices.",
+      "Time complexity per iteration is O(n²) due to the double loop; total cost is O(n² * iterations).",
+      "Jacobi is embarrassingly parallel — all x_i updates are independent within one sweep, making it attractive for GPU/distributed computation.",
+      "Contrast with Gauss-Seidel: Jacobi converges slower but is simpler to parallelize; Gauss-Seidel converges roughly 2× faster but requires sequential updates."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef solve_jacobi(A: np.ndarray, b: np.ndarray, n: int) -> list:\n    rows = A.shape[0]\n    x = np.zeros(rows)\n\n    # Decompose A = D + R where D is diagonal and R is the remainder\n    D_inv = 1.0 / np.diag(A)          # element-wise inverse of diagonal\n    R = A - np.diag(np.diag(A))       # off-diagonal part\n\n    for _ in range(n):\n        x = np.round(D_inv * (b - R @ x), 4)\n\n    return x.tolist()",
+    "explanation": "The NumPy version exploits the matrix decomposition A = D + R, where D is the diagonal matrix and R contains all off-diagonal entries. The Jacobi update then becomes the vectorized formula: x^(k+1) = D^{-1} (b - R x^(k)). Since D is diagonal, D^{-1} is simply the element-wise reciprocal of the diagonal, so no matrix inversion is needed.\n\nThe expression R @ x computes the contribution from all off-diagonal elements in a single BLAS-level matrix-vector multiply, replacing the explicit inner loop from the pure Python version. np.diag(A) extracts the diagonal as a 1-D array, and np.diag(np.diag(A)) reconstructs a 2-D diagonal matrix — subtracting it from A gives R.\n\nThe vectorized update x = D_inv * (b - R @ x) reads cleanly and runs in C under the hood, making it significantly faster than the Python loop for large systems. Rounding is applied via np.round across the entire vector at once.\n\nNote that D_inv and R are precomputed outside the loop since A does not change across iterations — this is a small but important optimization that avoids redundant work.",
+    "key_learnings": [
+      "Decompose A = D + R once before the loop; recomputing it each iteration wastes O(n²) work per step.",
+      "D^{-1} for a diagonal matrix is just element-wise reciprocal — never call np.linalg.inv on a diagonal matrix.",
+      "The @ operator for matrix-vector products dispatches to optimized BLAS routines — far faster than manual loops for n > ~50.",
+      "np.diag has dual behavior: on a 2-D array it extracts the diagonal (1-D); on a 1-D array it builds a diagonal matrix — know both forms.",
+      "For production use, replace fixed iterations with a convergence check: np.linalg.norm(x_new - x) < tol, which is both faster and more robust."
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "11"
+}

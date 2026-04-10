@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "import math\n\ndef single_neuron_model(features: list[list[float]], labels: list[int], weights: list[float], bias: float) -> (list[float], float):\n    probabilities = []\n    for feature_vector in features:\n        z = sum(w * x for w, x in zip(weights, feature_vector)) + bias\n        prob = 1 / (1 + math.exp(-z))\n        probabilities.append(round(prob, 4))\n    \n    mse = round(sum((p - y) ** 2 for p, y in zip(probabilities, labels)) / len(labels), 4)\n    return probabilities, mse",
+    "explanation": "The function implements a single neuron (perceptron) with sigmoid activation for binary classification. For each input feature vector, it computes the linear combination z = w·x + b (dot product of weights and features, plus bias), then passes z through the sigmoid function σ(z) = 1/(1+e^{-z}) to squash the output into the (0, 1) range, interpretable as a probability.\n\nThe mean squared error (MSE) is computed as the average of squared differences between each predicted probability and its corresponding true label. While MSE is not the typical loss for binary classification (cross-entropy is preferred in practice), it provides a simple differentiable measure of prediction quality.\n\nRounding is applied per-probability before MSE computation to match the problem's output spec. In production, you'd avoid intermediate rounding to preserve numerical precision during gradient computation.",
+    "key_learnings": [
+      "The linear combination z = w·x + b is called the 'pre-activation' or 'logit'; sigmoid maps it to a probability",
+      "Sigmoid σ(z) = 1/(1+e^{-z}) saturates near 0 and 1, which causes vanishing gradients for extreme inputs — a key interview talking point",
+      "MSE is used here for simplicity, but binary cross-entropy (log loss) is the theoretically correct loss for sigmoid outputs because it's derived from maximum likelihood estimation",
+      "A single neuron with sigmoid is equivalent to logistic regression — understanding this connection is fundamental",
+      "The bias term b allows the decision boundary to shift away from the origin, making the model more expressive"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef single_neuron_model(features: list[list[float]], labels: list[int], weights: list[float], bias: float) -> (list[float], float):\n    X = np.array(features)        # shape: (n_samples, n_features)\n    y = np.array(labels)          # shape: (n_samples,)\n    w = np.array(weights)         # shape: (n_features,)\n    \n    z = X @ w + bias              # matrix-vector multiply: shape (n_samples,)\n    probabilities = 1 / (1 + np.exp(-z))\n    \n    mse = np.mean((probabilities - y) ** 2)\n    \n    probabilities_rounded = [round(float(p), 4) for p in probabilities]\n    mse_rounded = round(float(mse), 4)\n    return probabilities_rounded, mse_rounded",
+    "explanation": "The NumPy solution vectorizes the entire forward pass using matrix operations. Converting the feature list to a 2D array X of shape (n_samples, n_features) allows computing all logits simultaneously via the matrix-vector product X @ w + bias, replacing the explicit Python loop.\n\nNumPy's np.exp operates element-wise on arrays, so sigmoid is applied to all samples in one call. Similarly, np.mean computes MSE across all samples without a loop. This vectorization is not just syntactic sugar — it delegates computation to optimized BLAS/LAPACK routines, making it orders of magnitude faster for large datasets.\n\nThe @ operator (matmul) is preferred over np.dot for matrix multiplication as it's more readable and consistent with mathematical notation. Understanding broadcasting rules and matmul semantics is essential for implementing neural networks efficiently.",
+    "key_learnings": [
+      "X @ w computes all n_samples dot products simultaneously — this is the core operation in every neural network forward pass",
+      "Vectorization eliminates Python loops, enabling C-level parallelism; always prefer array ops over loops in NumPy",
+      "np.exp(-z) can overflow for very negative z — in practice use scipy.special.expit or clip z for numerical stability",
+      "Shape tracking is critical: X is (n, d), w is (d,), so X @ w gives (n,) — mismatched shapes are the #1 source of bugs in NumPy ML code",
+      "This exact pattern (linear layer + sigmoid) generalizes directly to multi-layer networks by stacking weight matrices"
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef single_neuron_model(features: list[list[float]], labels: list[int], weights: list[float], bias: float) -> (list[float], float):\n    X = tf.constant(features, dtype=tf.float32)    # (n_samples, n_features)\n    y = tf.constant(labels, dtype=tf.float32)      # (n_samples,)\n    w = tf.constant(weights, dtype=tf.float32)     # (n_features,)\n    b = tf.constant(bias, dtype=tf.float32)\n    \n    z = tf.linalg.matvec(X, w) + b                # logits: (n_samples,)\n    probabilities = tf.sigmoid(z)                  # sigmoid activation\n    \n    mse = tf.reduce_mean(tf.square(probabilities - y))\n    \n    probabilities_rounded = [round(float(p), 4) for p in probabilities.numpy()]\n    mse_rounded = round(float(mse.numpy()), 4)\n    return probabilities_rounded, mse_rounded",
+    "explanation": "The TensorFlow implementation mirrors the NumPy version but uses TF tensors and ops. tf.constant creates immutable tensors from Python lists with explicit float32 dtype (TF's default for neural network computations). tf.linalg.matvec performs the matrix-vector product X·w efficiently on CPU or GPU without changing code.\n\ntf.sigmoid is numerically stable — TF internally handles the exp overflow case using the identity σ(z) = 1/(1+e^{-z}) for z≥0 and σ(z) = e^z/(1+e^z) for z<0. tf.reduce_mean computes the mean across all elements, equivalent to np.mean.\n\nIn a real training scenario, you'd wrap the forward pass in a tf.GradientTape block to automatically compute gradients with respect to weights and bias. The neuron would typically be expressed as a tf.keras.layers.Dense(1, activation='sigmoid') layer, which handles weight initialization and provides a clean API for building deeper models.",
+    "key_learnings": [
+      "tf.sigmoid is numerically stable unlike the naive 1/(1+exp(-z)) formula — always prefer framework-provided activation functions",
+      "In training, wrap forward pass in tf.GradientTape() to get gradients: grads = tape.gradient(loss, [w, b])",
+      "This single neuron maps exactly to keras.layers.Dense(units=1, activation='sigmoid') — knowing this equivalence is key for interviews",
+      "tf.reduce_mean/tf.square are the building blocks for custom loss functions in TF",
+      "Eager execution (default in TF2) means .numpy() works immediately; in graph mode (tf.function) you'd use sessions"
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\n\ndef single_neuron_model(features: list[list[float]], labels: list[int], weights: list[float], bias: float) -> (list[float], float):\n    X = torch.tensor(features, dtype=torch.float32)    # (n_samples, n_features)\n    y = torch.tensor(labels, dtype=torch.float32)      # (n_samples,)\n    w = torch.tensor(weights, dtype=torch.float32)     # (n_features,)\n    b = torch.tensor(bias, dtype=torch.float32)\n    \n    z = X @ w + b                                      # logits: (n_samples,)\n    probabilities = torch.sigmoid(z)                   # sigmoid activation\n    \n    mse = torch.mean((probabilities - y) ** 2)\n    \n    probabilities_rounded = [round(float(p), 4) for p in probabilities.tolist()]\n    mse_rounded = round(float(mse.item()), 4)\n    return probabilities_rounded, mse_rounded",
+    "explanation": "The PyTorch solution uses tensors and autograd-compatible operations. torch.tensor converts Python lists to float32 tensors. The @ operator calls torch.matmul under the hood, computing all logits in a single vectorized operation. torch.sigmoid applies the activation element-wise.\n\nPyTorch's eager execution model means all operations produce concrete values immediately, unlike TF1's deferred graph execution. The .item() method extracts a Python scalar from a 0-dimensional tensor, and .tolist() converts a 1D tensor to a Python list — both are idiomatic PyTorch patterns.\n\nIn a training context, you'd set requires_grad=True on w and b, then call mse.backward() to populate w.grad and b.grad for gradient descent. The equivalent nn.Module would be nn.Linear(n_features, 1) followed by torch.sigmoid, or equivalently nn.BCEWithLogitsLoss handles the combined sigmoid+BCE in a numerically stable way.",
+    "key_learnings": [
+      "Set requires_grad=True on parameters to enable autograd: w = torch.tensor(weights, requires_grad=True) — then loss.backward() fills w.grad",
+      "torch.sigmoid vs torch.nn.functional.sigmoid: prefer F.sigmoid or torch.sigmoid; the nn version is deprecated",
+      "For training binary classifiers, prefer nn.BCEWithLogitsLoss over separate sigmoid + nn.BCELoss — it's more numerically stable (log-sum-exp trick)",
+      ".item() extracts a Python scalar from a tensor — essential to avoid accumulating computation graphs in training loops",
+      "This neuron maps to nn.Linear(in_features, 1) + sigmoid; in nn.Module, weights are automatically tracked as parameters"
+    ]
+  },
+  "id": "24"
+}
