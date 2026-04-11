@@ -8912,14 +8912,14 @@
         "gpt-243",
         "gpt2-to-gpt-oss"
       ],
-      "description": "",
+      "description": "Implement single-head self-attention by projecting an input matrix X into queries (Q), keys (K), and values (V) using learned weight matrices, then computing scaled dot-product attention. This is the core building block of the Transformer architecture, enabling each token to attend to every other token in the sequence. Understanding this mechanism is essential for working with modern NLP models like BERT, GPT, and beyond.",
       "example": {
-        "input": "",
-        "output": "",
-        "reasoning": ""
+        "input": "X = [[1, 0], [0, 1]], W_q = W_k = W_v = [[1, 0], [0, 1]] (identity matrices)",
+        "output": "Output matrix shape (2, 2), approximately [[0.5, 0.5], [0.5, 0.5]] — each token attends equally to both tokens when Q=K=X",
+        "reasoning": "With identity weight matrices, Q=K=V=X. The dot products Q·Kᵀ yield a uniform attention matrix after softmax (since rows of X are orthonormal), so the output is the average of the value vectors."
       },
-      "learn_section": "",
-      "starter_code": ""
+      "learn_section": "## Self-Attention Mechanism\n\nSelf-attention allows each position in a sequence to gather information from all other positions. Given an input matrix **X** of shape `(seq_len, d_model)`, we project it into three matrices: queries **Q**, keys **K**, and values **V** using learned weight matrices W_q, W_k, W_v (each of shape `(d_model, d_k)`):\n\n```\nQ = X @ W_q\nK = X @ W_k\nV = X @ W_v\n```\n\n## Scaled Dot-Product Attention\n\nThe attention output is computed as:\n\n```\nAttention(Q, K, V) = softmax(Q @ Kᵀ / √d_k) @ V\n```\n\nThe dot product `Q @ Kᵀ` produces a `(seq_len, seq_len)` score matrix where entry `(i, j)` measures how much token `i` should attend to token `j`. We scale by `√d_k` to prevent the dot products from growing too large in magnitude (which would push softmax into regions of very small gradients). The softmax converts scores into a probability distribution over positions, and the final multiplication by **V** produces a weighted sum of value vectors.\n\n## Implementation Details\n\nIn NumPy, the full forward pass is just a few lines. Compute Q, K, V via matrix multiplication, then compute the raw scores, scale, apply softmax row-wise, and multiply by V. The softmax must be applied along the last axis (`axis=-1`) so each query position gets its own attention distribution over all key positions. Watch out for numerical stability in softmax — subtracting the row maximum before exponentiating prevents overflow.\n\n## Why It Matters\n\nSingle-head self-attention is the foundation of every Transformer model. Multi-head attention simply runs several of these in parallel with different weight matrices and concatenates the results, allowing the model to jointly attend to information from different representation subspaces. Mastering this primitive — both the math and the efficient NumPy implementation — gives you the intuition needed to understand positional encodings, attention masking, and the full encoder-decoder architecture.",
+      "starter_code": "def single_head_attention(X, W_q, W_k, W_v):\n    # implement here\n    pass"
     },
     {
       "id": "556",
@@ -8932,14 +8932,14 @@
         "gpt-243",
         "gpt2-to-gpt-oss"
       ],
-      "description": "",
+      "description": "Implement transformer positional encoding, which injects position information into token embeddings using sine and cosine functions of different frequencies. Since transformers have no inherent notion of sequence order, positional encodings allow the model to distinguish tokens by their position. This technique, introduced in 'Attention Is All You Need', produces encodings where relative positions can be learned through linear transformations.",
       "example": {
-        "input": "",
-        "output": "",
-        "reasoning": ""
+        "input": "max_seq_len=4, d_model=4",
+        "output": "[[ 0.0000,  1.0000,  0.0000,  1.0000],\n [ 0.8415,  0.5403,  0.0100,  0.9999],\n [ 0.9093, -0.4161,  0.0200,  0.9998],\n [ 0.1411, -0.9900,  0.0300,  0.9996]]",
+        "reasoning": "For position 1, dimension 0: sin(1/10000^(0/4))=sin(1)≈0.8415; dimension 1: cos(1/10000^(0/4))=cos(1)≈0.5403; dimension 2: sin(1/10000^(2/4))=sin(0.01)≈0.0100; dimension 3: cos(1/10000^(2/4))≈0.9999."
       },
-      "learn_section": "",
-      "starter_code": ""
+      "learn_section": "## Why Positional Encoding?\n\nTransformers process all tokens in parallel using self-attention, which is permutation-invariant — the model sees a *set* of tokens, not a *sequence*. Without any positional signal, \"the cat sat\" and \"sat the cat\" would produce identical representations. Positional encoding solves this by adding a unique, position-dependent vector to each token embedding before it enters the model.\n\n## The Math\n\nThe encoding matrix PE has shape `(max_seq_len, d_model)`. Each row corresponds to a position `pos` (0-indexed), and each column pair `(2i, 2i+1)` corresponds to one frequency dimension `i`:\n\n```\nPE(pos, 2i)   = sin(pos / 10000^(2i / d_model))\nPE(pos, 2i+1) = cos(pos / 10000^(2i / d_model))\n```\n\nThe denominator `10000^(2i/d_model)` creates a geometric progression of wavelengths ranging from 2π (for i=0) to 10000·2π (for i=d_model/2−1). Low-index dimensions oscillate rapidly with position; high-index dimensions change very slowly, giving the model both fine-grained and coarse-grained positional signals.\n\n## Implementation Tips\n\nCompute the division term efficiently using the log-space trick to avoid numerical issues:\n\n```python\ndiv_term = np.exp(np.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))\n```\n\nThen broadcast `positions` (shape `(max_seq_len, 1)`) against `div_term` (shape `(d_model/2,)`) to fill even and odd columns in one vectorized step. The final matrix is added element-wise to the token embedding matrix, keeping the same `d_model` dimensionality throughout the model.\n\n## Key Properties\n\nSine/cosine encodings have two elegant properties. First, they are *deterministic* — no parameters to learn — which keeps the embedding table small and generalizes to sequence lengths unseen during training. Second, for any fixed offset `k`, `PE(pos+k)` can be expressed as a linear function of `PE(pos)`, which means attention can learn to attend by relative position simply by learning the right linear combination of keys and queries.",
+      "starter_code": "import numpy as np\n\ndef positional_encoding(max_seq_len: int, d_model: int) -> np.ndarray:\n    # implement here\n    pass"
     },
     {
       "id": "557",
