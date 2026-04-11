@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This survey reviews deep learning methods for predicting associations between microRNAs (miRNAs) and diseases, covering 48 computational approaches categorized into classical deep learning and graph neural network techniques. It also summarizes relevant databases, similarity metrics, and evaluation methods used in this emerging field.",
+    "key_idea": "Graph neural networks and classical deep learning architectures can systematically predict miRNA-disease associations by learning from biological similarity networks, enabling large-scale hypothesis generation without costly wet-lab experiments.",
+    "why_it_matters": "Accurately predicting which miRNAs are linked to specific diseases can accelerate biomarker discovery, drug target identification, and understanding of disease mechanisms at a fraction of the cost of traditional experiments.",
+    "possible_use_cases": [
+      "Disease biomarker discovery by identifying miRNAs associated with cancers or complex diseases",
+      "Drug target prioritization by linking disease-relevant miRNAs to potential therapeutic interventions",
+      "Rare disease research where limited experimental data makes computational prediction especially valuable"
+    ],
+    "generated_at": "2026-04-11T06:38:23Z"
+  },
+  "deep": {
+    "method_breakdown": "This is a survey paper that reviews 48 deep learning-based methods for predicting miRNA-disease associations (MDAs). It categorizes methods into classical deep learning approaches (CNNs, RNNs, autoencoders, etc.) and graph neural network-based techniques (GCN, GAT, etc.). The survey covers the full pipeline: data sources, similarity computation/integration for miRNAs and diseases, model architectures, and evaluation protocols.",
+    "key_innovation": "Rather than proposing a novel method, the key contribution is a systematic taxonomy of 48 existing MDA prediction methods, unified evaluation framework comparison, and identification of 9 future research directions. Prior reviews were narrower in scope; this is the most comprehensive GNN-inclusive survey of MDA prediction to date, paired with a curated GitHub repository of data resources.",
+    "technical_insight": "The most critical design choice across top-performing methods is heterogeneous graph construction — encoding miRNA-miRNA similarity, disease-disease similarity, and known miRNA-disease associations as a unified graph, then applying GNNs to propagate information across node types. This works because biological associations are inherently relational and sparse; graph message passing captures multi-hop biological co-occurrence patterns that matrix factorization and shallow models miss.",
+    "limitations": "Survey papers inherit the limitations of the methods they review: most MDA datasets suffer from positive-only bias (unknown associations treated as negatives), leading to optimistic benchmark metrics. Similarity metrics are often hand-crafted and domain-specific, limiting generalizability. Few methods are validated prospectively in wet-lab experiments. The field also lacks standardized train/test splits, making cross-paper comparison unreliable despite the survey's attempt to unify evaluation.",
+    "interview_questions": [
+      "How do GNN-based MDA methods handle the cold-start problem for newly discovered miRNAs with no known disease associations?",
+      "What are the trade-offs between using sequence-based similarity vs. functional/ontology-based similarity for miRNA feature construction?",
+      "Why is AUROC potentially misleading for MDA prediction benchmarks, and what alternative metrics are more informative?",
+      "How would you design a training/evaluation split that prevents data leakage given that MDA datasets are built from cumulative literature mining?",
+      "If you were building a production MDA prediction system for a pharma company, what would be your biggest concern about deploying a deep learning model trained on current public databases?"
+    ],
+    "interview_answers": [
+      "Cold-start is a fundamental challenge: most methods rely on pre-computed similarity profiles, so a miRNA with zero known associations has no graph edges and produces degenerate embeddings. Mitigation strategies include using sequence-based features as a fallback, inductive GNN architectures (GraphSAGE-style) that generalize to unseen nodes via neighborhood aggregation from auxiliary feature spaces, or meta-learning approaches that learn to adapt with few associations.",
+      "Sequence-based similarity (e.g., Smith-Waterman, k-mer) is computationally cheap and applicable to any miRNA regardless of annotation status, but may miss functionally related miRNAs with divergent sequences. Ontology/functional similarity (e.g., MeSH-based disease similarity, GO-based functional profiles) better captures biological meaning but is annotation-dependent and sparse for rare diseases. Top methods typically integrate both via weighted fusion or learned attention to get coverage and biological fidelity.",
+      "AUROC aggregates performance across all thresholds, but in MDA prediction the operational regime is extreme class imbalance (thousands of possible pairs, few known positives). A model can achieve 0.95 AUROC while being nearly useless at clinically relevant precision levels. AUPR (area under precision-recall curve) is more informative under imbalance. Ideally, evaluation should report top-k precision (how many of the top 50 predictions are validated) to reflect actual discovery utility.",
+      "The key leakage risk is temporal: associations published before a cutoff date appear in both training similarities AND test labels when the full database is used. A proper split requires freezing a database snapshot at time T for training, then evaluating on associations first published after T. Additionally, miRNA and disease similarity matrices should be recomputed using only pre-T data, since they encode indirect MDA information via co-occurrence statistics.",
+      "The biggest concern is distribution shift between curated benchmark databases and real-world queries. Public MDA databases are heavily biased toward well-studied diseases (cancer) and well-characterized miRNAs (miR-21, miR-155, etc.). A deployed model will underperform on rare diseases and novel miRNA families underrepresented in training. I'd also flag the lack of uncertainty quantification — models output point predictions without confidence intervals, making it hard to triage predictions for expensive wet-lab follow-up."
+    ],
+    "generated_at": "2026-04-11T06:38:51Z"
+  }
+}

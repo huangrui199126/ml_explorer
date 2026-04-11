@@ -1,0 +1,34 @@
+{
+  "fast": {
+    "summary": "This paper critiques the standard offline evaluation approach for RL-based recommender systems, which relies on next-item prediction, and identifies three key flaws: it fails to capture RL's unique benefits and masks critical weaknesses of some RL agents. The authors propose alternative evaluation protocols better suited to RL's sequential decision-making nature.",
+    "key_idea": "Next-item prediction evaluation protocols are fundamentally misaligned with RL objectives because they treat sequential recommendation as a static prediction task rather than a long-horizon policy optimization problem.",
+    "why_it_matters": "Practitioners building RL-based recommenders may be benchmarking on flawed metrics that neither reward genuine RL improvements nor penalize broken agents, leading to misleading conclusions about whether RL actually outperforms simpler baselines.",
+    "possible_use_cases": [
+      "Designing more reliable offline A/B test proxies for RL recommendation policies before costly online deployment",
+      "Auditing existing RL recommender research to reassess whether reported gains hold under proper evaluation",
+      "Building simulation-based or counterfactual evaluation pipelines that better reflect long-term user engagement"
+    ],
+    "generated_at": "2026-04-11T06:39:45Z"
+  },
+  "deep": {
+    "method_breakdown": "The paper critically analyzes the dominant offline evaluation paradigm for RL-based recommender systems, which uses next-item prediction (treating logged user interactions as ground-truth sequential targets). It identifies three core shortcomings: the protocol conflates RL-specific benefits with standard sequential modeling, masks policy-induced distribution shift, and rewards greedy short-term accuracy over long-horizon reward optimization. The authors then survey and propose alternative evaluation protocols better suited to RL agents, such as off-policy evaluation (OPE) estimators and simulator-based evaluation.",
+    "key_innovation": "Prior work implicitly accepted next-item prediction accuracy (e.g., Hit Rate, NDCG on held-out next items) as valid for RL recommenders despite RL being optimized for cumulative reward across trajectories, not pointwise prediction. This paper is the first systematic critique specifically targeting the mismatch between next-item evaluation and RL objectives, and catalogues when OPE methods (IPS, DR, model-based) are more appropriate substitutes.",
+    "technical_insight": "The most critical design insight is that RL agents are trained to maximize long-term cumulative reward under a learned or assumed MDP, so evaluating them on next-item accuracy ignores trajectory-level value and penalizes exploratory or diversity-seeking policies that sacrifice short-term accuracy for long-term user satisfaction. This mismatch can make a well-functioning RL agent appear worse than a greedy supervised model under standard metrics.",
+    "limitations": "The paper is primarily a position/survey paper without new empirical benchmarks or a concrete standardized evaluation framework, so practical adoption requires significant domain-specific effort. OPE methods themselves suffer from high variance and rely on assumptions (overlap, known logging policy) that are often violated in real recommendation logs. Simulator-based evaluation trades one set of biases for another (simulator fidelity).",
+    "interview_questions": [
+      "Why is next-item prediction an inadequate evaluation protocol for RL-based recommenders?",
+      "What is the distribution shift problem in offline RL evaluation for recommendation, and why does it matter?",
+      "What are the main families of off-policy evaluation (OPE) methods and what are their trade-offs?",
+      "How does the exploration-exploitation trade-off of RL agents interact with offline evaluation metrics?",
+      "What practical recommendations does the paper give for practitioners who cannot run online A/B tests?"
+    ],
+    "interview_answers": [
+      "Next-item prediction measures pointwise accuracy on the immediate next interaction, but RL agents optimize cumulative reward over multi-step trajectories. An RL policy may deliberately recommend a less immediately clickable item to steer the user toward higher long-term engagement, which next-item metrics penalize, creating a misleading performance ranking.",
+      "When an RL policy is deployed, it generates a different action distribution than the logging policy that collected the offline data. Evaluating on logged data implicitly assumes the evaluation policy matches the logging policy; when it does not, reward estimates are biased and certain failure modes (e.g., an agent that exploits gaps in the logged distribution) are invisible in offline metrics.",
+      "The three main OPE families are: (1) Inverse Propensity Scoring (IPS) — reweights logged rewards by the ratio of evaluation to logging policy probabilities, unbiased but high variance; (2) Direct Method (DM) — fits a reward model and queries it, low variance but biased if the model is misspecified; (3) Doubly Robust (DR) — combines IPS and DM, reducing variance while retaining unbiasedness if either component is correct. The choice depends on logging policy knowledge and data coverage.",
+      "RL agents intentionally explore sub-optimal actions to gather information, which lowers short-term accuracy metrics. Next-item evaluation interprets this exploration as errors rather than intentional policy behavior, systematically underrating exploratory agents. This means offline metrics can rank a purely exploitative greedy model above a better-calibrated RL agent that balances exploration and exploitation.",
+      "The paper recommends: first, use OPE estimators (preferably DR) with known or estimated logging propensities; second, build user simulators from logged data to enable trajectory-level rollout evaluation; third, if possible, use slated or list-level evaluation rather than single-item ranking to better reflect the sequential decision nature of RL; and fourth, report both short-term accuracy and surrogate long-term signals (e.g., session length, return rate) to triangulate agent quality."
+    ],
+    "generated_at": "2026-04-11T06:40:09Z"
+  }
+}
