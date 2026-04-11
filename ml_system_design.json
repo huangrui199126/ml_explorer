@@ -1,0 +1,1046 @@
+{
+  "version": 2,
+  "framework": {
+    "name": "ML System Design Interview Framework",
+    "steps": [
+      "Problem Statement",
+      "Metrics Design & Requirements",
+      "Feature Engineering & Model",
+      "Calculation & Estimation",
+      "High-Level System Design",
+      "Scaling the Design",
+      "Follow-Up Questions"
+    ]
+  },
+  "categories": [
+    {
+      "id": "recommendations",
+      "name": "Recommendations",
+      "emoji": "🎯",
+      "count": 4
+    },
+    {
+      "id": "search-retrieval",
+      "name": "Search & Retrieval",
+      "emoji": "🔍",
+      "count": 3
+    },
+    {
+      "id": "trust-safety",
+      "name": "Trust & Safety",
+      "emoji": "🛡️",
+      "count": 3
+    },
+    {
+      "id": "logistics-maps",
+      "name": "Logistics & Maps",
+      "emoji": "🗺️",
+      "count": 2
+    },
+    {
+      "id": "computer-vision",
+      "name": "Computer Vision",
+      "emoji": "👁️",
+      "count": 2
+    },
+    {
+      "id": "feed-timeline",
+      "name": "Feed & Timeline",
+      "emoji": "📰",
+      "count": 1
+    },
+    {
+      "id": "ad-systems",
+      "name": "Ad Systems",
+      "emoji": "📣",
+      "count": 1
+    }
+  ],
+  "problems": [
+    {
+      "id": "video-recommendation",
+      "diagramImageName": "video-recommendation",
+      "title": "Video Recommendation System",
+      "description": "Build a video recommendation system that personalizes content for YouTube users, maximizing engagement while introducing diverse and fresh content — not just more of what users already watch.",
+      "category": "Recommendations",
+      "difficulty": "hard",
+      "companies": [
+        "YouTube",
+        "Netflix",
+        "TikTok",
+        "Instagram"
+      ],
+      "source": "Educative — Machine Learning System Design",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Build a video recommendation system that personalizes content for YouTube users. The main goal is to maximize user engagement by recommending videos they are likely to watch and enjoy — while also introducing new and diverse content, not just more of what users already watch.\n\n**Example**: If someone watches cooking videos all day, the system shouldn't just give them more of the same. It should also suggest travel vlogs, tech reviews, or short films they might find interesting.\n\n**Goals**:\n• Personalized recommendations based on user behavior\n• Increase user engagement (watch time, click-throughs, conversions)\n• Promote fresh content and not just historical favorites\n\n**Scale**: 1.3 billion users, 150 billion video views/month, 10% from recommendations = 15 billion recommendation views/month."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design & Requirements",
+          "content": "**Offline Metrics** (used during model training/validation):\n• Precision & recall — how accurate and complete are recommendations?\n• Ranking loss — measures how well the system ranks relevant videos higher\n• Log loss — captures the model's confidence in predictions\n\n**Online Metrics** (measure actual user behavior in production):\n• Click-through rate (CTR) — do users click the videos we recommend?\n• Watch time — how long do they stay engaged?\n• Conversion rate — do they subscribe, like, or share?\n• A/B tests validate whether the model performs well in the real world\n\n**Requirements**:\n• Training: Frequent retraining (multiple times/day) — user interests shift rapidly, videos go viral in hours\n• Inference: Response time < 200ms (ideally < 100ms) — users expect instant recommendations on homepage\n• Exploration vs. Exploitation: Balance recommending familiar content (exploitation) with surprising new content (exploration). Too much exploitation = repetitive feed; too much exploration = irrelevant recommendations"
+        },
+        {
+          "step": 3,
+          "title": "Multi-Stage Model Architecture",
+          "content": "**Two-stage architecture** (common pattern in large-scale ML systems):\n\n**Stage 1 — Candidate Generation**:\n• Purpose: Generate ~1000 \"somewhat relevant\" videos from billions, fast\n• Method: Matrix Factorization (collaborative filtering) — captures user taste similarity in user-video space. For large scale (Facebook, Google), use FAISS or Google ScaNN for low-latency ANN search\n• Input: User watch history (video IDs, minutes_watched)\n• Output: ~1000 candidate videos\n\n**Stage 2 — Ranking Model**:\n• Purpose: Score each candidate for watch probability, return top-K\n• Model: Fully connected neural network with sigmoid activation (final layer outputs probability ∈ [0,1])\n• Loss: Cross-entropy loss\n• Feature table:\n  - Watched video IDs → Video embedding\n  - Historical search query → Text embedding\n  - Location → Geolocation embedding\n  - User age/gender → Normalization/Standardization\n  - Time features → month, week_of_year, holiday, hour_of_day\n• Training data: User watched history; ratio watched/not-watched ≈ 2/98 → downsample negatives"
+        },
+        {
+          "step": 4,
+          "title": "Calculation & Estimation",
+          "content": "**Data assumptions**:\n• 15 billion positive (watched) labels/month, 750 billion negative labels/month\n• ~100 features per row at 500 bytes → 800 billion rows/month\n• Total: 500 × 800 × 10⁹ ≈ 0.4 Petabytes/month\n• Keep last 6 months in data lake; archive older data in cold storage\n\n**Scale**:\n• 1.3 billion users\n• 10 million recommendation requests per second at peak\n• Each request ranks 1K–10K video candidates"
+        },
+        {
+          "step": 5,
+          "title": "High-Level System Design",
+          "content": "**Databases**:\n• User Watched History — which videos each user watched over time\n• Search Query DB — historical queries users searched\n• User/Video DB — user profiles + video metadata\n• User Historical Recommendations — past recommendations per user\n\n**Training Pipeline**:\n• Resampling component: Downsample negative samples to scale training\n• Feature pipeline: High-throughput feature generation (Spark, EMR, or DataProc)\n• Model Repos: S3 or equivalent for model storage; inference pulls latest model by timestamp\n\n**Inference Flow**:\n1. User requests homepage → App Server calls Candidate Generation Service\n2. Candidate Generation returns ~1000 videos\n3. Candidates passed to Ranking Service → estimates watch probability per video\n4. Ranking Service returns sorted list → App Server shows top videos\n\n**Challenges & Solutions**:\n• Huge data size → Use 1–6 months of recent data\n• Imbalanced data (2% positive) → Random negative downsampling\n• High availability → Deploy in Docker containers + Kubernetes Pod Autoscaler"
+        },
+        {
+          "step": 6,
+          "title": "Scale the Design",
+          "content": "• Scale out (horizontal) multiple Application Servers → Load Balancers distribute traffic\n• Scale out Candidate Generation Services and Ranking Services independently\n• Deploy in Kubernetes Pods with Pod Autoscaler for automatic scaling\n• Use Kube-proxy so Candidate Generation Service calls Ranking Service directly → reduces latency\n• This microservice split allows: independent build/deploy/release, reduced memory per service, and independent scaling"
+        },
+        {
+          "step": 7,
+          "title": "Follow-Up Questions",
+          "content": "**Q: How do we adapt to user behavior changing over time?**\n→ Multi-arm bandit; Bayesian Logistic Regression to update priors; different loss functions less sensitive to CTR\n\n**Q: How do we handle the ranking model being under-explored?**\n→ Introduce 2% random candidates in Ranking Service; 98% get sorted candidates\n\n**Q: Benefits of splitting Candidate Generation and Ranking Services?**\n→ Independent build/deploy, reduced memory per pod, independent horizontal scaling\n\n**Q: How do you handle cold-start for new users?**\n→ Use demographic features + popular content for new users; gradually incorporate watch history"
+        }
+      ],
+      "keyQuestions": [
+        "How do you balance exploration vs. exploitation in recommendations?",
+        "Why split into candidate generation + ranking instead of one model?",
+        "How do you handle the 2/98 positive/negative imbalance?",
+        "How do you ensure fresh content without degrading relevance?",
+        "What's your retraining strategy and how often?",
+        "How do you handle cold-start for new users with no history?"
+      ],
+      "keyAnswers": [
+        "Use epsilon-greedy or Thompson sampling: dedicate ~10% of recommendations to content outside the user's watch history. Track engagement signals (clicks, watch time) to learn what's worth exploiting vs. exploring.",
+        "Candidate generation (matrix factorization + ANN search) filters billions to ~1K candidates in milliseconds. Running expensive feature-rich models on billions of items is infeasible — ranking only applies to the pre-filtered set.",
+        "Downsample negatives to a manageable ratio (e.g., 1:5), then apply class weights to the loss, or use focal loss which penalizes easy negatives less. Correct predicted probabilities back to original scale.",
+        "Add a recency feature (hours_since_upload) and an engagement velocity signal to the ranking model. Apply a freshness multiplier and dedicate a fixed percentage of slots to content uploaded in the last 24 hours.",
+        "Retrain candidate generation weekly (stable long-term preferences) and the ranking model daily or multiple times per day (captures rapidly shifting trends). Use streaming embedding updates for hot new content.",
+        "Use demographic features (age, location, device) + trending content for the first session. Once a user clicks 3-5 videos, switch to collaborative filtering. Use session-based models that adapt in real time within a session."
+      ]
+    },
+    {
+      "id": "feed-ranking",
+      "diagramImageName": "feed-ranking",
+      "title": "LinkedIn Feed Ranking System",
+      "description": "Design a personalized LinkedIn feed ranking system that maximizes long-term user engagement. Rank posts and activities such that the most engaging and relevant content appears at the top of each user's home feed.",
+      "category": "Feed & Timeline",
+      "difficulty": "hard",
+      "companies": [
+        "LinkedIn",
+        "Meta",
+        "Twitter/X",
+        "Instagram"
+      ],
+      "source": "Educative — Machine Learning System Design",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Design a personalized LinkedIn feed to maximize long-term user engagement, measured by Click Through Rate (CTR) — the ratio of clicks to feed impressions.\n\n**Feed Activity Types**:\n| Category | Example |\n|----------|---------|\n| Connection | Member follows member/company, joins group |\n| Informational | Member/company shares article/picture/message |\n| Profile | Member updates profile (picture, job change) |\n| Opinion | Member likes/comments on articles, job changes |\n| Site-Specific | Member endorses member |\n\n**Key insight**: Different activity types have very different CTRs, which matters when building models and generating training data.\n\n**Scale**: 300 million users; feed ranking must return within 50ms of the full 200ms request budget."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design & Requirements",
+          "content": "**Offline Metrics**:\n• Normalized Cross-Entropy (NCE): Predictive log-loss divided by cross-entropy of background CTR → insensitive to background CTR variations. Formula: NCE = [-1/N Σ((1+yᵢ)/2·log(pᵢ) + (1-yᵢ)/2·log(1-pᵢ))] / [-(p·log(p) + (1-p)·log(1-p))]\n• AUC\n\n**Online Metrics**:\n• Conversion rate (ratio of clicks to feed shown) — offline metrics don't capture real user behavior in non-stationary environments\n\n**Training Requirements**:\n• Large distributed training (Logistic Regression in Spark, or ADMM)\n• Incremental retraining multiple times/day to handle online data distribution shift\n• High personalization support — different users have different tastes\n\n**Inference Requirements**:\n• 300 million users at scale\n• Latency: Full pipeline must complete in 200ms; Feed Ranking must return in 50ms\n• Data freshness: Must avoid showing repetitive activity; pipelines must run fast"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering & Model",
+          "content": "**Feature Engineering**:\n| Feature | Encoding |\n|---------|----------|\n| User profile (job, industry, demo) | Low cardinality: One-hot; High cardinality: Embedding |\n| Connection strength between users | User embeddings + distance vector |\n| Age of activity | Continuous feature or binned |\n| Activity features (type, hashtag, media) | Activity embedding + similarity to user |\n| Cross features | Combine multiple features |\n\n**Training Data Collection Strategies**:\n• Chronicle order ranking: Rank by time → collect click/not-click data (has serving bias: attention on first posts; data sparsity for rare activities like job changes)\n• Random serving: Random order → bad UX, doesn't help with sparsity\n• Feed Ranking algorithm: Rank top feeds + random permutation within top → provides exploration, best for model learning\n\n**Model Selection**:\n• Logistic Regression: Probabilistic sparse linear classifier — efficient with sparse features, works well at scale\n• Distributed training: Logistic Regression in Spark or ADMM for large volume\n• Deep learning: Fully connected layers + Sigmoid activation. Resample to handle CTR < 1% imbalance. Keep validation/test sets intact."
+        },
+        {
+          "step": 4,
+          "title": "System Design",
+          "content": "**Training Pipeline**:\n• Collect click/impression logs\n• Feature pipeline processes features with high throughput (Parquet files, Spark)\n• Periodic training scheduler retrains model multiple times/day\n• Model stored in Model Repos (S3)\n\n**Inference Flow**:\n1. User opens LinkedIn → App Server receives request\n2. Data pipeline pulls recent activities from friends/connections\n3. Feature extraction from Feature Store (< 10ms lookup)\n4. Feed Ranking Model scores each activity → estimated CTR per post\n5. Top-K posts returned within 50ms\n\n**Key Components**:\n• Feature Store: Redis or DynamoDB for low-latency (<10ms) feature lookup\n• Data Freshness Tracker: Tracks which activities user has already seen → prevents repetition\n• Personalization Layer: Per-user embeddings capture individual tastes"
+        },
+        {
+          "step": 5,
+          "title": "Scaling & Follow-Up Questions",
+          "content": "**Scale**:\n• Horizontal scaling of App Servers + Load Balancers\n• Distributed feature computation via Spark/EMR\n• Separate ranking pods per user segment\n\n**Follow-up Questions**:\n**Q: How do you handle the data sparsity problem for rare activities (job changes)?**\n→ Use activity embeddings to share signal across similar types; boost rare activities during sampling\n\n**Q: How do you avoid showing repetitive feeds?**\n→ Track historical recommendations in DB; filter already-seen items before scoring\n\n**Q: How often to retrain?**\n→ Monitor online CTR; trigger retraining when online metrics degrade; target multiple retrains/day\n\n**Q: How do you handle personalization for new users (cold start)?**\n→ Use demographic features + popular content; populate with connection-based signals immediately"
+        }
+      ],
+      "keyQuestions": [
+        "Why use Normalized Cross-Entropy instead of raw log-loss?",
+        "How do you prevent the feed from showing repetitive content?",
+        "How do you collect unbiased training data for feed ranking?",
+        "How would you handle a new user with no engagement history?",
+        "What's the tradeoff between retraining frequency and system cost?",
+        "How do you balance different activity types (posts vs. job changes) in the feed?"
+      ],
+      "keyAnswers": [
+        "NCE normalizes by the entropy of the label distribution, making it comparable across user segments with different base CTRs. Raw log-loss varies with background click rate, making cross-segment model comparisons misleading.",
+        "Track recent impressions per user and apply diversity constraints: limit posts from the same author or topic cluster within a sliding window. Use Determinantal Point Processes (DPP) for principled diversity post-ranking.",
+        "Use inverse propensity weighting (IPW) to correct for position bias — top-position items get more clicks regardless of relevance. Run randomized shuffling experiments on a small % of users to collect unbiased click signals.",
+        "Use demographic features and connections' engagement signals immediately. Populate feed from the user's network's recent activity; rely on content-based signals (post type, topic) rather than collaborative filtering until history accumulates.",
+        "More frequent retraining captures viral posts and trend shifts but increases compute, storage, and deployment overhead. Balance by retraining the lightweight ranking model hourly while keeping expensive candidate generation on a daily cycle.",
+        "Train separate ranking models per content type with type-specific engagement labels; apply a type-diversity constraint at re-ranking to ensure a healthy mix. Multi-task learning can share lower-layer representations across content types."
+      ]
+    },
+    {
+      "id": "ads-click-prediction",
+      "diagramImageName": "ad-click-prediction",
+      "title": "Ad Click Prediction (Ads Ranking)",
+      "description": "Build an ML model that predicts whether a user will click on an ad. One of the most critical problems in online advertising — even small accuracy improvements translate to millions in revenue.",
+      "category": "Ad Systems",
+      "difficulty": "hard",
+      "companies": [
+        "Meta",
+        "Google",
+        "TikTok",
+        "Twitter/X",
+        "Amazon"
+      ],
+      "source": "Educative — Machine Learning System Design",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Predict whether a user will click on a displayed advertisement. Binary classification problem:\n• Input: Features describing the User (demographics, interests, history) + Ad (creative, category, budget) + Context (time, device, location, placement)\n• Output: Probability P(click) ∈ [0,1]\n\n**Business impact**: Revenue generation, user experience quality, advertiser ROI. At scale, small improvements = millions in additional revenue.\n\n**Ad Serving — Waterfall Model**:\nPublishers sell ad impressions via direct deals (highest CPM first) → if unsold, passed down to ad networks/exchanges → continues until sold. Faster and more accurate click prediction = better revenue and user experience.\n\n**Scale**: 40K ad requests/second, 100 billion ad requests/month, 100 million users."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design & Requirements",
+          "content": "**Offline Metrics (training phase)**:\n• Normalized Cross-Entropy (NCE): Predictive log-loss divided by cross-entropy of background CTR → insensitive to background CTR. Formula: NCE = [-1/N Σ((1+yᵢ)/2·log(pᵢ) + (1-yᵢ)/2·log(1-pᵢ))] / [-(p·log(p) + (1-p)·log(1-p))]. Penalizes confident wrong predictions.\n• Revenue Lift: % revenue change during A/B test on small % of traffic\n\n**Online Metrics**: CTR improvement, Revenue per thousand impressions (RPM)\n\n**Requirements**:\n• Imbalanced data: CTR is very small (1–2%) → need techniques for highly imbalanced training\n• Retraining frequency: Retrain many times/day to capture distribution shift\n• Train/validation split: Partition by time to simulate production\n• Serving latency: 50–100ms for ad prediction (ads go through waterfall → must be fast)\n• Overspend prevention: Avoid repeatedly serving same ads → over-spending campaign budget"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering & Model",
+          "content": "**Feature Engineering**:\n| Feature | Encoding |\n|---------|----------|\n| AdvertiserID | Embedding or feature hashing (millions of advertisers) |\n| User historical behavior (clicks over time periods) | Feature scaling (normalization) |\n| Temporal features (time_of_day, day_of_week) | One-hot encoding |\n| Cross features | Combine multiple features for interaction signals |\n\n**Training Data**:\n• Collect from ad click logs (waterfall model provides large volumes)\n• Select training period: last month or 6 months (balance training time vs. accuracy)\n• Downsample negatives to handle CTR imbalance\n\n**Model**:\n• Fully connected neural network with Sigmoid activation (final layer) — natural fit for P(click) ∈ [0,1]\n• Distributed training at scale\n• Evaluation: Temporal split (train on data up to time T, test on T+1); replay evaluation to avoid biased offline evaluation"
+        },
+        {
+          "step": 4,
+          "title": "Calculation & Estimation",
+          "content": "**Data Size**:\n• 100B ad requests/month × 1% CTR = 1B clicked ads/month\n• Each record ~500 bytes × 100B = 50 PB/month raw\n• Solution: Downsample to 1–10%, or use 1 week for training + 1 day for validation\n\n**System Components**:\n• Data Lake: Collects logs/event-driven data (Kafka)\n• Batch Data Prep: ETL jobs → Training Data Store\n• Batch Training Jobs: Scheduled + on-demand retraining\n• Model Store: S3 for trained models\n• Stream Data Prep: Processes online features → key-value store (low latency)\n• Feature Store: Real-time feature lookup (Redis/DynamoDB, < 10ms)\n• Ad Candidates: Upstream candidate generation service (waterfall model)"
+        },
+        {
+          "step": 5,
+          "title": "High-Level System Design & Scaling",
+          "content": "**Inference Flow**:\n1. User visits homepage → Ad request to Candidate Generation Service\n2. Candidate Generation returns list of Ad Candidates → Aggregator Service\n3. Aggregator Service splits candidate list → distributes to Ad Ranking workers (parallel scoring)\n4. Ad Ranking Service: loads latest model from Model Repos + features from Feature Store → produces ad scores\n5. Aggregator collects scores → selects Top-K ads (k=10–100) → returns to upstream services\n\n**Scaling Challenge**:\n• 50ms–100ms latency for 50K–100K ad candidates → single serving instance can't achieve SLA\n• Solution: Aggregator Service distributes candidate list to multiple serving instances → collects and merges results\n\n**Further Scaling**:\n• Kube-flow: Ad Generation Service communicates directly with Ad Ranking Services (reduces latency)\n• Load Balancer + horizontal pod autoscaling\n• Separate Feature Store sharded by user/ad segments\n\n**Follow-up Questions**:\n**Q: How to adapt to changing user behavior?**\n→ Retrain model every few hours with new click data\n\n**Q: How to handle under-exploration in Ad Ranking?**\n→ 2% of requests get random candidates; 98% get sorted candidates"
+        }
+      ],
+      "keyQuestions": [
+        "Why use Normalized Cross-Entropy instead of standard log-loss for ads?",
+        "How do you handle extreme class imbalance (1-2% CTR)?",
+        "How does the waterfall model affect your latency requirements?",
+        "How do you prevent campaign overspend?",
+        "How does the Aggregator Service pattern help achieve low latency at scale?",
+        "How would you design the feature store for real-time ad serving?"
+      ],
+      "keyAnswers": [
+        "Ad CTR varies widely across campaigns (0.1%–5%). NCE normalizes by background CTR so models from different campaigns are comparable and you can detect meaningful improvements rather than just reflecting base rate differences.",
+        "Downsample negatives by 10-100x during training, then re-calibrate predicted probabilities using p / (p + (1-p)/w). Alternatively apply focal loss or cost-sensitive weighting so the model focuses on hard positives.",
+        "Each stage (targeting → retrieval → ranking → auction) runs sequentially with strict time budgets. The ranking stage typically has ~50ms, ruling out expensive models like large transformers unless you apply distillation or approximation.",
+        "Use a token-bucket rate limiter per campaign. At auction time check remaining budget; apply pacing signals to probabilistically throttle ads as budget depletes. Reconcile actual spend asynchronously with the billing system.",
+        "The aggregator fans out in parallel to feature store, ad index, and user embedding service simultaneously, then assembles results. This reduces latency from O(n) serial calls to O(1) parallel, bounded by the slowest dependency.",
+        "Two-tier store: offline batch features in BigTable/Cassandra keyed by user/ad ID (read latency ~5ms); online streaming features in Redis for real-time signals (last click, current session). Combine both at serving time."
+      ]
+    },
+    {
+      "id": "rental-search-ranking",
+      "diagramImageName": "rental-search-ranking",
+      "title": "Rental Search Ranking System (Airbnb)",
+      "description": "Design a machine learning system to rank rental search results on Airbnb. Return listings most likely to be booked near the top — going beyond simple keyword matching to a data-driven booking probability model.",
+      "category": "Search & Retrieval",
+      "difficulty": "hard",
+      "companies": [
+        "Airbnb",
+        "Booking.com",
+        "Vrbo",
+        "Expedia"
+      ],
+      "source": "Educative — Machine Learning System Design",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Rank homes in search results such that those most likely to be booked appear higher. Train a supervised ML model that learns from historical user sessions and predicts whether a listing will be booked.\n\n**Why binary classification (booked vs. not booked)?**\n• Outcome is binary → natural fit\n• Flexibility to evaluate ranking, user behavior, and optimize for downstream metrics (revenue)\n• More control over false positive vs. false negative tradeoffs — critical in high-stakes ranking\n\n**Why not simple keyword matching?**\n• Text similarity shows \"sounds good\" results but doesn't predict bookings\n• Need data-driven approach: estimate P(booking | user, listing, context)\n\n**Scale**: 150 million users, 1.25 billion searches/month, 5 bookings/user/year × 30 listings seen/booking."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design & Requirements",
+          "content": "**Offline Metrics**:\n• Normalized Discounted Cumulative Gain (nDCG): Standard metric for ranking where position matters. Users rarely scroll through all results → correct prediction at position 2 is more valuable than at position 10.\n• Formula: nDCG = DCG / IDCG, where DCGₚ = Σᵢ relᵢ / log₂(i+1)\n• Captures both relevance AND position quality\n\n**Online Metrics**:\n• Conversion rate = number_of_bookings / number_of_search_results\n• Revenue lift\n\n**Training Requirements**:\n• Handle heavily imbalanced data (most listings don't get booked)\n• Stratified sampling, class weighting, focal loss, or downsampling non-bookings\n• Temporal split: Use sessions before cutoff date for training, after cutoff for validation → simulates production\n\n**Inference Requirements**:\n• Latency: 50–100ms — fast search is critical for user experience\n• Cold-start: New listings have no data → use hybrid models or rule-based heuristics (high-quality photos, competitive pricing)"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering & Model",
+          "content": "**Feature Categories**:\n• Listing features: price, location, amenities, review scores, photos quality, availability, listing age\n• User features: search history, booking history, demographics, price range preference\n• Context features: search query (location, dates, guests), season, day of week\n• Cross features: user-listing affinity (has user searched similar listings before?)\n\n**Model Architecture**:\n• Neural network with embeddings for categorical features (ListingID, UserID, LocationID)\n• Sigmoid activation at output layer → P(booking) ∈ [0,1]\n• Can extend to multi-task: predict both booking probability AND view time (if strong correlation)\n\n**Training Data**:\n• From user search sessions: each (user, listing, context) → booked or not\n• 1.25B samples/month × 500 bytes = 625 GB/month\n• Keep last 6–12 months; archive older data to cold storage\n\n**Evaluation**:\n• Offline: nDCG on held-out temporal validation set\n• Online: Conversion rate and revenue lift via A/B test"
+        },
+        {
+          "step": 4,
+          "title": "High-Level System Design",
+          "content": "**System Flow**:\n1. User searches (city + dates) → App Server → Search Service\n2. Search Service queries Index DB → retrieves candidate listings\n3. Candidates sent to Ranking Service → ML model scores each for P(booking)\n4. Ranking Service returns scored + sorted list → Search Service → App Server → User\n5. Logs all ranked candidates (for training data) → Cloud Storage or Kafka\n\n**Key Components**:\n• Feature Store (MySQL Cluster, Redis, DynamoDB): Low-latency feature lookup < 10ms\n• Model Store (S3): Stores trained models; serving pulls latest by timestamp\n• Feature Pipeline: Processes online features → stores in Feature Store\n• Index DB: Pre-indexed listing catalog for fast retrieval\n\n**Data Size**: 500 bytes × 1.25B samples = 625 GB/month"
+        },
+        {
+          "step": 5,
+          "title": "Scale & Follow-Up Questions",
+          "content": "**Scaling Strategy**:\n• Scale out Application Servers → Load Balancers\n• Scale out Search Services and Ranking Services independently (horizontal pods)\n• Log all recommended candidates to Kafka → training data pipeline\n\n**Follow-up Questions**:\n**Q: What are the cons of ListingID embeddings?**\n→ Limited unique IDs (millions); each listing has few bookings/year → insufficient to train good embeddings. Use listing features instead.\n\n**Q: How to redesign for view-time correlation?**\n→ Multi-task network with two output heads: P(booking) + predicted_view_time\n\n**Q: How often to retrain?**\n→ Monitor online conversion rate; trigger retraining when metrics degrade\n\n**Q: Cold start for new listings?**\n→ Use content features (photos, description, location, price) + rule-based boosting for new listings"
+        }
+      ],
+      "keyQuestions": [
+        "Why is nDCG a better metric than AUC for search ranking?",
+        "How do you handle the cold-start problem for new listings?",
+        "How do you prevent the model from ignoring rare but high-value bookings?",
+        "What's the tradeoff between booking probability and revenue per booking?",
+        "How would you handle temporal drift in user booking patterns (e.g., seasonal changes)?",
+        "How do you log training data without introducing position bias?"
+      ],
+      "keyAnswers": [
+        "nDCG measures the quality of the full ranking order — highly relevant items at the top matter more than lower positions. AUC only measures discrimination between relevant and irrelevant, ignoring rank. For search, position 1 gets ~10x more clicks than position 5.",
+        "Use content-based features available immediately (location, price, photos, amenities) to estimate booking probability. Apply a small exploration boost to new listings and collect feedback quickly to build listing-specific history.",
+        "Use value-weighted loss: multiply the loss by booking revenue or P(book) × price. Alternatively train separate models for click probability and booking probability, then combine with a revenue-aware scoring function.",
+        "Optimizing purely for booking probability favors cheap listings; optimizing for revenue favors expensive ones that convert less. Use a combined objective: P(book) × price, or a multi-objective model with explicit tradeoff control.",
+        "Add time features (month, is_holiday, days_until_travel) to the model. Retrain monthly to capture seasonal shifts. Apply recency weighting in training so recent bookings have higher loss weight than old data.",
+        "Use inverse propensity scoring: weight training examples by 1/P(shown at position k). Alternatively run position-randomized experiments on a small traffic slice to collect unbiased click signals for debiased training."
+      ]
+    },
+    {
+      "id": "food-delivery-eta",
+      "diagramImageName": "food-delivery-eta",
+      "title": "Food Delivery ETA Prediction",
+      "description": "Build an ML system to estimate food delivery time given order details, market conditions, and real-time traffic. Accurate ETAs improve user trust and order completion rates.",
+      "category": "Logistics & Maps",
+      "difficulty": "medium",
+      "companies": [
+        "DoorDash",
+        "Uber Eats",
+        "Instacart",
+        "Grubhub",
+        "Lyft"
+      ],
+      "source": "Educative — Machine Learning System Design",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Build a model to estimate total delivery time given:\n• Order details (order size, restaurant location, customer location)\n• Market conditions (weather, events, holidays)\n• Real-time traffic (road closures, congestion)\n\n**Formula**: DeliveryTime = PickupTime + Point-to-PointTime + Drop-offTime\n\n**Why this matters**: Overestimate → customers less likely to order. Underestimate → customers upset. Accurate ETA = trust = more orders.\n\n**Scale**: 20 million users, 20 million deliveries/year, 300K restaurants, 200K drivers. System makes ~30 ETA predictions per delivery (updated as status changes)."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design & Requirements",
+          "content": "**Offline Metrics**:\n• Root Mean Squared Error (RMSE): √[Σ(predicted - actual)² / n]\n• Target: RMSE < 10–15 minutes for reliable estimates\n• RMSE penalizes large errors heavily — important because a 30-minute error is much worse than three 10-minute errors\n\n**Online Metrics**:\n• A/B testing: Monitor RMSE in production\n• Customer engagement: Order completion rate\n• Retention: Repeat order rate (long-term trust signal)\n\n**Requirements**:\n• Training: High-throughput pipeline (data in Parquet files), retrain every few hours — delivery is dynamic (traffic, weather, game days can suddenly change conditions)\n• Inference: Near real-time updates whenever delivery status changes; 30 predictions per delivery; latency 100–200ms\n• Balance overestimation vs. underestimation — retrain multiple times/day to adapt to market dynamics"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering & Model",
+          "content": "**Feature Categories**:\n\nOrder features:\n• Order size (number of items, weight)\n• Restaurant preparation time (historical average per restaurant)\n• Distance: restaurant → customer (straight-line and road distance)\n\nReal-time features:\n• Traffic speed per road segment\n• Weather conditions (rain, snow, visibility)\n• Active driver density in area\n• Day of week, hour of day, holiday flag\n\nContext features:\n• StoreID embedding (capture restaurant-specific patterns)\n• Historical average delivery time per restaurant per time-of-day\n\n**Model**:\n• Baseline: Simple rule — distance / average speed\n• ML: Gradient Boosted Decision Trees (GBDT / XGBoost) — works well with tabular features, handles missing values, interpretable\n• Advanced: Segment-level model (predict speed per road segment, sum across route) → better generalization\n\n**Training Data**:\n• 2M deliveries/month × 500 bytes = 1 GB/month\n• Temporal split: Train on past data, validate on most recent period"
+        },
+        {
+          "step": 4,
+          "title": "System Design",
+          "content": "**Core Services**:\n• Estimate Delivery Time Service: Loads latest ML model from Model Storage, gets features from Feature Store, returns ETA prediction\n• Status Service: Receives real-time updates from restaurant/driver → updates order status → publishes to Kafka\n• Notification Service: Subscribed to Kafka → receives latest order status near real-time → notifies customer\n\n**Feature Store**: DynamoDB or Redis — key-value storage for fast (<10ms) feature lookup at inference time\n\n**Feature Pipeline**: Reads from Kafka → transforms and aggregates near real-time statistics → stores in Feature Store\n\n**Scheduler**: Coordinates model retraining multiple times/day → saves new model to Model Storage (S3)\n\n**System Flow**:\n• Customer opens app → requests ETA → App Server → Estimate Delivery Time Service\n• Service loads model + features → predicts delivery time → returns to customer\n• When restaurant starts cooking → Status Service → Kafka → Notification Service updates customer\n• Feature Pipeline continuously updates aggregated traffic/weather features in Feature Store"
+        },
+        {
+          "step": 5,
+          "title": "Scaling & Follow-Up Questions",
+          "content": "**Scaling**:\n• Scale out Application Servers + Load Balancers\n• Kafka as backbone for real-time event streaming (status updates, model predictions)\n• Model predictions sent to Kafka → other services receive notifications immediately\n\n**Follow-up Questions**:\n**Q: What are the cons of StoreID embedding?**\n→ New stores have no data → cold start problem. Need fallback to category-level or location-level features.\n\n**Q: How often to retrain?**\n→ Monitor online RMSE continuously; retrain when metrics degrade; target multiple retrains/day for dynamic conditions (events, weather)\n\n**Q: How to model uncertainty in ETA?**\n→ Predict distribution (mean + confidence interval) using quantile regression; show range to user (\"35–45 min\")\n\n**Q: What changes for ride-sharing ETA vs. food delivery?**\n→ Food delivery has 3-phase structure (prep + pickup + delivery); ride-sharing is 2-phase (pickup + trip). Food delivery needs restaurant state tracking."
+        }
+      ],
+      "keyQuestions": [
+        "Why use RMSE instead of MAE for ETA prediction?",
+        "How do you handle real-time traffic vs. historical speed data?",
+        "How do you update ETA in near real-time as conditions change?",
+        "What's the cold-start problem for new restaurants and how do you solve it?",
+        "How would you model prediction uncertainty to show users a time range?",
+        "How does the feature pipeline aggregate near-real-time statistics?"
+      ],
+      "keyAnswers": [
+        "RMSE penalizes large errors more heavily due to squaring. In ETA, a 20-minute error is far worse than two 10-minute errors — customers who wait much longer than promised churn. RMSE's squared penalty aligns with this business cost.",
+        "Combine both: use historical average speeds by road segment and time-of-day as a prior; layer real-time GPS probe data from active couriers to detect current congestion. Weight real-time signals higher with a recency decay factor.",
+        "Push updated ETAs every 30-60 seconds per order via WebSocket. Recalculate the delivery leg from current courier GPS using a live traffic graph; recalculate the restaurant prep leg using historical prep time distribution plus real-time kitchen state signals.",
+        "New restaurants have no prep time history. Bootstrap with category-level averages (pizza ~12 min, sushi ~18 min), then add restaurant-specific features (menu complexity, kitchen capacity). Update estimates after 20-30 orders of feedback.",
+        "Use quantile regression or a Bayesian neural network to output P10/P90 confidence bounds. Show the user the 90th percentile as the 'latest' arrival time so the majority of orders beat the displayed estimate, improving trust.",
+        "Use a streaming pipeline (Kafka + Flink) to compute running aggregates: courier speed over last 5 minutes, restaurant average prep time over last hour, zone density over last 10 minutes. Materialize results to Redis for low-latency serving."
+      ]
+    },
+    {
+      "id": "search-ranking",
+      "title": "Search Ranking System (Twitter/Google)",
+      "description": "Design an ML-powered search ranking system that retrieves and ranks the most relevant documents or tweets for a user's query — balancing relevance, freshness, and personalization.",
+      "category": "Search & Retrieval",
+      "difficulty": "hard",
+      "companies": [
+        "Google",
+        "Twitter/X",
+        "Amazon",
+        "LinkedIn",
+        "Bing"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Given a user query, retrieve and rank documents/tweets so the most relevant results appear first.\n\n**ML Formulation**: Given a query q and document d, predict a relevance score r(q,d) and rank by descending score.\n\n**Types of ranking**:\n• Pointwise: Train a model to predict relevance of each (query, document) pair independently\n• Pairwise: Train model to predict which of two documents is more relevant\n• Listwise: Optimize the whole ranked list directly (LambdaRank, etc.)\n\n**Clarifying questions**:\n• Is it a general search (Google) or specialized (Twitter, Amazon products)?\n• What is the primary business objective? CTR, conversion, watch time?\n• Personalized results or same for all users with the same query?\n• How many languages need to be supported?\n• What types of content — text, images, videos, mixed?\n\n**Scale**: 50 million DAU, hundreds of millions of documents/tweets indexed."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics**:\n• NDCG (Normalized Discounted Cumulative Gain): Standard ranking metric — rewards relevant results at top positions\n• MRR (Mean Reciprocal Rank): Average of 1/rank of first relevant result\n• Precision@K / Recall@K: Precision and recall in top-K results\n\n**Online Metrics**:\n• Click-Through Rate (CTR)\n• Session success rate (did user find what they were looking for?)\n• Dwell time (time spent on clicked result)\n• Zero-click rate (user satisfied by snippet without clicking)\n• Abandonment rate\n\n**Counter Metrics**: Hide rate, report rate (user hides or reports result as irrelevant)\n\n**Requirements**:\n• Response time < 200ms end-to-end\n• Freshness: New content must be indexed and rankable within minutes (Twitter) or hours (Google)\n• Personalization: Same query should return different results for different users based on history"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components & Feature Engineering",
+          "content": "**Multi-Stage Architecture**:\n1. Query understanding: Parse and expand query (spell correction, synonyms, intent classification)\n2. Document retrieval: BM25 or ANN search → top-K candidates (fast, recall-oriented)\n3. Re-ranking: ML model scores each candidate (precision-oriented)\n4. Filtering: Remove spam, duplicates, age-restricted content\n\n**Feature Engineering**:\n• Query features: length, type (navigational/informational), language\n• Document features: TF-IDF, BM25 score, document freshness, authority (PageRank)\n• User features: search history, clicked documents, location, device\n• Query-document features: query terms in title/body/URL, semantic similarity (embedding dot product)\n• Context: time of day, trending topics\n\n**Embeddings**:\n• Dual-encoder: Separate encoders for query and document → dot product for relevance score\n• BERT-based: Cross-encoder for precise scoring (expensive — use for re-ranking only)"
+        },
+        {
+          "step": 4,
+          "title": "Training Data & Model",
+          "content": "**Training Data Generation**:\n• Click logs: (query, document, clicked) pairs from user sessions\n• Dwell time as relevance signal: Short dwell = not relevant; long dwell = relevant\n• Human-rated relevance (for core quality evaluation): Expert raters label query-document relevance 1–5\n• Implicit feedback: clicks, bookmarks, shares as positive signals; skips as negative\n\n**Handling Bias**:\n• Position bias: Documents shown at top get more clicks even if less relevant → use Inverse Propensity Scoring (IPS)\n• Selection bias: We only have feedback on shown documents → use exploration (random injection)\n\n**Model**:\n• LambdaRank / LambdaMART: Gradient-boosted trees that directly optimize NDCG\n• Two-Tower Neural Network: Query encoder + Document encoder → fast at inference\n• Cross-encoder (BERT): Most accurate but slow — use only in final re-ranking stage\n\n**Training**:\n• Pairwise training: For each query, train model to rank clicked docs above non-clicked docs\n• Temporal split: Train on historical sessions, validate on most recent"
+        },
+        {
+          "step": 5,
+          "title": "System Design & Scaling",
+          "content": "**Indexing Pipeline**:\n• Crawl/ingest new documents → extract text → compute embeddings → update ANN index\n• For Twitter: Near-real-time indexing (seconds); for web: crawl frequency based on PageRank\n\n**Serving Pipeline** (< 200ms total budget):\n• Query processing: 10ms\n• ANN retrieval (candidate recall): 20ms — FAISS/ScaNN vector search\n• Feature extraction: 30ms — Feature Store lookup\n• Re-ranking model inference: 50ms — LambdaMART or cross-encoder\n• Post-processing + filtering: 20ms\n\n**Scaling**:\n• Shard index across multiple machines (by document ID or topic cluster)\n• Cache popular query results with TTL-based invalidation\n• Separate serving clusters for personalized vs. non-personalized results\n\n**Follow-Up Questions**:\n**Q: How do you handle freshness vs. quality tradeoff?**\n→ Boost freshness score for time-sensitive queries (news, events); use decay function for document age\n\n**Q: How do you detect and filter spam?**\n→ Separate spam classifier trained on labeled spam samples; run before re-ranking"
+        }
+      ],
+      "keyQuestions": [
+        "What are the tradeoffs between pointwise, pairwise, and listwise ranking?",
+        "How do you handle position bias in click-through data?",
+        "When would you use a cross-encoder vs. a dual-encoder model?",
+        "How do you balance freshness vs. quality in ranking?",
+        "How do you design the indexing pipeline for near-real-time content?",
+        "How do you measure whether search quality improved in production?"
+      ],
+      "keyAnswers": [
+        "Pointwise is simplest but ignores relative order; pairwise (RankNet) directly optimizes pair order but is O(n²) in pairs; listwise (LambdaMART) optimizes the full list metric (nDCG) directly. Listwise gives best ranking quality at the cost of more training complexity.",
+        "Use inverse propensity weighting: assign weight 1/P(clicked | shown at position k) to each training example. Estimate propensities via randomized result-swapping experiments. Alternatively use unbiased LambdaRank which corrects gradients directly.",
+        "Dual-encoder (query and document embedded separately, scored via cosine similarity) is fast for retrieval at scale — pre-compute document embeddings offline. Cross-encoder (query+doc together through a transformer) is far more accurate but expensive — use only for re-ranking the top 100 candidates.",
+        "Add a freshness signal (document age × engagement velocity) as a ranking feature. Tune the freshness weight via A/B test on engagement metrics. Breaking news and event queries get higher freshness weight than evergreen informational queries.",
+        "Use a tiered index: a batch index rebuilt daily covering all content; a real-time index updated within seconds for new/updated content. Queries fan out to both indices and merge results. The real-time index is smaller and optimized for fast writes.",
+        "Primary: A/B test nDCG@10, CTR, and session success rate (user clicked and did not immediately return). Secondary: zero-result rate and query reformulation rate. Use interleaved testing for high sensitivity with less traffic needed."
+      ]
+    },
+    {
+      "id": "fraud-detection",
+      "title": "Fraud Detection System",
+      "description": "Design a real-time ML system to detect fraudulent transactions before they complete. Minimize fraud losses while keeping false positive rates low to avoid blocking legitimate transactions.",
+      "category": "Trust & Safety",
+      "difficulty": "hard",
+      "companies": [
+        "PayPal",
+        "Stripe",
+        "Visa",
+        "Mastercard",
+        "Amazon",
+        "Meta"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Detect fraudulent transactions before they complete, in real-time (< 100ms).\n\n**ML Formulation**: Binary classification — P(fraud | transaction features)\n\n**Key constraint**: Extreme class imbalance (fraud ≈ 0.1% of all transactions) + hard latency requirement (< 100ms) + delayed labels (chargebacks arrive 30–90 days later)\n\n**Fraud Types**:\n• Account Takeover (ATO): Stolen credentials used to access accounts\n• Card-Not-Present (CNP): Stolen card details used online\n• Merchant Fraud: Fraudulent merchants charging customers\n• Friendly Fraud: Legitimate customers dispute valid charges\n\n**Clarifying Questions**:\n• Block in real-time or flag for manual review?\n• What's the acceptable false positive rate (blocking legitimate transactions has real cost)?\n• Account takeover vs. card fraud vs. merchant fraud?\n• How much label delay is acceptable for training?\n\n**Scale**: 10K+ transactions/second at peak."
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics** (class imbalance makes ROC-AUC misleading):\n• PR-AUC (Precision-Recall AUC): Preferred for imbalanced data — focuses on minority class\n• Precision@K and Recall@K at operating threshold\n• F1 score at 99% precision operating point (business requirement)\n\n**Online Metrics**:\n• Fraud rate: $ caught / $ total fraud (recall of dollar value)\n• False positive rate: Legitimate transactions incorrectly blocked\n• Chargeback rate and dispute rate\n• Customer friction score\n\n**Key Tradeoff**: Precision vs. Recall\n• High precision = fewer false positives (less customer friction)\n• High recall = more fraud caught (less financial loss)\n• Business defines operating point: what's the cost of each false positive vs. false negative?\n\n**Requirements**:\n• Real-time: Decision in < 100ms\n• High recall at 99%+ precision for hard fraud cases\n• Monitor for model degradation as fraud patterns evolve"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering",
+          "content": "**User/Account Features**:\n• Account age, total historical spend, device fingerprint, location history\n• Number of recent failed logins, password reset events\n• Historical fraud flags (previous disputes)\n\n**Transaction Features**:\n• Amount, merchant category code (MCC), currency, country\n• Time of day, day of week, distance from home location\n• Is this merchant new for this user?\n\n**Velocity Features** (most important for fraud detection):\n• # transactions in last 1hr / 24hr / 7 days\n• Total $ spent in last 1hr / 24hr\n• # unique merchants in last 24hr\n• # countries in last 7 days\n\n**Graph/Network Features** (catch fraud rings):\n• Shared device/IP/email across multiple accounts\n• Graph distance to known fraud accounts\n• Velocity of new connections between accounts\n\n**Behavioral Biometric Features** (bot detection):\n• Typing speed, mouse movement patterns, touch pressure (mobile)\n• Browser fingerprint, font list, canvas fingerprint"
+        },
+        {
+          "step": 4,
+          "title": "Model Architecture",
+          "content": "**Layered Defense Strategy**:\n\n**Layer 1 — Rules Engine (instant, < 1ms)**:\n• Block obvious fraud: known bad cards, IP blacklists, velocity limits exceeded\n• High precision, limited recall\n\n**Layer 2 — ML Model (real-time, < 50ms)**:\n• Gradient Boosted Trees (XGBoost/LightGBM): Fast inference, handles tabular features, interpretable\n• Trained on historical labeled transactions; handles imbalance via class weights or SMOTE\n• Output: risk score 0–100\n\n**Layer 3 — Graph Neural Network (async, < 5 seconds)**:\n• Detect fraud rings through connected account graph\n• Flags accounts for review even if individual transaction looks clean\n\n**Threshold Selection**:\n• Set decision threshold at business-defined operating point (e.g., 99% precision)\n• Different thresholds for different risk tiers (new account vs. established account)\n\n**Handling Label Delay**:\n• Chargebacks arrive 30–90 days late → use early signals: disputes, customer calls\n• Semi-supervised learning with early weak labels + update with confirmed labels later"
+        },
+        {
+          "step": 5,
+          "title": "System Design & Scaling",
+          "content": "**Real-Time Serving Pipeline** (< 100ms):\n• Transaction event arrives → Feature extraction from Redis (velocity counters, account features)\n• Rules Engine check: block if obvious fraud\n• ML model scoring: risk score computation\n• Decision: block / allow / manual review queue\n\n**Feature Serving**:\n• Pre-aggregate velocity counters in Redis (e.g., tx_count_1h per user_id)\n• Update counters in real-time via Kafka consumer\n• Feature Store lookup: < 10ms\n\n**Model Serving**:\n• ONNX-exported model, co-located with payment service for lowest latency\n• Fallback: Rules-only mode if ML service is degraded\n\n**Offline Pipeline**:\n• Collect new chargeback labels (30-90 day lag)\n• Weekly model retraining with latest labeled data\n• Monitor score distribution daily for concept drift\n\n**Follow-Up Questions**:\n**Q: How do you handle class imbalance?**\n→ Oversample fraud (SMOTE), undersample legitimate transactions, use class weights, or focal loss\n\n**Q: How do you detect fraud rings?**\n→ Graph neural network on shared device/IP/email signals; connected components analysis"
+        }
+      ],
+      "keyQuestions": [
+        "Why use PR-AUC instead of ROC-AUC for fraud detection?",
+        "How do you handle the 30-90 day label delay from chargebacks?",
+        "How would you detect a coordinated fraud ring using graph features?",
+        "What's the cost of a false positive vs. false negative in fraud detection?",
+        "How do you prevent the model from learning spurious correlations in imbalanced data?",
+        "How do you handle concept drift as fraudsters adapt to your model?"
+      ],
+      "keyAnswers": [
+        "With extreme class imbalance (~0.1% fraud), ROC-AUC is misleadingly high because it counts true negatives. PR-AUC focuses on precision and recall for the positive (fraud) class — the metric that actually reflects business impact.",
+        "Use early proxy labels (user complaints, manual review flags) that arrive sooner than chargebacks. Train with delayed labels but upweight recent data. Run a short-term model on immediate velocity features alongside a long-term model on settled chargeback labels.",
+        "Model transactions as a graph: nodes = users/devices/IPs, edges = shared attributes (same device fingerprint, same IP subnet). Use connected components or a GNN to surface clusters of accounts with unusual shared signals that no single account shows alone.",
+        "False negative = missed fraud = direct financial loss. False positive = blocking a legitimate user = churn and support cost. Set the decision threshold to minimize total cost: FP_cost × FP_rate + FN_cost × FN_rate, calibrated from business data.",
+        "Apply stratified sampling in train/validation splits. Use SMOTE or cost-sensitive weighting for the minority class. Regularly audit feature importances — if a feature that shouldn't predict fraud (e.g., device brand) is highly weighted, investigate for data leakage.",
+        "Monitor model performance (PR-AUC, fraud dollar volume) weekly. Alert on input feature distribution shift. Retrain frequently; use adversarial training and online learning to adapt faster. Maintain a rule-based fallback layer updatable without retraining."
+      ]
+    },
+    {
+      "id": "harmful-content",
+      "title": "Harmful Content Detection",
+      "description": "Design an ML system to automatically detect and remove harmful content (hate speech, violence, nudity) on a social media platform at scale — 500 million posts per day.",
+      "category": "Trust & Safety",
+      "difficulty": "medium",
+      "companies": [
+        "Meta",
+        "YouTube",
+        "Twitter/X",
+        "TikTok",
+        "Reddit"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Monitor posts, detect harmful content, and demote/remove it automatically.\n\n**ML Formulation**:\n• Input: Post (multimodal — text, image, video)\n• Output: P(harmful) or multi-class P(violent), P(nude), P(hate_speech)\n• ML Category: Multimodal Multi-label Classification\n\n**Harmful Content Categories**:\n• Violence: Graphic violence, threats\n• Nudity: Adult content, CSAM\n• Hate Speech: Content targeting protected groups\n• Misinformation: False claims about health, elections\n• Spam: Bulk unsolicited content\n\n**Scale**: 500M posts/day, ~10K annotated examples available\n\n**Key Constraints**:\n• Latency: Can vary by category (CSAM = immediate; hate speech = can tolerate minutes)\n• Explainability: Must explain the reason to affected users (which category)\n• Multi-language: Must support many languages\n\n**Clarifying Questions**:\n• Which types of harmful content are in scope?\n• What human annotation resources are available?\n• Is there a user reporting feature (explicit feedback)?\n• Is explainability required?"
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics**:\n• F1 score per category (harm type)\n• PR-AUC (class imbalance — harmful content is rare)\n• ROC-AUC\n\n**Online Metrics**:\n• Prevalence of harmful content (% of posts that are harmful)\n• Appeals rate (users appealing removals — proxy for false positive rate)\n• User reports rate (users reporting missed harmful content — proxy for false negative rate)\n• Time to removal (for urgent categories like CSAM)\n\n**Requirements**:\n• High recall for severe categories (CSAM, terrorism) — better to over-remove\n• Higher precision for borderline categories (satire, news reporting of violence)\n• Latency varies: CSAM < 1 second; hate speech < 5 minutes (can batch process)\n• Scale: 500M posts/day ≈ 6K posts/second\n\n**Tradeoff**: Over-moderation (remove legitimate speech) vs. under-moderation (allow harmful content). Different content types have different optimal operating points."
+        },
+        {
+          "step": 3,
+          "title": "Architecture & Model",
+          "content": "**Multi-Stage Architecture**:\n\n**Stage 1 — Fast pre-filter (< 50ms)**:\n• Hash-matching: Known harmful content (PhotoDNA for CSAM)\n• Simple text classifiers for obvious cases\n• Very high precision — only block clear violations\n\n**Stage 2 — ML Scoring (< 500ms)**:\n• Multimodal model scores text + image + video separately\n• Ensemble or joint model combines signals\n\n**Stage 3 — Human Review Queue** (for borderline cases):\n• Route to human reviewers based on confidence score\n• Prioritize by severity and virality\n\n**Model Architecture**:\n• Text: Fine-tuned multilingual BERT (or XLM-RoBERTa) for cross-language support\n• Image: ResNet/EfficientNet fine-tuned on moderation-labeled dataset\n• Video: Frame sampling (1fps) + audio transcript → apply text + image models\n• Fusion: Late fusion (combine predictions) or joint model\n\n**Training Data Challenges**:\n• Only 10K annotated examples → use transfer learning from pre-trained models\n• Semi-supervised: Use unlabeled data with pseudo-labels\n• Active learning: Route uncertain cases to annotators first"
+        },
+        {
+          "step": 4,
+          "title": "Training Data & Feature Engineering",
+          "content": "**Labeling Methods**:\n• Natural labels: User reports (noisy but free and scalable)\n• Human annotation: Most accurate but expensive, slow, traumatic for annotators\n• Weak supervision: Keyword lists, regex patterns, output from existing classifiers\n• Transfer learning: Pre-train on large datasets, fine-tune on moderation-labeled data\n\n**Handling Label Scarcity** (only 10K labeled examples):\n• Transfer learning: Fine-tune BERT/ResNet pre-trained on large corpora\n• Semi-supervised learning: Label 10K → train model → pseudo-label remaining 500M posts\n• Active learning: Query most uncertain examples for human labeling first\n\n**Feature Engineering**:\n• Text: Tokenize → multilingual embeddings (XLM-RoBERTa)\n• Image: CNN features + object detection labels\n• Video: Frame embeddings + audio transcript text features\n• User features: Account age, history of violations, follower count\n• Content metadata: virality score, language, region"
+        },
+        {
+          "step": 5,
+          "title": "System Design & Scaling",
+          "content": "**Real-Time Pipeline** (for high-severity content):\n• Post created → publish to Kafka topic\n• Content Moderation Service consumes event → runs hash check + fast classifier\n• If confident violation → auto-remove + notify user\n• If uncertain → ML scoring pipeline → score-based routing\n\n**Batch Pipeline** (for lower-severity):\n• Process posts in micro-batches (every 1–5 minutes)\n• Run full multimodal model scoring\n• Apply thresholds per category\n\n**Human Review Queue**:\n• Priority queue based on severity × virality\n• Reviewer tools: side-by-side context, policy guidelines, appeal tracking\n\n**Scaling**:\n• 6K posts/second requires distributed Kafka consumer pods\n• Model serving: GPU pods for image/video inference; CPU pods for text\n• Cache hash-match results to avoid re-processing known content\n\n**Follow-Up Questions**:\n**Q: How do you handle adversarial users who slightly modify harmful content to evade detection?**\n→ Perceptual hashing (robust to minor modifications); adversarial training; regular model updates\n\n**Q: How do you avoid over-moderating in culturally specific contexts?**\n→ Region-specific classifiers; diverse human review teams; appeals process with human escalation"
+        }
+      ],
+      "keyQuestions": [
+        "How do you handle multi-modal content (text + image + video) in a unified model?",
+        "How do you handle the label scarcity problem with only 10K annotated examples?",
+        "What's the tradeoff between precision and recall for different harm categories?",
+        "How do you support content moderation across 50+ languages?",
+        "How do you handle adversarial users trying to evade detection?",
+        "How do you prioritize which content to review first when overloaded?"
+      ],
+      "keyAnswers": [
+        "Train modality-specific encoders (text transformer, image ViT, video frame sampler) and fuse embeddings via late fusion — concatenation followed by an MLP classifier. Each modality can independently flag content; ensemble or max-pool their scores.",
+        "Fine-tune a pre-trained foundation model (CLIP for images, BERT/RoBERTa for text) on your 10K examples. Apply data augmentation (back-translation for text, transforms for images). Use active learning to annotate the most uncertain examples first.",
+        "Child safety: maximize recall — miss nothing, even if it means more false positives going to human review. Spam: maximize precision — less user disruption even if some spam slips through. Tune the decision threshold per harm category based on severity of harm.",
+        "Use multilingual pre-trained models (mBERT, XLM-R) that share representations across languages via cross-lingual transfer. For low-resource languages, transfer from similar high-resource languages. Hire diverse annotators covering all major language communities.",
+        "Use adversarial training: augment training data with known evasion patterns (character substitution, leet speak, unicode lookalikes). Run red-team exercises to generate new evasion attempts. Monitor for sudden distribution shifts on model inputs as an early evasion signal.",
+        "Score items by risk: harmful probability × viral reach × content recency. Route highest-risk items to expedited human review. Allocate reviewers by language and regional expertise. Use tiered automated actions for high-confidence cases, reserving human review for borderline decisions."
+      ]
+    },
+    {
+      "id": "people-you-may-know",
+      "title": "People You May Know (Friend Recommendation)",
+      "description": "Design a friend/follower recommendation system that suggests users to connect with on a social platform — similar to LinkedIn's PYMK or Facebook's Friend Suggestions.",
+      "category": "Recommendations",
+      "difficulty": "medium",
+      "companies": [
+        "Meta",
+        "LinkedIn",
+        "Twitter/X",
+        "Instagram",
+        "Snapchat"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Recommend a list of users that you may want to connect with, maximizing the number of formed connections.\n\n**ML Formulation**: For a given user U, rank all other users by P(U connects with V).\n• Input: Source user U, candidate user V, graph context\n• Output: Connection probability P(U→V)\n\n**Connection Types**:\n• Symmetric (Facebook friends): Both users must accept\n• Asymmetric (Twitter follows): One-way, no acceptance needed\n\n**Scale**: 1B total users, avg 10,000 connections per user → dense social graph\n\n**Clarifying Questions**:\n• Are friendships/connections symmetrical?\n• Can we assume the social graph is relatively stable?\n• What engagement counts as a \"connection\" (accepted request, first message, follow)?\n• How many recommendations to show per user? (Typically 10–20)\n\n**Business Goal**: Maximize formed connections (increases engagement, retention, network value)"
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics**:\n• Precision@K: Of K recommendations shown, what % did user connect with?\n• Recall@K: Of all people user will ever connect with, what % were in top-K recommendations?\n• AUC: Overall ranking quality\n\n**Online Metrics**:\n• Connection acceptance rate: # accepted requests / # recommendations shown\n• Connection formation rate: New connections per DAU (primary business metric)\n• Long-term engagement: Do new connections lead to ongoing interactions?\n• Spam rate: Are recommendations being used to spam users?\n\n**Requirements**:\n• Freshness: New users should appear in recommendations quickly (cold-start)\n• Diversity: Not just mutual friends — recommend people from different contexts\n• Privacy: Some users block specific people → filter out before recommendation\n• Scale: 1B users × 20 recommendations = 20B predictions/day (need efficient batching)"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering",
+          "content": "**Graph-Based Features** (most powerful signals):\n• Mutual friends count: # friends both U and V share\n• Mutual friends / total friends ratio\n• Graph distance: 2nd-degree connections? 3rd-degree?\n• Common group memberships\n• Common workplace/school affiliations\n\n**Profile Similarity Features**:\n• Hometown / current city match\n• Employer / school match\n• Industry / function match (LinkedIn)\n• Shared interests (liked pages, groups)\n\n**Behavioral Features**:\n• Has U viewed V's profile? (strong positive signal)\n• Do U and V interact with the same content?\n• Are U and V in the same photo together?\n• Email/phone contact book overlap\n\n**User Features (for each candidate)**:\n• User activity level (DAU? last_login)\n• Profile completeness\n• Response rate to connection requests"
+        },
+        {
+          "step": 4,
+          "title": "Model Architecture",
+          "content": "**Candidate Generation** (fast recall stage):\n• Triangle closing: Find users with many mutual friends (graph traversal, O(k²) per user)\n• Collaborative filtering: Find users with similar \"taste\" in connections (ALS matrix factorization)\n• Inverted index on profile attributes: Same school/employer → candidate pool\n\n**Ranking Model** (precision stage):\n• Logistic Regression baseline: Fast, interpretable, good with sparse features\n• Gradient Boosted Trees (XGBoost): Better for non-linear feature interactions\n• Graph Neural Network: Learns embeddings by aggregating neighborhood information — captures complex graph structure\n\n**GNN Approach**:\n• Each user = node; connections = edges\n• Node features: profile attributes + behavioral history\n• Message passing: Aggregate features from neighbors\n• Output: User embedding → dot product for connection probability\n\n**Training Data**:\n• Positive: Pairs (U, V) where connection formed within 30 days after recommendation\n• Negative: Random pairs + hard negatives (recommended but not connected)\n• Temporal split: Train on older data, validate on most recent"
+        },
+        {
+          "step": 5,
+          "title": "System Design & Scaling",
+          "content": "**Offline Pre-computation** (daily batch):\n• For each user, run graph traversal to find candidate pool (2nd/3rd degree connections)\n• Compute similarity features for all (user, candidate) pairs\n• Score all pairs → rank → store top-50 recommendations per user in cache\n\n**Online Serving** (< 100ms):\n• User opens PYMK page → look up pre-computed recommendations from cache\n• Apply real-time filters (blocked users, existing connections, privacy settings)\n• Return top-K recommendations\n\n**Feature Store**: Pre-computed profile features + behavioral signals for fast lookup\n\n**Scaling Challenges**:\n• 1B users × candidate generation = compute-intensive → batch with Spark/MapReduce\n• Social graph changes continuously → incremental graph updates vs. full daily recompute\n• Cold-start for new users: Use profile features + email/phone contact matching immediately\n\n**Follow-Up Questions**:\n**Q: How do you handle the cold-start problem for new users?**\n→ Immediately match against email/phone contacts; use profile similarity (school, workplace); boost recent joiners who share attributes\n\n**Q: How do you avoid filter bubbles (always recommending same demographic)?**\n→ Add diversity constraint: Ensure recommendations span different shared-friend clusters; inject serendipitous recommendations"
+        }
+      ],
+      "keyQuestions": [
+        "What are the most predictive features for friend recommendation?",
+        "How do you efficiently find 2nd-degree connections at 1B user scale?",
+        "When would you use a Graph Neural Network vs. a simpler model?",
+        "How do you handle the cold-start problem for brand new users?",
+        "How do you prevent PYMK from being used for spam or harassment?",
+        "How do you balance relevance vs. diversity in friend recommendations?"
+      ],
+      "keyAnswers": [
+        "Mutual friends count is the strongest predictor, followed by shared workplace or school, geographic proximity, common interests or groups, recent profile views (intent signal), and frequency of co-mention in conversations.",
+        "Pre-compute 2nd-degree connection lists using bounded-depth BFS on a distributed graph store (like Unicorn at Facebook). At query time look up pre-computed neighbors, then score and rank — avoids real-time graph traversal at billion-user scale.",
+        "Use a GNN when graph structure is complex, long-range relationships matter, or you want to capture community structure. Use gradient-boosted trees when latency is critical, features are well-understood, or GNN training cost is prohibitive.",
+        "Immediately import contacts from email or phone to find existing users. Use profile attributes (school, employer, location) to surface similar users. Fall back to trending people in the user's city or industry.",
+        "Filter recommendations for accounts with abuse reports or low trust scores. Limit the number of PYMK suggestions an account can receive or generate per day. Apply anomaly detection on unusual bulk-connection attempt patterns.",
+        "Primary sort by predicted connection probability; apply post-ranking diversity rules — cap suggestions from the same workplace or school at 3, include at least one from a different city. Use a greedy diversity algorithm or DPP for principled selection."
+      ]
+    },
+    {
+      "id": "hate-speech-detection",
+      "title": "Hate Speech Detection System",
+      "description": "Design a system that ingests user-generated text and determines whether it violates hate speech policies — deciding whether to allow, remove, or escalate for human review. Accurately, fairly, and at scale.",
+      "category": "Trust & Safety",
+      "difficulty": "hard",
+      "companies": [
+        "Meta",
+        "Twitter/X",
+        "YouTube",
+        "TikTok",
+        "Reddit"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Ingest user-generated text → determine if it violates hate speech policies → allow / remove / escalate for human review.\n\n**What counts as hate speech**: Content targeting protected groups (race, religion, gender, ethnicity, nationality) with derogatory, threatening, or dehumanizing language.\n\n**Different from**:\n• Offensive language (profane but not targeting a group)\n• Harassment (targeting individuals, not groups)\n• Sarcasm, humor, quoting for criticism/reporting, reclaimed language\n\n**Why it's hard**:\n• **Context changes meaning**: \"Go back to where you came from\" is neutral in travel discussion, hateful when directed at an immigrant during a heated exchange\n• **Labels are subjective**: Even trained moderators regularly disagree on borderline cases; inter-annotator agreement (Cohen's kappa) < 0.6 is common\n• **Language evolves**: Users adapt to moderation with euphemisms, coded language, emojis, misspellings\n• **Scale**: 500M+ posts/day\n\n**Clarifying Questions**:\n• Which specific harm categories are in scope (hate speech vs. harassment vs. violence)?\n• Multi-language support required?\n• What's the acceptable false positive rate?\n• Is explainability required when removing content?"
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics**:\n• **F1 score** per category (hate type): balances precision and recall for imbalanced data\n• **PR-AUC**: Better than ROC-AUC when harmful content is rare (< 1% of posts)\n• **Inter-annotator agreement**: Measures label quality — if humans disagree, model can't exceed human performance\n• **Calibration**: P(hate speech) should be well-calibrated for threshold selection\n\n**Online Metrics**:\n• **Prevalence**: % of posts classified as hate speech (monitor for sudden spikes/drops)\n• **Appeals rate**: Users appealing removals → proxy for false positive rate (over-moderation)\n• **User reports rate**: Users reporting missed content → proxy for false negative rate\n• **Time to removal**: For urgent categories (CSAM, incitement to violence)\n\n**Key Tradeoffs**:\n• High recall = miss less hate speech, but over-moderate legitimate speech\n• High precision = fewer false positives, but miss more violations\n• Operating point varies by category: CSAM → maximize recall; satire/borderline → maximize precision"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components",
+          "content": "**Multi-Stage Decision System**:\n\n**Stage 1 — Fast Pre-filter (< 5ms)**:\n• Hash matching against known violations (perceptual/exact hashing)\n• Keyword/regex blocklist for extreme content\n• Automatically removes clear violations with high precision\n\n**Stage 2 — ML Scoring (< 200ms)**:\n• Contextual classifier on full post text + metadata\n• Multi-label output: P(hate_speech), P(violence), P(harassment)\n• Uses conversation context (prior messages, reply structure)\n\n**Stage 3 — Human Review Queue**:\n• Borderline content (model confidence 0.4–0.7) → priority queue\n• Ordered by: severity × virality score\n• Human decision becomes new training label\n\n**Stage 4 — Post-Decision Actions**:\n• Remove: Delete content, notify user with policy violation reason\n• Demote: Reduce distribution (not shown in feeds/search)\n• Label: Apply warning label (user clicks to see)\n• Escalate: Refer to law enforcement (CSAM, credible violence threats)"
+        },
+        {
+          "step": 4,
+          "title": "Model Development",
+          "content": "**Model Architecture**:\n• **Fine-tuned multilingual BERT** (or XLM-RoBERTa for 100+ languages): Contextual embeddings capture nuance, sarcasm, coded language better than bag-of-words\n• **Input**: Full post text + optional: author history snippet, reply context, hashtags\n• **Output**: Multi-label classification (not mutually exclusive harm types)\n\n**Handling Label Subjectivity**:\n• Collect multiple annotations per sample → model probability as label distribution, not single label\n• Weight annotations by annotator reliability (consistency with policy)\n• Use soft labels (0.7 hate, 0.3 not hate) rather than hard binary labels for borderline cases\n\n**Training Data Challenges**:\n• **Label noise**: Annotator disagreement is inherent → use confidence-weighted training\n• **Data sparsity**: Extreme categories (CSAM) have few examples → oversampling, augmentation\n• **Active learning**: Route low-confidence model predictions to annotators first\n\n**Adversarial Robustness**:\n• Users modify harmful content: typos, emojis, leet-speak (\"h8\", \"🖕\")\n• Solution: Adversarial training with perturbed examples; character-level features; robust tokenization"
+        },
+        {
+          "step": 5,
+          "title": "System Design & Scaling",
+          "content": "**Real-Time Pipeline** (for post creation):\n• Post event → Kafka topic → Content Moderation Consumer\n• Fast pre-filter (hash match + keyword) → if match: auto-remove\n• If uncertain → ML scoring service → confidence-based routing\n• High confidence violation → auto-remove + log\n• Low confidence → human review queue\n\n**Batch Pipeline** (for existing content):\n• Retroactively scan older posts when policy updates\n• Re-score posts after model improvement\n\n**Feature Store**:\n• User history features: prior violations, account age, follower count\n• Content features: embedding cache for repeated content\n• Pre-computed: author risk scores updated hourly\n\n**Scaling**:\n• 500M posts/day ≈ 6K posts/second\n• Kafka consumer pods auto-scaled by Kubernetes\n• GPU pods for BERT inference; CPU pods for pre-filter\n• Cache repeated content (memes spread virally → same content millions of times)\n\n**Follow-Up Questions**:\n**Q: How do you handle language evolution / adversarial users?**\n→ Regular model retraining with new examples; character-level features; perceptual hashing\n\n**Q: How do you ensure fairness across demographic groups?**\n→ Audit false positive/negative rates by demographic; test for disparate impact; diverse annotator pools"
+        }
+      ],
+      "keyQuestions": [
+        "Why is hate speech detection harder than spam detection?",
+        "How do you handle subjective labels where annotators disagree?",
+        "How do you detect coded language and evolving slang that bypasses keyword filters?",
+        "What's the tradeoff between over-moderation and under-moderation?",
+        "How do you ensure fairness — not over-moderating specific communities?",
+        "How does the human review queue get prioritized at scale?"
+      ],
+      "keyAnswers": [
+        "Hate speech requires cultural and contextual understanding — the same phrase can be reclaimed language or a slur depending on who says it and to whom. Spam has clearer structural patterns. Hate speech is also highly language- and community-specific, requiring specialized annotators.",
+        "Use multiple annotators per item (3-5); apply majority vote for clear cases. For borderline items use a soft label (average annotator score) rather than forcing binary ground truth. Train with label smoothing or probabilistic labels to capture genuine uncertainty.",
+        "Use embedding-based models that capture semantic similarity even for novel words not seen in training. Monitor new keyword clusters appearing in flagged content. Apply active learning to quickly annotate and retrain on newly detected coded terms and evolving slang.",
+        "Over-moderation silences legitimate speech and disproportionately harms marginalized communities who use reclaimed language. Under-moderation allows real harm and drives away other users. Balance with tiered actions: remove amplification first, then content, using human review for edge cases.",
+        "Audit false positive rates by demographic group using representative held-out test sets. If a community is disproportionately flagged, investigate training data bias. Use diverse annotator pools that include members of affected communities to catch systematic blind spots.",
+        "Score items by: P(violation) × expected reach (shares, follower count) × content recency. Allocate reviewers by language and regional expertise. Use a tiered system: automated action on high-confidence cases, human expedited queue for viral content, standard queue for everything else."
+      ]
+    },
+    {
+      "id": "dynamic-pricing",
+      "title": "Dynamic Pricing Engine",
+      "description": "Design an ML system that automatically determines optimal prices in real time, responding to demand, inventory, competition, and market conditions — used by Uber Surge, Amazon, airlines, and hotels.",
+      "category": "Logistics & Maps",
+      "difficulty": "hard",
+      "companies": [
+        "Uber",
+        "Airbnb",
+        "Amazon",
+        "Airlines",
+        "DoorDash",
+        "Hotels.com"
+      ],
+      "source": "Educative — Grokking the ML Interview",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Problem Statement",
+          "content": "**Goal**: Determine the optimal price at the right time by responding to: demand fluctuations, inventory levels, user behavior, seasonality, competitor prices, and business constraints.\n\n**This is NOT just a prediction task**: ML models estimate demand or price elasticity, but actual pricing decisions are shaped by optimization logic, policy rules, and safety constraints. The model never outputs a price directly — it outputs signals (demand curves, elasticity estimates), and pricing logic happens downstream.\n\n**Key Insight — Feedback Loop Problem**: Every price change influences customer behavior → which affects the data the system learns from. If you raise prices and sales decline, the signal is ambiguous: natural demand drop, or price sensitivity? Without careful design, the system may reinforce bad decisions.\n\n**Business Objectives** (vary by industry):\n• Ride-hailing (Uber): Balance driver supply and rider demand (Surge Pricing)\n• E-commerce (Amazon): Maximize revenue or clear inventory\n• Airlines/Hotels: Yield management — maximize revenue across time\n\n**Clarifying Questions**:\n• What's the primary objective — revenue, profit, market share, or demand smoothing?\n• Is it real-time (ride-hailing) or batch (airline tickets)?\n• Are there regulatory or fairness constraints on pricing?\n• Can we A/B test price changes directly?"
+        },
+        {
+          "step": 2,
+          "title": "Metrics Design",
+          "content": "**Offline Metrics**:\n• **MAPE** (Mean Absolute Percentage Error) on demand forecasts\n• **Revenue per unit** at different price points in holdout experiments\n• **Price elasticity accuracy**: How well does predicted elasticity match observed response?\n\n**Online Metrics** (primary):\n• **Revenue lift**: % revenue increase vs. control group (A/B test)\n• **Conversion rate**: Orders / Price shows (demand response)\n• **Supply utilization**: For ride-hailing — % of drivers with active trips\n• **Customer satisfaction**: NPS, repeat purchase rate (long-term trust signal)\n\n**Counter Metrics** (watch for harm):\n• Churn rate: Are high prices driving users to competitors?\n• Complaint rate: Perception of unfairness after price spikes\n• Driver/seller satisfaction: Supply side metrics\n\n**Key Tradeoffs**:\n• Short-term revenue vs. long-term customer trust\n• Exploration (test new prices to learn elasticity) vs. exploitation (use best known price)\n• Local optimization (maximize this session) vs. global (maximize lifetime value)"
+        },
+        {
+          "step": 3,
+          "title": "Feature Engineering & Model",
+          "content": "**Demand Estimation Features**:\n• **Temporal**: Hour of day, day of week, holiday flags, special events (concerts, sports games)\n• **Supply**: Number of available drivers/rooms/inventory within radius\n• **Historical demand**: Rolling average demand for same time/location over past weeks\n• **External**: Weather, competitor prices (if available), local event calendars\n• **User features**: User segment (price-sensitive vs. price-insensitive), loyalty tier\n\n**Price Elasticity Features**:\n• Historical response to past price changes at similar conditions\n• User-level elasticity (loyal users less sensitive than new users)\n\n**Model Architecture**:\n• **Demand forecasting**: Gradient Boosted Trees (GBDT) or LSTM for time-series demand prediction\n• **Price optimization**: Given demand forecast + inventory + constraints → optimization problem (not pure ML): argmax_price [revenue(price, demand(price))]\n• **Causal inference**: Use diff-in-diff or instrumental variables to estimate true price elasticity (avoid confounding from self-selection)\n\n**Multi-Armed Bandit**:\n• Explore different prices on small % of traffic to continuously learn elasticity\n• Thompson Sampling or UCB1 for price exploration within allowed range"
+        },
+        {
+          "step": 4,
+          "title": "System Design",
+          "content": "**Real-Time Pricing Pipeline** (Uber Surge model, < 500ms):\n1. Demand signals arrive (ride requests, cancellations) → Kafka stream\n2. Demand Aggregation Service: Compute supply/demand ratio per geohex cell (5-min rolling window)\n3. Surge Model: Given supply/demand ratio → predict surge multiplier\n4. Pricing Rules Engine: Apply caps (max 10x), fairness rules, regulatory limits\n5. Price returned to app in < 500ms\n\n**Batch Pricing Pipeline** (Airlines/Hotels, daily/hourly):\n1. Pull historical booking data + competitor prices\n2. Run demand forecast model for each date/segment\n3. Optimize price across inventory (yield management)\n4. Update price catalog\n5. Monitor conversion rates hourly\n\n**Guardrails** (critical for trust):\n• Hard price caps (never exceed X × baseline)\n• Ramp limits (max % change per hour)\n• Fairness rules (same price for same query regardless of user history)\n• Regulatory compliance (price gouging laws during emergencies)\n\n**Experimentation**:\n• A/B test: Random % of requests get experimental prices → measure revenue and conversion\n• Holdout group: Never gets price changes → long-term baseline comparison"
+        },
+        {
+          "step": 5,
+          "title": "Scaling & Follow-Up Questions",
+          "content": "**Scaling**:\n• Real-time: Kafka consumer pods + in-memory demand aggregation (Redis)\n• Geospatial sharding: Partition by geographic region for Uber/Airbnb\n• Cache surge multipliers (refresh every 30 seconds) to avoid recalculating per request\n\n**Follow-Up Questions**:\n**Q: How do you prevent the feedback loop from distorting training data?**\n→ Use causal inference methods (instrumental variables); hold out control groups that never get price changes; track logging of both the offered price and the \"would have been\" baseline price\n\n**Q: How do you handle the cold-start problem for new markets?**\n→ Use rule-based pricing initially; transfer elasticity estimates from similar markets; bootstrap with aggressive exploration (multi-armed bandit)\n\n**Q: How do you balance surge pricing with customer fairness perception?**\n→ Communicate the reason for surge; apply caps; offer alternatives (schedule later at lower price); consider opt-out for loyal users\n\n**Q: How do you prevent competitors from gaming your pricing model?**\n→ Add noise to exploration; don't make pricing algorithm fully transparent; monitor for suspicious demand patterns (fake requests to trigger surge)\n\n**Q: Why isn't dynamic pricing just a regression problem?**\n→ Because the action (setting price) changes the outcome (demand) — it's a causal/decision problem, not a passive prediction problem"
+        }
+      ],
+      "keyQuestions": [
+        "Why is dynamic pricing a causal inference problem, not just a prediction problem?",
+        "How do you measure true price elasticity when prices and demand are correlated?",
+        "How do you prevent the feedback loop from corrupting your training data?",
+        "How do you balance short-term revenue vs. long-term customer trust?",
+        "How does Uber's surge pricing algorithm work at the geo-cell level?",
+        "What guardrails do you put in place to prevent price gouging?"
+      ],
+      "keyAnswers": [
+        "Setting a price changes demand — it's a causal decision, not a passive prediction. If you train on historical price-demand data, you get confounded estimates (prices and demand are correlated). You need causal methods (randomized experiments, instrumental variables) to isolate the true effect of price changes.",
+        "Run randomized price experiments (A/B tests at user or geo level) to break confounding. Use instrumental variables — exogenous demand shocks like weather events or competitor outages — to estimate elasticity. Calculate elasticity as ΔQ/ΔP from the randomized price variation.",
+        "Inject random prices using epsilon-greedy exploration to break the self-reinforcing cycle. Use counterfactual logging: record the price set and use importance weighting to estimate what would have happened at alternative prices, enabling unbiased off-policy learning.",
+        "Track long-term metrics like 30-day retention and repeat booking rate alongside immediate revenue. Apply surge caps and communicate the reason for surge clearly to users. Run experiments measuring impact on lifetime value, not just per-trip revenue.",
+        "Divide the city into hexagonal cells (H3 grid). Compute supply/demand ratio per cell in real time. Apply a piecewise-linear multiplier function: price increases when demand/supply exceeds a threshold. Smooth multipliers across adjacent cells to prevent sharp boundary effects.",
+        "Apply hard price caps (e.g., 3x base rate maximum). Time-based caps: surge can't persist beyond a set number of continuous hours. Trigger monitoring alerts when surge hits defined thresholds. Switch to regulatory compliance mode during declared emergencies or disasters."
+      ]
+    },
+    {
+      "id": "self-driving",
+      "title": "Self-driving cars",
+      "description": "",
+      "category": "Computer Vision",
+      "difficulty": "hard",
+      "companies": [
+        "Waymo",
+        "Tesla",
+        "Uber"
+      ],
+      "source": "GitHub — alirezadir/ML-Interviews",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Overview",
+          "content": "# Self-driving cars\n- drives itself, with little or no human intervention \n- different levels of authonomy"
+        },
+        {
+          "step": 2,
+          "title": "Hardware support",
+          "content": "### Sensors \n\n* Camera\n  * used for classification, segmentation, and localization.\n  * problem w/ night time, and extreme conditions like fog, heavy rain.\n* LiDAR (Light Detection And Ranging,)\n  * uses lasers or light to measure the distance of the nearby objects.\n  * adds depth (3D perception), point cloud\n  * works at night or in dark, still fail when there’s noise from rain or fog.\n* RADAR (Radio detection and ranging)\n  * use radio waves (instead of lasers), so they work in any conditions\n  * sense the distance from reflection,\n  * very noisy (needs clean up (thresholding, FFT)), lower spatial resolution, interference w/ other radio systems \n  * point cloud\n* Audio"
+        },
+        {
+          "step": 3,
+          "title": "Stack",
+          "content": "* **Perception**\n\n- Perception \nobjects, \nRaw sensor (lidar, camera, etc) data (image, point cloud)->  world understanding  \n  * Object detection (traffic lights, pedestrians, road signs, walkways, parking spots, lanes, etc), traffic light state detection, etc \n  * Localization\n    * calculate position and orientation of the vehicle as it navigates (Visual Odometry (VO)).\n    * Deep learning used to improve the performance of VO, and to classify objects.\n      * Examples: PoseNet and VLocNet++, use point data to estimate the 3D position and orientation.\n  * ....\n* **Behavior prediction**\n  * predict future trajectory of agents\n* **Planning**: decision making and generate trajectory\n* **Controller**: generate control commands: accelerate, break, steer left or right \n\n* Note: latency: orders of millisecond for some tasks, and order of 10 msec's for others"
+        },
+        {
+          "step": 4,
+          "title": "Perception",
+          "content": "* 2D Object detection:  \n  * Two-stage detectors: using Region Proposal Network (RPN) to learn RoI for potential objects  + bounding box predictions (using RoI pooling): (R-CNN, Fast R-CNN, Faster R-CNN, Mask-RCNN (also does segmentation)\n    * used to outperform until focal loss\n  * One-stage: skip proposal generation; directly produce obj BB: YOLO, SSD, RetinaNet\n    * computationally appealing (real time)\n  * Transformer based: \n    * Detection Transformer ([DETR](https://github.com/facebookresearch/detr)): End-to-End Object Detection with Transformers\n      * uses a transformer encoder-decoder architecture, backbone  CNN  as the encoder and a transformer-based decoder.\n      * input image -> CNN -> feature map -> decoder -> final object queries, corresponding class labels and bounding boxes.\n      * handles varying no. of objects in an image, as it does not rely on a fixed set of object proposals.\n      * [More](https://towardsdatascience.com/detr-end-to-end-object-detection-with-transformers-and-implementation-of-python-8f195015c94d)\n    * TrackFormer: Multi-Object Tracking with Transformers\n      * on top of DETR \n  * NMS:\n\n* 3D Object detection:  \n  * from point cloud data, ideas transferred from 2D detection\n  * Examples:\n    * 3D convolutions on voxelized point cloud\n    * 2D convolutions on BEV\n  * heavy computation\n\n* Object tracking:\n  * use probabilistic methods such as EKF \n  * use ML based models \n    * use/fine-tune pre-trained CNNs for feature extraction ->  do tracking with correlation or regression.\n    * use DL based tracking algorithm, such as SORT (Simple Online and Realtime Tracking) or DeepSORT\n\n* Semantic segmentation \n  * pixel-wise classification of image (each pixel assigned a class)\n* Instance segmentation \n  * combine obj detection + semantic segmatation -> classify pixels of each instance of an object"
+        },
+        {
+          "step": 5,
+          "title": "Behavior prediction",
+          "content": "* Main task: Motion forecasting/ trajectory prediction (future): \n  * predict where each object will be in the future given multiple past frames\n  * Examples:\n    * use RNN/LSTM for prediction\n  \n* Input from perception + HDMap\n* Options: \n  * top-view representation: input -> CNN -> ..\n  * vectorized: context map  \n  * graph representation: GNN \n\n* Render a bird eye view image on a single RGB image\n  * one option for history: also render on single image\n  * another option: use feature extractor (CNN) for each frame then use LSTM to get temporal info\n  * Input: BEV image + (v, a, a_v)\n  * Out: (x, y, std)\n  \n* also possible to use LSTM networks to generate waypoints in the trajectory sequentially.\n\n* Challenge: Multimodality (distribution of different modes) - future uncertain\n  \n  <!-- - Generative [from noise ] - conditioned \n  - Anchor based - add human knowledge (possible goal locations) -> chose \n  - multi-head: models multi-modality \n  - intention-based:  -->"
+        },
+        {
+          "step": 6,
+          "title": "Planning",
+          "content": "- Decision making and generate trajectory  \n- input: route (from A to B), context map, prediction for nearby agents\n  \n- proposal: what are possible options for the plan (mathematical methods vs imitation learning) - predict what is optimal \n\n* Hierarchical RL can be used\n  * high level planner: yield, stop, turn left/right, lane following, etc)\n  * low level planner: execute commands\n\n- motion validation: check e.g. collision, red light, etc -> reject + ranking"
+        },
+        {
+          "step": 7,
+          "title": "Multi task approaches",
+          "content": "* ### Perception + Behavior prediction\n  * Fast& Furious (Uber):\n    * Tasks: Detection, tracking, short term (e.g. 1 sec) motion forecasting\n    * create BEV from point cloud data:\n      * quantize 3D → 3D voxel grid (binary for occupation) → height>channel(3rd dimension) in RGB + time as 4th dimension → Single stage detector similar to SSD\n    * deal with temporal dimension in two ways:\n      * early fusion (aggregate temporal info at the very first layer)\n      * late fusion (gradually merge the temporal info: allows the model to capture high-level motion features.)\n    * use multiple predefined boxes for each feature map location (similar to SSD)\n    * two branches after the feature map:\n      * binary classification (P (being a vehicle) for each pre-allocated box)\n      * predict (regress) the BB over the current frame as well as n − 1 frames into the future → size and heading\n      \n  * IntentNet: learning to predict intent from raw sensor data (Uber)\n    * Fuse BEV generated from the point cloud + HDMap info  to do detection, intention prediction, and trajectory prediction.\n    * I: Voxelized LiDAR in BEV, Rasterized HDMap\n    * O: detected objects, trajectory, 8-class intention (keep lane, turn left, etc)\n  \n      \n\n* ### Behavior Prediction + Planning (Mid-to-Mid Model)\n\n  * ChauffeurNet (Waymo)\n    * prediction and planning using single NN using Imitation Learning (IL)\n    * More info [here](https://medium.com/aiguys/behavior-prediction-and-decision-making-in-self-driving-cars-using-deep-learning-784761ed34af)\n\n* ###  End to end\n\n  * Learning to drive in a day (wayve.ai)\n    * RL to train a driving policy to follow a lane from scratch in less than 20 minutes!\n    * Without any HDMap and hand-written rules!\n  * Learning to Drive Like a Human\n    * Imitation learning + RL\n    * used some auxiliary tasks like segmentation, depth estimation, and optical flow estimation to learn a better representation of the scene and use it to train the policy.  \n\n---\n\n# Example\nDesign an ML system to detect if a pedestrian is going to do jaywalking."
+        },
+        {
+          "step": 1,
+          "title": "Problem Formulation",
+          "content": "- Jaywalking: a pedestrian crossing a street where there is no  crosswalk or intersection.\n-  Goal: develop an ML system that can accurately predict if a pedestrian is going to do jaywalking over a short time horizon (e.g. 1 sec) in real-time. \n\n- Pedestrian action prediction is harder than vehicle: future behavior depends on other factors such as body pose, activity, etc.  \n\n* ML Objective \n  * binary classification (predict if a pedestrian is going to do jaywalking or not in the next T seconds.)\n\n* Discuss data sources and availability."
+        },
+        {
+          "step": 2,
+          "title": "Metrics",
+          "content": "#### Component level metrics \n* Object detection \n  * Precision \n    * calculated based on IOU threshold\n  * AP: avg. across various IOU thresholds \n  * mAP: mean of AP over C classes \n* jaywalking detection: \n  * Precision, Recall, F1  \n#### End-to-end metrics\n* Manual intervention \n* Simulation Errors \n  * historical log (scene recording) w/ expert driver \n  * input to our system and compare the decisions with the expert driver"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components",
+          "content": "* Visual Understanding System \n  * Camera: Object detection (pedestrian, drivable region?) + tracking\n  * [Optional] Camera + object detection: Activity recognition \n  * Radar: 3D Object detection (skip)\n*  Behavior prediction system \n   *  Trajectory estimation  \n      *  require motion history\n   *  Ml based approach (classification) \n      *  Input: \n         *  Vision: local context: seq. of ped's cropped image (last k frames) + global context (semantically segmented images over last k frames) \n         *  Non-vision: Ped's trajectory (as BBs, last k frames) +  context map  + context(location, age group, etc)"
+        },
+        {
+          "step": 4,
+          "title": "Data Collection and Preparation",
+          "content": "* Data collection and annotation:\n  * Collect datasets of pedestrian behavior, including both jaywalking and non-jaywalking behavior. This data can be obtained through public video footage or by recording video footage ourselves.\n  * Collect a diverse dataset of video clips or image sequences from various locations, including urban and suburban areas, with different pedestrian behaviors, traffic conditions, and lighting conditions.\n  * Annotate the data by marking pedestrians, their positions, and whether they are jaywalking or not. This can be done by drawing bounding boxes around pedestrians and labeling them accordingly (initially human labelers eventually auto-labeler system)\n  * Targeted data collection: \n    * in later iterations, we check cases where driver had to intervene when pedestrian jaywalking, check performance on last 20 frames, and ask labelers to label those and add to the dataset (examples need to be seen)\n  \n* Labeling: \n  * each video frame annotated with BB + pose info of the ped + activity tags (walking, standing, crossing, looking, etc) + attributes of pedestrian (age, gender, location, ets),  \n  * each video is annotated weather conditions and time of day.\n  \n* Data preprocessing:  \n  * Split the dataset into training, validation, and test sets.\n  * Normalize and resize the images to maintain consistency in input data.\n  *  Apply data augmentation techniques (e.g., rotation, flipping, brightness adjustments) to increase the  dataset's size and improve model generalization.\n     * enhance or augment the data with GANs \n  \n* Data augmentation"
+        },
+        {
+          "step": 5,
+          "title": "Feature Engineering",
+          "content": "* relevant features from the video footage, such as the pedestrian's position, speed, and direction of movement. \n* We can also use computer vision techniques to extract features like the presence of a crosswalk, traffic lights, or other relevant environmental cues.\n\n* features from frames: fc6 features by Faster R-CNN object detector at each BB (4096T vector)\n  * assume: we can query cropped images of last T (e.g. 5) frames of detected pedestrians from built-in object detector and tracking system \n* features from cropped frames:  activity recognition \n* context map : traffic signs, street width, etc\n* ped's history (seq. of BB info) + current info (BB + pose info (openPose) + activity + local context) + global context (context map)  + context(location, age group, etc) -> JW/NJW classifier \n  * other features that can be fused: ped's pose, BB, semantic segmentation maps (semantic masks for relevant objects), road geometry, surrounding people, interaction with other agents"
+        },
+        {
+          "step": 6,
+          "title": "Model Development and Offline Evaluation",
+          "content": "Model selection and architecture: \n\nAssume built-in object detector and tracker. If not, \n  * Object detection: Use a pre-trained object detection model like Faster R-CNN, YOLO, or SSD to identify and localize pedestrians in the video frames.\n  * Object tracking: \n    * use EKF based method or ML based method (SORT or DeepSORT) \n* Activity recognition: \n  * 3D CNN, or CNN + RNN(GRU) (chose this to fit the rest of the architecture)\n\n(Output of object detection and tracking can be converted into rasterized image for each actor -> Base CNN )\n\n* Encoders: \n  * Visual Encoder: vision content (last k frames) -> CNN base encoders + RNN for temporal info(GRU) [Another option is to use 3D CNNs]\n    * CNN base encoder -> another RNN for activity recognition \n  * Non-vision encoder: for temporal content use GRU  \n\n* Fusion strategies: \n  * early fusion \n  * late fusion \n  * hierarchical fusion \n  \n* Jaywalking clf: Design a custom clf layer to classify detected pedestrians as jaywalking or not.  \n  * Example: RF, or a FC layer \n\n* we can do ablation study for selection of the fusion architecture + visual and non-visual encoders \nAnother example: \n\nModel training and evaluation:\na. Train model(s) using the annotated dataset, \n+  loss functions for object detection (MSE, BCE, IoU)\n+  jaywalking classification tasks (BCE).\n\nb. Regularly evaluate the model on the validation set to monitor performance and avoid overfitting. Adjust hyperparameters, such as learning rate and batch size, if necessary.\n\nc. Once the model converges, evaluate its performance on the test set, using relevant metrics like precision, recall, F1 score, and Intersection over Union (IoU).\n\nTransfer learning for object detection (use powerful feature detectors from pre-trained models)\n* for fine tuning e.g. use 500 videos each 5-10 seconds, 30fps"
+        },
+        {
+          "step": 7,
+          "title": "Prediction Service",
+          "content": "* SDV on the road: will receive real-time images -> ... \n\n* Model optimization: Optimize the model for real-time deployment by using techniques such as model pruning, quantization, and TensorRT optimization."
+        },
+        {
+          "step": 8,
+          "title": "Online Testing and Deployment",
+          "content": "Deployment: Deploy the trained model on edge devices or servers equipped with cameras to monitor real-time video feeds (e.g. traffic camera system) and detect jaywalking instances. Integrate the system with existing traffic infrastructure, such as traffic signals and surveillance systems."
+        },
+        {
+          "step": 9,
+          "title": "Scaling, Monitoring, and Updates",
+          "content": "Continuous improvement: Regularly update the model with new data and retrain it to improve its performance and adapt to changing pedestrian behaviors and environmental conditions.\n\n* Other points: \n  * Occlusion detection \n    * hallucinated agent\n  * when visual signal is imprecise \n    * poor lighting  conditions \n\n<!-- Pedestrian action prediction: Pedestrian: harder than vehicle - future behavior depends on body pose \nlogs -> scenes that we have pedestrian for within 100 m -> perception: object detection: take cropped images, for the last 5 seconds -> need to do manual labeling -> later auto labeler -> sequence of objects in time -> body pose + activity recognition + history + context -> NN -> output jaywalk or not    \n\nobject detection [A ] -> activity + context map + history  [B] -> classification \nother features: age, location, etc  -->"
+        }
+      ],
+      "keyQuestions": [
+        "Camera: Object detection (pedestrian, drivable region?) + tracking"
+      ]
+    },
+    {
+      "id": "object-detection",
+      "title": "2D Object Detection System",
+      "description": "",
+      "category": "Computer Vision",
+      "difficulty": "medium",
+      "companies": [
+        "Tesla",
+        "Waymo",
+        "Apple"
+      ],
+      "source": "GitHub — alirezadir/ML-Interviews",
+      "sections": [
+        {
+          "step": 1,
+          "title": "2D object detectors",
+          "content": "### Two stage detectors\nTwo-stage object detectors are a type of deep learning model used for object detection tasks. These models typically consist of two main stages: region proposal and object classification.\n\n* In the first stage, the region proposal network (RPN) generates a set of potential object bounding boxes within an image. These proposals are generated based on a set of anchor boxes, which are pre-defined boxes of various sizes and aspect ratios that are placed at different positions within the image. The RPN uses convolutional neural networks (CNNs) to predict the likelihood of an object being present within each anchor box and refines the coordinates of the proposal box accordingly.\n\n* In the second stage, the object classification network takes the proposed regions from the RPN and classifies them into different object categories. This stage involves further processing of the region proposals, such as resizing them to a fixed size and extracting features using a CNN. The features are then fed into a classifier, typically a fully connected layer followed by a softmax activation function, to predict the object class and confidence score for each proposed region.\n\nTwo-stage object detectors, such as Faster R-CNN and R-FCN, are known for their high accuracy and robustness in object detection tasks. However, they can be computationally intensive due to the need for both region proposal and object classification, and can be slower than single-stage detectors.\n\n### One stage detectors \nOne-stage object detectors are a type of deep learning model used for object detection tasks. These models differ from two-stage detectors in that they perform both region proposal and object classification in a single step.\n\nThe most popular one-stage detector is the YOLO (You Only Look Once) family of models. The YOLO model divides the input image into a grid of cells, and each cell predicts bounding boxes, objectness scores, and class probabilities for objects that appear in that cell. The objectness score represents the likelihood that the cell contains an object, and the class probabilities indicate the predicted class of the object.\n\nOther one-stage detectors, such as SSD (Single Shot Detector) and RetinaNet, use a similar approach but with different architectures. They typically use a series of convolutional layers to extract features from the input image and generate a set of anchor boxes at various scales and aspect ratios. The network then predicts the likelihood of an object being present within each anchor box, and refines the box coordinates accordingly.\n\nOne-stage detectors are known for their speed and efficiency, as they can perform both region proposal and object classification in a single forward pass. However, they may not be as accurate as two-stage detectors, especially for small or highly occluded objects.\n\n### Metrics \n* Precision \n  * calculated based on IOU threshold\n* AP: avg. across various IOU thresholds \n* mAP: mean of AP over C classes"
+        }
+      ],
+      "keyQuestions": []
+    },
+    {
+      "id": "mm-video-search",
+      "title": "Multimodal Video Search System",
+      "description": "",
+      "category": "Search & Retrieval",
+      "difficulty": "hard",
+      "companies": [
+        "YouTube",
+        "Meta",
+        "TikTok"
+      ],
+      "source": "GitHub — alirezadir/ML-Interviews",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Overview",
+          "content": "# Multimodal Video Search System"
+        },
+        {
+          "step": 1,
+          "title": "Problem Formulation",
+          "content": "* Clarifying questions\n    - What is the primary (business) objective of the search system?\n    - What are the specific use cases and scenarios where it will be applied?\n    - What are the system requirements (such as response time, accuracy, scalability, and integration with existing systems or platforms)?\n    - What is the expected scale of the system in terms of data and user interactions?\n    - Is their any data available? What format? \n    - Can we use video metadata? Yes \n    - Personalized? not required \n    - How many languages needs to be supported?\n    \n* Use case(s) and business goal\n  * Use case: user enters text query into search box, system shows the most relevant videos \n  * business goal: increase click through rate, watch time, etc.  \n* Requirements\n  * response time, accuracy, scalability (50M DAU)\n* Constraints\n  * budget limitations, hardware limitations, or legal and privacy constraints\n* Data: sources and availability\n  * Sources: videos (1B), text \n  * 10M pairs of <video, text_query>. Videos have metadata (title, description, tags) in text format \n* Assumptions\n* ML formulation: \n  * ML Objective: retrieve videos that are relevant to a text query  \n  * ML I/O: I: text query from a user, O: ranked list of relevant videos on a video sharing platform  \n  * ML category: Visual search + Text Search systems"
+        },
+        {
+          "step": 2,
+          "title": "Metrics",
+          "content": "- Offline\n  - Precision@k, mAP, Recall@k, MRR \n  - we choose MRR (avg rank of first relevant element in results) due to the format of our eval data <video, text> pair \n- Online \n  - CTR: problem: doesn't track relevancy, click baits  \n  - video completion rate: partially watched videos might still found relevant by user \n  - total watch time\n  - we choose total watch time: good indicator of relevance"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components",
+          "content": "Multimodal search (video, text) for video content from text query: \n- Visual search system \n  - Text query -> videos (based on similarity of text and visual content) \n  - Two tower embedding architecture (video and text_query encoders)\n- Textual search system \n  - search for most similar titles, descs, and tags  w/ text query \n  - we can use Inverted Index (e.g. elastic search) for efficient full text search \n    - An inverted index is a data structure that maps terms (words) to the documents or locations where they appear, enabling efficient text-based document retrieval, commonly used in search engines."
+        },
+        {
+          "step": 4,
+          "title": "Data Collection and Preparation",
+          "content": "We use provided annotated data in the format of <video_id, query>."
+        },
+        {
+          "step": 5,
+          "title": "Feature Engineering",
+          "content": "- Preprocessing unstructured data \n  - Text pre-processing : normalization, tokenization, token to ids\n  - Video preprocessing: decode into frames -> sample -> resize -> scale, normalize, color correct"
+        },
+        {
+          "step": 6,
+          "title": "Model Development and Offline Evaluation",
+          "content": "* Model Selection  \n  - Text encoders: \n    - Text -> Vector (Embeddings)  \n    - Two approaches: \n      - Statistical (BoW, TF-IDF)\n      - ML encoders (word2vec, transformer based e.g. BERT)  \n    - We chose transformer based (BERT). \n\n  - Video encoders: \n    - Video-level\n      - more expensive, but captures temporal understanding\n      - Example: ViViT (Video Vision Transformer)\n    - Frame-level (from sample frames and aggregate)\n      - less expensive (training and serving speed, compute power) \n      - Example: ViT \n\n* Model Training   \n  - contrastive learning (similar to visual search system)."
+        },
+        {
+          "step": 7,
+          "title": "Prediction Service",
+          "content": "Components: \n- Visual search from text query \n  - text -> preprocess -> encoder -> embedding \n  - videos are indexed by their encoded embeddings \n  - search: using approximate nearest neighbor search (ANN)\n- Textual search\n  - using Elasticsearch (full text / fuzzy search)\n- Fusion  \n  - re-rank based on weighted sum of rel scores \n  - re-rank using a model \n- Re-ranking \n  - business level logic and policies"
+        }
+      ],
+      "keyQuestions": [
+        "What is the primary (business) objective of the search system?",
+        "What are the specific use cases and scenarios where it will be applied?",
+        "What are the system requirements (such as response time, accuracy, scalability, and integration with existing systems or platforms)?",
+        "What is the expected scale of the system in terms of data and user interactions?",
+        "Is their any data available? What format?",
+        "Can we use video metadata? Yes"
+      ]
+    },
+    {
+      "id": "event-recommendation",
+      "title": "Design an event recommendation system",
+      "description": "",
+      "category": "Recommendations",
+      "difficulty": "medium",
+      "companies": [
+        "Eventbrite",
+        "Meta",
+        "Airbnb"
+      ],
+      "source": "GitHub — alirezadir/ML-Interviews",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Overview",
+          "content": "# Design an event recommendation system"
+        },
+        {
+          "step": 1,
+          "title": "Problem Formulation",
+          "content": "* Clarifying questions \n  - Use case? \n    - event recommendation system similar to eventbrite's. \n  - What is the main Business objective? \n    - Increase ticket sales  \n  - Does it need to be personalized for the user? Personalized for the user\n  - User locations? Worldwide (multiple languages) \n  - User’s age group: \n  - How many users? 100 million DAU\n  - How many events? 1M events / month \n  - Latency requirements  - 200msec?\n  - Data access \n    - Do we log and have access to any data? Can we build a dataset using user interactions ?\n    - Do we have textual description of items? \n    - Can we use location data (e.g. 3rd party API)? (events are location based)\n  - Can users become friends on the platform? Do we wanna use friendships?\n  - Can users invite friends? \n  - Can users RSVP or just register?\n  - Free or Paid? Both \n\n* ML formulation \n  * ML Objective: Recommend most relevant (define) events to the users to maximize the number of registered events\n  * ML category: Recommendation system (ranking approach)\n    * rule based system \n    * embedding based (CF and content based)\n    * Ranking problem (LTR)\n      * pointwise, pairwise, listwise \n    * we choose pointwise LTR ranking formulation \n  * I/O: In: user_id, Out: ranked list of events + relevance score\n    * Pointwise LTR classifier I/O: I: <user_id, event_id>, O: P(event register) (Binary classification)"
+        },
+        {
+          "step": 2,
+          "title": "Metrics (Offline and Online)",
+          "content": "* Offline: \n    * precision @k, recall @ k (not consider ranking quality)\n    * MRR, mAP, nDCG (good, focus on first element, binary relevance, non-binary relevance) -> here event register binary relevance so use mAP  \n   \n* Online: \n    * CTR, conversion rate, bookmark/like rate, revenue lift"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components (MVP Logic)",
+          "content": "* We two stage (funnel) architecture for \n  * candidate generation \n    * rule based event filtering (e.g. location, etc)\n  * ranking formulation (pointwise LTR) binary classifier"
+        },
+        {
+          "step": 4,
+          "title": "Data preparation",
+          "content": "* Data Sources: \n  1. Users (user profile, historical interactions)\n  2. Events \n  3. User friendships \n  4. User-event interactions\n  5. Context\n\n*  Labeling:"
+        },
+        {
+          "step": 5,
+          "title": "Feature engineering",
+          "content": "* Note: Event based recommendation is more challenging than movie/video: \n   * events are short lived -> not many historical interactions -> cold start (constant new item problem)\n   * So we put more effort on feature engineering (many meaningful features)\n\n* Features: \n  - User features \n    - age (one hot), gender (bucketize), event history  \n \n  - Event features \n    - price, No of registered, \n    - time (event time, length, remained time)\n    - location  (city, country, accessibility)\n    - description\n    - host (& popularity)\n  \n  - User Event features \n    - event price similarity \n    - event description similarity \n    - no. registered similarity \n    - same city, state, country\n    - distance \n    - time similarity (event length, day, time of day)\n  \n  - Social features \n    - No./ ratio of friends going \n    - invited by friends (No)\n    - hosted by friend (similarity)\n  \n  - context \n    - location, time  \n\n* Feature preprocessing \n  - one hot (gender)\n  - bucketize + one hot (age, distance, time)\n\n* feature processing \n  * Batch (for static) vs Online (streaming, for dynamic) processing \n  * efficient feature computation (e.g. for location, distance)\n  * improve: embedding learning - for users and events"
+        },
+        {
+          "step": 6,
+          "title": "Model Development and Offline Evaluation",
+          "content": "* Model selection \n  * Binary classification problem: \n    * LR (nonlinear interactions)\n    * GBDT (good for structured, not for continual learning)\n    * NN (continual learning, expressive, nonlinear rels)\n  * we can start with GBDT as a baseline and experiment improvements by NN (both good options)\n* Dataset \n  * for each user and event pair, compute features, and label 1 if registered, 0 if not \n  * class imbalance \n    * resampling \n    * use focal loss or class-balanced loss"
+        },
+        {
+          "step": 7,
+          "title": "Prediction Service",
+          "content": "* Candidate generation \n  * event filtering (millions to hundreds)\n    * rule based (given a user, e.g. location, type, etc filters)\n* Ranking \n  * compute scores for <usr, event> pairs, and sort"
+        },
+        {
+          "step": 8,
+          "title": "Online Testing and Deployment",
+          "content": "Standard approaches as before."
+        }
+      ],
+      "keyQuestions": [
+        "What is the main Business objective?",
+        "Does it need to be personalized for the user? Personalized for the user",
+        "User locations? Worldwide (multiple languages)",
+        "How many users? 100 million DAU",
+        "How many events? 1M events / month",
+        "Latency requirements  - 200msec?"
+      ]
+    },
+    {
+      "id": "game-recommendation",
+      "title": "Design a game recommendation engine",
+      "description": "",
+      "category": "Recommendations",
+      "difficulty": "easy",
+      "companies": [
+        "Steam",
+        "Epic",
+        "Google"
+      ],
+      "source": "GitHub — alirezadir/ML-Interviews",
+      "sections": [
+        {
+          "step": 1,
+          "title": "Overview",
+          "content": "# Design a game recommendation engine"
+        },
+        {
+          "step": 1,
+          "title": "Problem Formulation",
+          "content": "User-game interaction \n\nSome existing data examples:  \n* Games data\n\n  * app_id,\n   title,\n   date_release,\n   win,\n   mac,\n   linux,\n   rating,\n   positive_ratio,\n   user_reviews,\n   price_final,\n   price_original,\n   discount,\n   steam_deck,\n\n* User historic data \n   \n  *  user_id,\n   products,\n   reviews,\n\n* Recommendations data \n  \n  * app_id,\n  helpful,\n  funny,\n  date,\n  is_recommended,\n  hours,\n  user_id,\n  review_id,\n  \n* Reviews \n\n* Example Open Source Data: [Steam games complete dataset](https://www.kaggle.com/datasets/trolukovich/steam-games-complete-dataset) ([CF and content based github](https://github.com/AudreyGermain/Game-Recommendation-System))\n  * Game fatures include:  \nUrl, \ntypes\nname,\ndesc_snippet,\nrecent_reviews,\nall_reviews,\nrelease_date,\ndeveloper,\npublisher,\npopular_tag,\n\n### Clarifying questions \n- Use case? Homepage?\n  - Does user sends a text query as well?\n- Business objective? \n  - Increase user engagement (play, like, click, share), purchase?, create a better ultimate gaming experience \n- Similar to previously played, or personalized for the user? Personalized for the user\n- User locations? Worldwide (multiple languages) \n- User’s age group: \n- Do users have any favorite lists, play later, etc?\n- How many games? 100 million\n- How many users? 100 million DAU\n- Latency requirements  - 200msec?\n- Data access \n  - Do we log and have access to any data? Can we build a dataset using user interactions ?\n  - Do we have textual description of items? \n- can users become friends on the platform and do we wanna take that into account?\n- Free or Paid?  \n\n### ML objective\n\n- Recommend most engaging (define) games\n  * Max. No. of clicks (clickbait)\n  * Max. No. completed games/sessions/levels (bias to shorter)\n  * Max. total hours played ()\n  * Max. No. of relevant items (proxy by user implicit/explicit reactions) -> more control over signals, not the above shortcomings\n\n* Define relevance: e.g. like is relevant, or playing half of it is, …\n* ML Objective: build dataset and model to predict the relevance score b/w user and a game\n* I/O: I: user_id, O: ranked list of games + relevance score\n* ML category: Recommendation System"
+        },
+        {
+          "step": 2,
+          "title": "Metrics (Offline and Online)",
+          "content": "* Offline: \n    * precision @k, mAP, and diversity \n* Online: \n    * CTR, # of completed, # of purchased, total play time, total purchase, user feedback"
+        },
+        {
+          "step": 3,
+          "title": "Architectural Components (MVP Logic)",
+          "content": "The main approaches used for personalized recommendation systems: \n* Content-based filtering: suggest items similar to those user found relevant (e.g. liked)\n    * No need for interaction data, recommends new items to users (no item cold start)\n    * Capture unique interests of users\n    * New user cold start \n    * Needs domain knowledge \n* CF: Using user-user (user based CF) or item-item similarities (item based CF)\n    * Pros\n        * No domain knowledge \n        * Capture new areas of interest \n        * Faster than content (no content info needed)\n    * Cons: \n        * Cold start problem (both user and item)\n        * No niche interest \n* Hybrid \n    * Parallel hybrid: combine(CF results, content based)\n    * Sequential: [CF based] -> Content based\n\nWhat do we choose? \nWe choose a sequential hybrid model (standard e.g. for video recommendation)\n\nWe follow  the three stage recommender system (funnel architecture) in order to meet latency requirements and eb able to scale the system to billions of items. \n\n```mermaid\n   Candidate generation --> Ranking --> Re-ranking\n```\n\nIn the first stage, we use a light model to retrive thousands of items from millions\nIn the second (ranking) stage, we focus on high precision using a powerful model. This will not impact serving speed much because it's only run on smaller subset of items. \n\nCandidate generation in practice comes from aggregation of different candidate generation models. Here we can assume three candidate generation modules: \n\n1. Candidate generation 1 (Relevance based)\n2. Candidate generation 2 (Popularity)\n3. Candidate generation 3 (Trending)  \n\nwhere we use CF for candidate generation 1\n\nWe use content based modeling for ranking."
+        },
+        {
+          "step": 4,
+          "title": "Data preparation",
+          "content": "Data Sources: \n\n1. Users (user profile, historical interactions):\n     * User profile\n       * User_id, username, age, gender, location (city, country), lang, timezone\n\n2. Games (structures, metadata, game content - what is it?)\n   - Game_id, title, date, rating, expected_length?,  #reviews, language, tags, description, price, developer, publisher, level, #levels\n\n3. User-Game interactions:  \nHistorical interactions: Play, purchase, like, and search history, etc  \n   - User_id, game_id, timestamp, interaction_type(purchase, play, like, impression, search), interaction_val, location\n\n1. Context: time of the day, day of the week, device, OS\n\nType\n\n- Removing duplicates \n- filling missing values \n- normalizing data.\n\n### Labeling: \nFor features in the form of <user, video> pairs -> labeling strategy based on explicit or implicit feedback \ne.g. \"positive\" if user liked the item explicitly or interacted (e.g. watched/played) at least for X (e.g. half of it).   \nnegative samples: sample from background distribution -> correct via importance smapling"
+        },
+        {
+          "step": 5,
+          "title": "Feature engineering",
+          "content": "There are several machine learning features that can be extracted from games. Here are some examples:\n\n- Game metadata features\n- Game state: e.g. the positions of players, the status of objects and obstacles, the time remaining, and the score.\n- Game mechanics: The rules and interactions that govern the game. \n- User engagement: e.g. the length of play sessions, frequency of play, and player retention rates.\n- Social interactions: b/w players: to identify patterns of behavior, such as the formation of alliances, the sharing of resources, and the types of communication used between players.\n- Player preferences: which game features are most popular among players, which can help inform game design decisions.\n- Player behaviors: player movement patterns, the types of actions taken by players, and the strategies used to achieve objectives.\n\nWe select some important features as follows:\n\n* Game metadata features: \n  * Game ID, \n  Duration, \n  Language, \n  Title, \n  Description,\n  Genre/Category, \n  Tags,  \n  Publisher(popularity, reviews), \n  Release date, \n  Ratings, \n  Reviews, \n  (Game content ?)\ngame titles, genres, platforms, release dates, user ratings, and user reviews.\n\n* User profile: \n  * User ID, Age, Gender, Language, City, Country \n\n* User-item historical features: \n  * User-item interactions \n    * Played, liked, impressions\n    * purchase history (avg. price)\n  * User search history \n\n* Context\n\n### Feature representation: \n\n* Categorical data (game_id, user_id, language, city): Use embedding layers, learned during\ntraining \n* Categorical_data(gender, age): one_hot\n* Continuous variables: normalize, or bucketize and one-hot (e.g. price) \n* Text:(title, desc, tags): title/description use embeddings, pre-trained BERT, fine tune on game language?, tags: CBOW\n* \n* Game content embeddings?"
+        },
+        {
+          "step": 6,
+          "title": "1 Candidate Generation",
+          "content": "For candidate generation 1 (Relevance Based), we choose CF. \n\nFor CF there are two embedding based modeling options: \n1. Matrix Factorization \n   * Pros: Training speed (only two matrices to learn), Serving speed (static learned embeddings)\n   * Cons: only relies on user-item interactions (No user profile info e.g. language is used); new-user cold start problem \n2. Two tower neural network:\n   * Pros: Accepts user features (user profile + user search history) -> better quality recommendation; handles new users \n   * Cons: Expensive training, serving speed     \n\nWe chose two-tower network here. \n\n#### Two-tower network\n  * two encoder towers (user tower + encoder tower)\n  * user tower encodes user features into user embeddings  $u$ \n  * item tower encodes item features into item embeddings   $v_i$\n  * similarity $u$, $v_i$ is considered as a relevance score (ranking as classification problem)\n\n#### Loss function: \nMinimize cross entropy for each positive label and sampled negative examples"
+        },
+        {
+          "step": 6,
+          "title": "2 Ranking",
+          "content": "For Ranking stage, we prioritize precision over efficiency. We choose content based filtering. Choose a model that relies in item features.  \nML Obj options: \n   - max P(watch| U, C)\n   - max expected total watch time \n   - multi-objective (multi-task learning: add corresponding losses)\n  \nModel Options: \n- FF NN (e.g. similar tower network to a tower network) + logistic regression \n- Deep Cross Network (DCN)\n\nFeatures  \n\n* Video ID embeddings (watched video embedding avg, impression video embedding), \n* Video historic\n  *  No. of previous impressions, reviews, likes, etc\n  *  Time features (e.g. time since last play), \n* Language embedding (user, item), \n* User profile \n* User Historic (e.g. search history)"
+        },
+        {
+          "step": 6,
+          "title": "3 Re-Ranking",
+          "content": "Re-ranks items by additional business criteria (filter, promote)  \nWe can use ML models for clickbait, harmful content, etc or use heuristics   \nExamples: \n* Age restriction filter \n* Region restriction filter \n* Video freshness (promote fresh content)\n* Deduplication \n* Fairness, bias, etc"
+        },
+        {
+          "step": 7,
+          "title": "Prediction Service",
+          "content": "two-tower network inference: find the k-top most relevant items given a user ->  \nIt's a classic nearest neighbor problem -> use approximate nearest neighbor (ANN) algorithms"
+        },
+        {
+          "step": 8,
+          "title": "Online Testing and Deployment",
+          "content": "Standard approaches as before."
+        },
+        {
+          "step": 9,
+          "title": "Scaling",
+          "content": "The three stage candidate generation - ranking - re-ranking can be scaled well as described earlier. It also meets the requirements of speed (funnel architecture), precision(ranking component), and diversity (multiple candid generation). \n\n### Cold start problem: \n* new users: two tower architectures accepts new users and we can still use user profile info even with no interaction \n* new items: recommend to random users and collect some data - then fine tune the model using new data\n\n### Training: \nWe need to be able to fine tune the model \n### Exploration exploitation trade-off \n- Multi-armed bandit (an agent repeatedly selects an option and receives a reward/cost. The goal of to maximize its cumulative reward over time, while simultaneously learning which options are most valuable.)\n### Other Extensions: \n* [Multi-task learning](https://daiwk.github.io/assets/youtube-multitask.pdf)\n  * Includes a shared feature extractor that is trained jointly with multiple prediction heads, each of which is responsible for predicting a different aspect of user behavior, such as click-through rate, watch time, and view count. The model is trained using a combination of supervised and unsupervised learning techniques, including cross-entropy loss, pairwise ranking loss, and self-supervised contrastive learning.\n* Positional bias (detection and correction) \n* Selection bias (detection and correction)\n* Add negative feedback (dislike)\n* Locality preservation: \n  * Use sequential user behavior info (CBOW model)\n* effect of seasonality \n* what if we only have a query and personal (item, provider) history? \n  * item embeddings, provider embeddings, query embeddings \n  * we can build a query-aware attention mechanism that computes \n\n### More resources \n\n* [Content-based](https://www.kaggle.com/code/fetenbasak/content-based-recommendation-game-recommender), [NLP analysis](https://www.kaggle.com/code/greentearus/steam-reviews-nlp-analysis), [Collaborative Denoising AE](https://www.kaggle.com/code/krsnewwave/collaborative-denoising-autoencoder-steam)  \n* [User-based CF, item-based CF and MF](https://github.com/manandesai/game-recommendation-engine) ([github](https://github.com/manandesai/game-recommendation-engine/blob/main/recommenders.ipynb))\n* [CF and content based](https://github.com/AudreyGermain/Game-Recommendation-System)"
+        }
+      ],
+      "keyQuestions": [
+        "Use case? Homepage?",
+        "Does user sends a text query as well?",
+        "Business objective?",
+        "Increase user engagement (play, like, click, share), purchase?, create a better ultimate gaming experience",
+        "Similar to previously played, or personalized for the user? Personalized for the user",
+        "User locations? Worldwide (multiple languages)"
+      ]
+    }
+  ]
+}
