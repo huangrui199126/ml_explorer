@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "import numpy as np\nimport math\n\ndef SwiGLU(x: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Args:\n        x: np.ndarray of shape (batch_size, 2d)\n    Returns:\n        np.ndarray of shape (batch_size, d)\n    \"\"\"\n    d = x.shape[1] // 2\n    x1 = x[:, :d]  # gate input\n    x2 = x[:, d:]  # linear input\n\n    def swish(val):\n        return val / (1.0 + math.exp(-val))\n\n    result = []\n    for row_idx in range(x.shape[0]):\n        row = []\n        for col_idx in range(d):\n            gated = swish(x1[row_idx, col_idx]) * x2[row_idx, col_idx]\n            row.append(round(gated, 4))\n        result.append(row)\n\n    return np.array(result)",
+    "explanation": "SwiGLU (Swish-Gated Linear Unit) was introduced in the PaLM and LLaMA architectures as an improved feedforward activation. Given an already-projected input of shape (batch_size, 2d), the function splits it into two halves along the feature dimension: x1 (the first d features) acts as the gate, and x2 (the last d features) provides the linear component.\n\nThe gate is computed using the Swish activation: Swish(x) = x * sigmoid(x). This is then multiplied element-wise with x2, producing the final output of shape (batch_size, d). The Swish function is smooth and non-monotonic, which empirically outperforms ReLU in large transformer models.\n\nThis pure Python version iterates over each element explicitly to compute the sigmoid and Swish values, then rounds to four decimal places as required. While not efficient for production, it makes the mechanics transparent for learning purposes.",
+    "key_learnings": [
+      "SwiGLU splits the 2d projection into two halves: one is Swish-activated (gate), the other is linear — they are combined via element-wise multiplication.",
+      "Swish(x) = x * sigmoid(x) is a self-gated activation; it is smooth, non-monotonic, and approximates ReLU for large positive x while preserving small negative values.",
+      "SwiGLU is used in LLaMA, PaLM, and Mistral FFN layers as a drop-in replacement for the standard ReLU or GELU feedforward block.",
+      "In practice the 2d projection is obtained by multiplying the input by a weight matrix W ∈ R^{hidden × 2d}, often split into two separate weight matrices W and V for gate and value.",
+      "The output dimension is d (half the input), so the caller must size W accordingly to maintain the desired hidden dimension."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef SwiGLU(x: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Args:\n        x: np.ndarray of shape (batch_size, 2d)\n    Returns:\n        np.ndarray of shape (batch_size, d)\n    \"\"\"\n    d = x.shape[1] // 2\n    x1 = x[:, :d]   # gate half\n    x2 = x[:, d:]   # value half\n\n    # Swish(x1) = x1 * sigmoid(x1)\n    swish_x1 = x1 * (1.0 / (1.0 + np.exp(-x1)))\n\n    # SwiGLU = Swish(x1) * x2\n    result = swish_x1 * x2\n\n    return np.round(result, 4)",
+    "explanation": "The NumPy implementation leverages vectorized operations to efficiently compute SwiGLU across the entire batch at once. After splitting x along the feature axis into x1 (gate) and x2 (value), we compute the Swish activation using NumPy's `np.exp` which broadcasts across the full (batch_size, d) tensor in a single pass.\n\nThe sigmoid is expressed inline as 1 / (1 + exp(-x1)) for clarity, then multiplied by x1 to form Swish(x1). The final SwiGLU output is the element-wise product of Swish(x1) and x2. NumPy's `np.round` then applies four-decimal rounding across the entire array efficiently.\n\nThis approach is orders of magnitude faster than the pure Python loop and is the typical implementation pattern before moving to a deep learning framework. It also avoids numerical overflow issues for large negative values since exp(-x) for very negative x approaches 0, making sigmoid approach 1.",
+    "key_learnings": [
+      "Array slicing with `[:, :d]` and `[:, d:]` efficiently splits the projected tensor without copying data (NumPy returns views).",
+      "Vectorized sigmoid `1 / (1 + np.exp(-x))` applies element-wise across the entire batch, avoiding Python-level loops entirely.",
+      "SwiGLU can be decomposed as: output = x1 * sigmoid(x1) * x2 — just three array operations after the split.",
+      "For numerical stability with large positive x, an alternative is `np.where(x >= 0, x / (1 + np.exp(-x)), x * np.exp(x) / (1 + np.exp(x)))`, but standard sigmoid is fine for typical float32 ranges.",
+      "The output shape (batch_size, d) means SwiGLU acts as a dimensionality reducer by half — in real LLaMA FFN layers, the W/V projections compensate by projecting to 8/3 * hidden_dim before the gate."
+    ]
+  },
+  "tensorflow": {
+    "code": "import numpy as np\nimport tensorflow as tf\n\ndef SwiGLU(x: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Args:\n        x: np.ndarray of shape (batch_size, 2d)\n    Returns:\n        np.ndarray of shape (batch_size, d)\n    \"\"\"\n    x_tensor = tf.cast(tf.convert_to_tensor(x), tf.float32)\n    d = x_tensor.shape[1] // 2\n\n    x1 = x_tensor[:, :d]   # gate\n    x2 = x_tensor[:, d:]   # value\n\n    # tf.nn.swish is x * sigmoid(x)\n    swish_x1 = tf.nn.swish(x1)\n\n    result = swish_x1 * x2\n\n    return np.round(result.numpy(), 4)",
+    "explanation": "TensorFlow provides `tf.nn.swish` as a built-in operation, which computes x * sigmoid(x) in a numerically stable and GPU-accelerated way. After converting the NumPy array to a TensorFlow tensor, we split along axis=1 and apply the gate mechanism exactly as in the NumPy version.\n\nUsing `tf.nn.swish` is preferred over manual sigmoid computation in TensorFlow because it has an optimized gradient implementation (avoiding the double sigmoid issue in naive backprop), which matters when this function is used inside a trainable model.\n\nThe result is converted back to NumPy via `.numpy()` and rounded to four decimal places. In a real model, you would skip the `.numpy()` call and keep everything as tensors to maintain the computation graph for gradient flow during training.",
+    "key_learnings": [
+      "`tf.nn.swish(x)` is the canonical TF op for Swish activation — prefer it over manual x * sigmoid(x) for correct gradient computation during training.",
+      "Tensor slicing syntax `tensor[:, :d]` works identically in TensorFlow as in NumPy, making it easy to port code between the two.",
+      "In production SwiGLU layers, the split is often done via two separate `tf.keras.layers.Dense` layers (W and V) rather than splitting a single 2d projection, which allows independent weight initialization.",
+      "Always cast inputs to float32 when converting from NumPy — integer types will cause errors in activation functions.",
+      "SwiGLU inside a `tf.keras.Model` would be wrapped in a custom `tf.keras.layers.Layer` to properly track weights and enable serialization."
+    ]
+  },
+  "pytorch": {
+    "code": "import numpy as np\nimport torch\nimport torch.nn.functional as F\n\ndef SwiGLU(x: np.ndarray) -> np.ndarray:\n    \"\"\"\n    Args:\n        x: np.ndarray of shape (batch_size, 2d)\n    Returns:\n        np.ndarray of shape (batch_size, d)\n    \"\"\"\n    x_tensor = torch.tensor(x, dtype=torch.float32)\n    d = x_tensor.shape[1] // 2\n\n    x1, x2 = x_tensor.chunk(2, dim=1)  # split into two halves\n\n    # F.silu is PyTorch's Swish: x * sigmoid(x)\n    result = F.silu(x1) * x2\n\n    return np.round(result.detach().numpy(), 4)",
+    "explanation": "PyTorch's `F.silu` (Sigmoid Linear Unit) is mathematically identical to Swish: SiLU(x) = x * sigmoid(x). This is the function used in LLaMA's actual source code. The `torch.chunk(2, dim=1)` call cleanly splits the 2d tensor into two equal halves along the feature dimension, which is idiomatic PyTorch for this pattern.\n\nThe SwiGLU computation is then a single line: apply SiLU to the gate (x1) and multiply by the value (x2). PyTorch's autograd automatically tracks gradients through both `F.silu` and the element-wise multiply, so this function is fully differentiable and can be embedded in any `nn.Module` without modification.\n\nWe call `.detach().numpy()` to safely convert back to NumPy — `.detach()` removes the tensor from the computation graph first, which is good practice even when gradients are not being tracked. The rounding is applied in NumPy after conversion.",
+    "key_learnings": [
+      "`F.silu` (SiLU) is PyTorch's name for Swish — it appears in LLaMA, Mistral, and Phi model implementations as the feedforward gate activation.",
+      "`tensor.chunk(2, dim=1)` is the idiomatic way to split a (batch, 2d) tensor into two (batch, d) halves — cleaner than manual slicing.",
+      "SwiGLU is fully differentiable end-to-end: gradients flow through both the SiLU gate and the linear branch, enabling joint optimization of W and V projections.",
+      "In `nn.Module` form, SwiGLU is typically implemented with two `nn.Linear` layers (no bias) — `self.w(x)` for gate and `self.v(x)` for value — rather than a fused 2d projection, for cleaner code.",
+      "The SwiGLU FFN block in LLaMA uses hidden_dim = int(2/3 * 4 * dim) rounded to a multiple of 256, compensating for the halved output so total parameter count stays comparable to standard FFN."
+    ]
+  },
+  "id": "156"
+}
