@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\nfrom itertools import combinations_with_replacement\n\ndef polynomial_features(X, degree):\n    n_samples = len(X)\n    n_features = len(X[0])\n\n    result = []\n    for i in range(n_samples):\n        sample = X[i]\n        row_features = []\n        # degree 0 yields the bias term (empty product = 1)\n        for d in range(degree + 1):\n            for combo in combinations_with_replacement(range(n_features), d):\n                val = 1.0\n                for idx in combo:\n                    val *= sample[idx]\n                row_features.append(val)\n        row_features.sort()\n        result.append(row_features)\n\n    return result",
+    "explanation": "The core idea is to enumerate every multiset of column indices of size 0 through `degree` using `combinations_with_replacement`. A multiset of size `d` represents a degree-`d` monomial: for a sample vector `x`, the combination `(i, i, j)` maps to `x[i]² * x[j]`. The empty combination (degree 0) always evaluates to 1, giving the standard bias term.\n\nFor each sample we iterate over all degrees, compute each monomial by multiplying the selected column values, collect them into a list, then call `list.sort()` to put the feature values in ascending order. The final list-of-lists is returned as the output.\n\nThis pure-Python path avoids NumPy entirely, which is useful for understanding the algorithm's mechanics. The complexity is O(S · C · D) where S is samples, C is the number of combinations, and D is the max degree — because each combination has at most `degree` multiplications.",
+    "key_learnings": [
+      "combinations_with_replacement(range(n), d) generates all degree-d monomials without needing explicit nested loops — the combinatorial library handles index selection.",
+      "The bias term (value = 1.0) falls naturally out of the d=0 case since the empty product is 1; always include it unless the problem explicitly says otherwise.",
+      "Sorting per-row after feature generation is O(F log F) where F = total feature count; it does not change correctness but changes the column semantics — downstream models treat sorted features as an ordered statistic.",
+      "This pattern (enumerate → compute → transform) mirrors sklearn's PolynomialFeatures: understanding its internals is a common ML interview topic.",
+      "Watch out for integer overflow when features are large integers and degree is high — casting to float early (val = 1.0) prevents this silently."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\nfrom itertools import combinations_with_replacement\n\ndef polynomial_features(X, degree):\n    X = np.asarray(X, dtype=float)\n    n_samples, n_features = X.shape\n\n    # Collect every (degree-0 through degree-d) multiset of column indices\n    combos = []\n    for d in range(degree + 1):\n        combos.extend(combinations_with_replacement(range(n_features), d))\n\n    # Vectorised: for each combo select columns then reduce via product along axis=1\n    feature_cols = []\n    for combo in combos:\n        if len(combo) == 0:\n            feature_cols.append(np.ones(n_samples))   # bias term\n        else:\n            # X[:, list(combo)] broadcasts correctly even with repeated indices\n            feature_cols.append(np.prod(X[:, list(combo)], axis=1))\n\n    # Stack into (n_samples, n_features_out) then sort each row in-place\n    result = np.column_stack(feature_cols)   # shape: (n_samples, len(combos))\n    result.sort(axis=1)                      # ascending sort per sample\n    return result",
+    "explanation": "Instead of looping over each sample, we operate column-wise across all samples simultaneously. For every combination of column indices (e.g. `(0, 0, 1)` for `x0² * x1`), we use advanced indexing `X[:, [0, 0, 1]]` to extract those columns for every sample at once, then `np.prod(..., axis=1)` reduces them to a single feature vector of length `n_samples` in one vectorised call.\n\nAll feature vectors are assembled into a list and then combined with `np.column_stack`, giving an `(n_samples, n_features_out)` matrix. A final `result.sort(axis=1)` sorts each row independently in ascending order — NumPy's sort is an in-place Timsort variant that operates efficiently on each row.\n\nThe key performance gain over pure Python is that the inner product reduction is now a C-level loop over samples rather than a Python loop. The total number of Python-level iterations is only the number of feature combinations, not `n_samples × n_combinations`.",
+    "key_learnings": [
+      "Advanced indexing with repeated indices (`X[:, [0, 0, 1]]`) is fully supported in NumPy and is the idiomatic way to select and reuse columns for monomial computation.",
+      "`np.prod(arr, axis=1)` is the vectorised equivalent of a product-reduce over columns — far faster than a Python loop for large sample counts.",
+      "`np.column_stack` expects a sequence of 1-D arrays or 2-D arrays and stacks along axis=1; it is more readable than `np.hstack` for building feature matrices incrementally.",
+      "`ndarray.sort(axis=1)` sorts rows in-place (no copy) — prefer it over `np.sort` when you can afford to mutate the array and want to avoid the memory allocation.",
+      "The number of output features is C(n+d, d) summed over d=0..degree, which grows combinatorially — always be explicit about this cost in an interview; polynomial features are famous for the curse of dimensionality."
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "32"
+}

@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "def leaky_relu(z: float, alpha: float = 0.01) -> float | int:\n    return z if z >= 0 else alpha * z",
+    "explanation": "Leaky ReLU is a variant of ReLU that addresses the 'dying ReLU' problem. Standard ReLU outputs zero for all negative inputs, which means neurons can permanently stop learning if they get stuck outputting zero (their gradients become zero). Leaky ReLU fixes this by allowing a small, non-zero gradient for negative inputs using a slope parameter alpha.\n\nThe function is defined piecewise: f(z) = z when z >= 0, and f(z) = alpha * z when z < 0. With the default alpha of 0.01, negative inputs are scaled down to 1% of their value rather than clamped to zero. This preserves a small gradient signal that allows weights to keep updating even for negative pre-activations.\n\nThe choice of alpha is a hyperparameter — common values range from 0.01 to 0.3. A special case called Parametric ReLU (PReLU) makes alpha a learnable parameter during training, letting the network determine the optimal slope for negative inputs automatically.",
+    "key_learnings": [
+      "Leaky ReLU prevents 'dying ReLU' by maintaining a non-zero gradient (alpha) for negative inputs, enabling continued weight updates",
+      "The function is almost everywhere differentiable: gradient is 1 for z > 0 and alpha for z < 0 (undefined exactly at z=0, but handled as 0 or alpha in practice)",
+      "alpha is a hyperparameter (default 0.01); Parametric ReLU (PReLU) makes it learnable via backprop",
+      "Computationally cheap — a single comparison and conditional multiply — making it practical for deep networks",
+      "Unlike sigmoid/tanh, Leaky ReLU does not saturate for large positive values, mitigating the vanishing gradient problem"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef leaky_relu(z: float, alpha: float = 0.01) -> float | int:\n    return float(np.where(z >= 0, z, alpha * z))",
+    "explanation": "The NumPy implementation uses np.where, which performs vectorized conditional selection. np.where(condition, x, y) returns elements from x where condition is True, and elements from y elsewhere — equivalent to the ternary logic but operating element-wise across arrays. Although the function signature accepts a scalar float, np.where handles scalars and arrays uniformly, making this implementation trivially extensible to batch inputs.\n\nFor a scalar input, np.where returns a 0-dimensional NumPy array, so we wrap with float() to match the return type annotation. In practice, when adapting this for batch processing (e.g., applying to an entire layer's pre-activations), you would remove that cast and let NumPy return the full array.\n\nnp.maximum(0, z) is a common alternative for standard ReLU, but Leaky ReLU requires the piecewise slope, making np.where the cleaner choice. Another equivalent formulation is np.where(z >= 0, z, alpha * z), or equivalently: np.maximum(z, alpha * z) — both are valid.",
+    "key_learnings": [
+      "np.where(condition, x, y) is the idiomatic NumPy approach for piecewise functions, naturally extending to batch/array inputs",
+      "np.maximum(z, alpha * z) is an equivalent one-liner alternative worth knowing for interviews",
+      "Scalar NumPy ops return 0-d arrays; cast with float() or .item() to match Python scalar return types",
+      "Vectorized NumPy over a layer's activations is orders of magnitude faster than a Python loop",
+      "The gradient of Leaky ReLU can be computed as np.where(z >= 0, 1.0, alpha) — useful when implementing backprop manually"
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef leaky_relu(z: float, alpha: float = 0.01) -> float | int:\n    z_tensor = tf.constant(z, dtype=tf.float32)\n    result = tf.nn.leaky_relu(z_tensor, alpha=alpha)\n    return float(result.numpy())",
+    "explanation": "TensorFlow provides tf.nn.leaky_relu as a built-in operation, which is implemented and optimized at the graph/XLA level. Internally it computes max(alpha * z, z), which is mathematically equivalent to the piecewise definition. Using the built-in is preferred in production because TF can fuse it with surrounding ops and differentiate through it automatically using GradientTape.\n\nThe function wraps the scalar in a tf.constant to create a proper tensor, applies leaky_relu, then extracts the Python float via .numpy(). In a real neural network layer, you would pass tensors directly without this wrapping — the conversion exists here solely to match the scalar function signature.\n\nIn Keras, Leaky ReLU is available as tf.keras.layers.LeakyReLU(alpha=0.01) as a layer, or via the activation argument using tf.keras.activations.relu(z, alpha=alpha). These layer-level APIs handle initialization, weight tracking, and serialization automatically.",
+    "key_learnings": [
+      "tf.nn.leaky_relu is the canonical TF op; internally computed as max(alpha * z, z), which is differentiable everywhere except z=0",
+      "GradientTape automatically differentiates through leaky_relu: gradient is 1.0 for positive, alpha for negative inputs",
+      "In Keras models, prefer tf.keras.layers.LeakyReLU() as a layer so alpha is part of the serialized model config",
+      "tf.keras.activations.relu(z, alpha=alpha) is a functional equivalent usable inline in custom layer call() methods",
+      "TF traces the op into a computation graph — avoid Python-level if/else branching inside @tf.function decorated code; use tf.nn.leaky_relu instead"
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\nimport torch.nn.functional as F\n\ndef leaky_relu(z: float, alpha: float = 0.01) -> float | int:\n    z_tensor = torch.tensor(z, dtype=torch.float32)\n    result = F.leaky_relu(z_tensor, negative_slope=alpha)\n    return float(result.item())",
+    "explanation": "PyTorch exposes Leaky ReLU through torch.nn.functional.leaky_relu, where the alpha parameter is named negative_slope to make its geometric meaning explicit — it is the slope of the linear function applied to the negative half of the input domain. The functional API is stateless and operates on tensors directly, making it ideal for use inside forward() methods.\n\nThe scalar is converted to a float32 tensor, the activation is applied, and .item() extracts the Python scalar. In a neural network context, you would operate directly on the pre-activation tensor from a linear layer without this conversion overhead.\n\nFor module-based usage, torch.nn.LeakyReLU(negative_slope=alpha) creates a reusable layer object that can be composed in nn.Sequential or stored as a submodule. PyTorch's autograd engine tracks operations on tensors that have requires_grad=True, so gradients flow through leaky_relu automatically: the gradient is 1 for positive inputs and negative_slope for negative inputs.",
+    "key_learnings": [
+      "PyTorch names the parameter negative_slope (not alpha) — a common interview/API gotcha when switching between frameworks",
+      "F.leaky_relu is stateless (functional API); torch.nn.LeakyReLU is the module version for use in nn.Sequential",
+      "Autograd computes the gradient automatically: d/dz = 1 if z > 0 else negative_slope — verify with tensor.backward()",
+      "requires_grad=True on the input tensor enables gradient tracking through leaky_relu for custom training loops",
+      "torch.where(z >= 0, z, alpha * z) is a manual equivalent that also works with autograd and is useful for custom activation variants"
+    ]
+  },
+  "id": "44"
+}

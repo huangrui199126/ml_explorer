@@ -1,0 +1,47 @@
+{
+  "python": {
+    "code": "def relu(z: float) -> float:\n    return max(0.0, z)",
+    "explanation": "ReLU (Rectified Linear Unit) is one of the most widely used activation functions in deep learning. It is defined as f(x) = max(0, x), meaning it passes positive values unchanged and clips all negative values to zero. This simple thresholding behavior introduces non-linearity into neural networks, which is essential for learning complex patterns.\n\nThe pure Python implementation uses the built-in `max` function to compare the input against 0. This is both concise and correct — if `z` is positive, `max(0, z)` returns `z`; if `z` is negative or zero, it returns `0`. No imports or external dependencies are needed.\n\nReLU is preferred over older activations like sigmoid and tanh because it does not suffer from the vanishing gradient problem for positive inputs — the gradient is always exactly 1 for z > 0. This allows gradients to flow more effectively through deep networks during backpropagation, enabling training of much deeper architectures.",
+    "key_learnings": [
+      "ReLU is defined as f(x) = max(0, x) — positive inputs pass through unchanged, negatives are zeroed out.",
+      "Its derivative is a step function: 1 for x > 0, 0 for x < 0 (undefined but typically set to 0 at exactly x=0).",
+      "ReLU solves the vanishing gradient problem that plagues sigmoid/tanh for deep networks.",
+      "The 'dying ReLU' problem occurs when neurons get stuck outputting 0 permanently, addressed by variants like Leaky ReLU or ELU.",
+      "ReLU introduces sparsity — in a typical network, ~50% of neurons output 0, which can be computationally efficient."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef relu(z: float) -> float:\n    return float(np.maximum(0, z))\n\n# NumPy shines when applied to arrays (vectorized version)\ndef relu_vectorized(z: np.ndarray) -> np.ndarray:\n    return np.maximum(0, z)",
+    "explanation": "NumPy's `np.maximum` is the idiomatic way to implement ReLU because it operates element-wise across arrays, making it trivially vectorizable. Unlike Python's built-in `max` which compares two scalars, `np.maximum(0, z)` broadcasts the scalar 0 against every element in an array, applying the ReLU threshold in a single optimized C operation.\n\nFor a scalar input as specified by the problem signature, `np.maximum(0, z)` behaves identically to `max(0, z)`, and we cast back to `float` to match the return type. The real power, however, is the `relu_vectorized` variant: passing a batch of activations (e.g., shape `(batch_size, hidden_dim)`) computes all outputs in one call with no Python-level loop, leveraging BLAS-level vectorization.\n\nIn practice, neural network layers process entire batches simultaneously, so this vectorized form is how ReLU is actually used in numerical computing. Understanding the distinction between scalar and vectorized implementations is important for writing performant ML code.",
+    "key_learnings": [
+      "`np.maximum(0, z)` is the canonical NumPy ReLU — it broadcasts across any shape array without loops.",
+      "Distinguish `np.maximum` (element-wise between two arrays/scalars) from `np.max` (reduction along an axis).",
+      "Vectorized operations over entire batches are how activations are computed in practice — never loop over samples.",
+      "The gradient of ReLU can be computed as `(z > 0).astype(float)`, a simple boolean mask cast to float.",
+      "NumPy's in-place version `np.maximum(0, z, out=z)` avoids allocating a new array, useful for memory-constrained training loops."
+    ]
+  },
+  "tensorflow": {
+    "code": "import tensorflow as tf\n\ndef relu(z: float) -> float:\n    return float(tf.nn.relu(z).numpy())\n\n# Practical usage in a Keras layer\nimport tensorflow as tf\nfrom tensorflow import keras\n\ndef build_relu_demo_model(input_dim: int, hidden_dim: int, output_dim: int) -> keras.Model:\n    model = keras.Sequential([\n        keras.layers.Dense(hidden_dim, activation='relu', input_shape=(input_dim,)),\n        keras.layers.Dense(output_dim)\n    ])\n    return model\n\n# Demonstrating gradient computation through ReLU\ndef relu_with_gradient(z: float):\n    x = tf.Variable(z, dtype=tf.float32)\n    with tf.GradientTape() as tape:\n        y = tf.nn.relu(x)\n    grad = tape.gradient(y, x)\n    return float(y.numpy()), float(grad.numpy()) if grad is not None else 0.0",
+    "explanation": "TensorFlow provides `tf.nn.relu` as a first-class op that is part of the computation graph. When used inside a `tf.GradientTape` context, TF automatically tracks the operation and can compute its gradient with respect to any input variable. This is the foundation of automatic differentiation that makes training neural networks feasible.\n\nFor scalar usage, `tf.nn.relu(z)` wraps the value in an `EagerTensor` and applies the op; calling `.numpy()` retrieves the Python float. In practice, ReLU is used on entire tensors of shape `(batch_size, features)` and is specified as `activation='relu'` in Keras `Dense` layers rather than called manually.\n\nThe `relu_with_gradient` function demonstrates TF's autodiff: inside `GradientTape`, TF records operations, then `tape.gradient(y, x)` analytically computes dy/dx. For ReLU, the gradient is 1.0 when z > 0 and 0.0 (or None, treated as 0) when z ≤ 0. This automatic gradient computation is what allows backpropagation to work without manual derivative derivation.",
+    "key_learnings": [
+      "`tf.nn.relu` is the TF primitive; in Keras models use `activation='relu'` in layer definitions.",
+      "`tf.GradientTape` enables automatic differentiation — TF computes gradients of any differentiable op, including ReLU.",
+      "The gradient of ReLU at z=0 is technically undefined; TF and most frameworks define it as 0 by convention.",
+      "TF fuses ReLU with preceding ops (e.g., Conv+ReLU fusion) during XLA compilation for hardware efficiency.",
+      "For advanced use cases, `tf.keras.activations.relu` supports `alpha` (Leaky ReLU) and `max_value` (clipped ReLU) parameters."
+    ]
+  },
+  "pytorch": {
+    "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\n# Functional approach (stateless)\ndef relu(z: float) -> float:\n    x = torch.tensor(z, dtype=torch.float32)\n    return float(F.relu(x).item())\n\n# Module approach (stateful, used inside nn.Sequential / nn.Module)\nclass ReLUDemo(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.relu = nn.ReLU()\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:\n        return self.relu(x)\n\n# Demonstrating autograd through ReLU\ndef relu_with_gradient(z: float):\n    x = torch.tensor(z, dtype=torch.float32, requires_grad=True)\n    y = F.relu(x)\n    y.backward()  # compute dy/dx\n    return float(y.item()), float(x.grad.item()) if x.grad is not None else 0.0",
+    "explanation": "PyTorch provides ReLU in two forms: `torch.nn.functional.relu` (stateless function) and `torch.nn.ReLU` (stateful module). The functional form `F.relu(x)` is equivalent to calling `max(0, x)` but operates on tensors and integrates with PyTorch's autograd engine. The module form `nn.ReLU()` is composable into `nn.Sequential` pipelines and carries no learnable parameters.\n\nPyTorch's autograd tracks operations on tensors that have `requires_grad=True`. When `y = F.relu(x)` is computed, the computation graph records that `y` was produced by a ReLU applied to `x`. Calling `y.backward()` then propagates gradients back: `x.grad` is set to 1.0 if the original `z > 0`, and 0.0 otherwise. This define-by-run (dynamic graph) approach means the graph is rebuilt each forward pass, making debugging intuitive.\n\nIn research and production models, you'll see `F.relu` used directly inside `forward()` methods for clarity, while `nn.ReLU` is used when composing models with `nn.Sequential`. Both are equivalent in terms of computation and gradient support. The choice is mostly stylistic and depends on whether you want the activation to appear explicitly in `model.named_modules()`.",
+    "key_learnings": [
+      "PyTorch has two ReLU APIs: `F.relu` (functional, stateless) and `nn.ReLU` (module, appears in `model.parameters()` listing).",
+      "Set `requires_grad=True` on input tensors to enable autograd; call `.backward()` to compute gradients.",
+      "PyTorch uses dynamic computation graphs (define-by-run) — the graph is reconstructed each forward pass, unlike TF1's static graphs.",
+      "`.item()` extracts a Python scalar from a single-element tensor; use it to interface with non-PyTorch code.",
+      "`nn.ReLU(inplace=True)` modifies the input tensor in-place, saving memory at the cost of losing the original activation (cannot backprop through the original value)."
+    ]
+  },
+  "id": "42"
+}

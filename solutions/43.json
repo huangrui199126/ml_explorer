@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef ridge_loss(X: np.ndarray, w: np.ndarray, y_true: np.ndarray, alpha: float) -> float:\n    n = len(y_true)\n    \n    # Compute predictions: X @ w\n    y_pred = [sum(X[i][j] * w[j] for j in range(len(w))) for i in range(n)]\n    \n    # MSE term: (1/n) * sum((y_pred - y_true)^2)\n    mse = sum((y_pred[i] - y_true[i]) ** 2 for i in range(n)) / n\n    \n    # L2 regularization term: alpha * sum(w^2)\n    l2_penalty = alpha * sum(w_j ** 2 for w_j in w)\n    \n    return mse + l2_penalty",
+    "explanation": "Ridge Regression loss combines two terms: the Mean Squared Error (MSE) and an L2 regularization penalty. The MSE measures how far predictions deviate from ground truth, computed as the average squared difference between predicted and actual values. Predictions are obtained via the dot product of each row in X with the weight vector w.\n\nThe L2 regularization term adds a penalty proportional to the sum of squared weights, scaled by the hyperparameter alpha. This discourages large weight values, effectively shrinking coefficients toward zero without eliminating them entirely (unlike Lasso/L1 regularization). The combined loss guides gradient-based optimizers to find weights that both fit the data and remain small in magnitude.\n\nThe pure Python implementation manually iterates over samples and features using nested list comprehensions and generator expressions, mirroring the mathematical definition exactly. While not performance-optimized, this version makes the mechanics transparent and is useful for understanding what vectorized operations abstract away.",
+    "key_learnings": [
+      "Ridge loss = MSE + alpha * ||w||^2_2 — memorize this formula; interviewers often ask you to write it from scratch",
+      "L2 regularization shrinks all weights toward zero but never to exactly zero — contrast this with L1 (Lasso) which produces sparse solutions",
+      "Alpha controls the bias-variance tradeoff: higher alpha → more regularization → higher bias, lower variance",
+      "The bias term (intercept) is typically excluded from the regularization penalty in practice, though this problem regularizes all weights",
+      "Ridge regression has a closed-form solution: w* = (X^T X + alpha*I)^{-1} X^T y — the regularization makes the matrix invertible even when X^T X is singular"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef ridge_loss(X: np.ndarray, w: np.ndarray, y_true: np.ndarray, alpha: float) -> float:\n    # Compute predictions via matrix-vector product\n    y_pred = X @ w\n    \n    # MSE term: mean of squared residuals\n    residuals = y_pred - y_true\n    mse = np.mean(residuals ** 2)\n    \n    # L2 regularization term: alpha * ||w||^2\n    l2_penalty = alpha * np.dot(w, w)\n    \n    return float(mse + l2_penalty)",
+    "explanation": "The NumPy implementation leverages vectorized operations to express Ridge loss cleanly and efficiently. The matrix-vector product `X @ w` computes all n predictions in a single BLAS call, far faster than explicit loops for large datasets. Residuals are computed elementwise, and `np.mean` handles the averaging in one pass.\n\nFor the regularization term, `np.dot(w, w)` computes the squared L2 norm (||w||^2_2) as a self-dot-product, which is equivalent to `np.sum(w**2)` but slightly more efficient since it avoids creating an intermediate squared array. This is a common idiom worth recognizing.\n\nThe explicit `float()` cast at the return ensures the function always returns a Python scalar rather than a 0-dimensional numpy array, which matters when the result is used downstream in Python control flow or logging. This is a small but interview-relevant detail about numpy scalar types.",
+    "key_learnings": [
+      "`np.dot(w, w)` is an efficient way to compute ||w||^2 — equivalent to `(w**2).sum()` but avoids an intermediate array allocation",
+      "Always use `X @ w` (matmul) over `np.dot(X, w)` for matrix-vector products — cleaner syntax and consistent with PyTorch/TensorFlow conventions",
+      "Returning `float(result)` instead of a numpy scalar prevents subtle bugs when the output is used in Python comparisons or serialized to JSON",
+      "Vectorized NumPy runs orders of magnitude faster than pure Python loops for large n — critical when loss is evaluated repeatedly during training",
+      "The gradient of Ridge loss w.r.t. w is: (2/n) * X^T(Xw - y) + 2*alpha*w — knowing this is expected in ML interviews"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "43"
+}

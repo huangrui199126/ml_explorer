@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef accuracy_score(y_true, y_pred):\n    if len(y_true) == 0:\n        return 0.0\n    correct = sum(1 for yt, yp in zip(y_true, y_pred) if yt == yp)\n    return correct / len(y_true)",
+    "explanation": "Accuracy is defined as the number of correct predictions divided by the total number of predictions. This implementation iterates through both arrays in parallel using zip(), counting matches where the true label equals the predicted label.\n\nThe result is a float in the range [0.0, 1.0], where 1.0 means every prediction was correct and 0.0 means none were. The edge case guard for empty input prevents a ZeroDivisionError.\n\nThis pure Python approach makes no assumptions about the label type — it works for binary classification (0/1), multiclass (integers or strings), and even custom label objects, as long as equality comparison is defined.",
+    "key_learnings": [
+      "Accuracy = correct predictions / total predictions — simple ratio, easy to explain in interviews",
+      "Accuracy is misleading on imbalanced datasets: a model predicting the majority class always achieves high accuracy without learning anything useful",
+      "zip() safely pairs elements from two iterables; if lengths differ it silently stops at the shorter one — always validate lengths match in production code",
+      "For binary classification, accuracy is symmetric between classes; for multiclass it aggregates across all classes equally regardless of class frequency",
+      "Complement of accuracy is error rate: error_rate = 1 - accuracy"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef accuracy_score(y_true, y_pred):\n    y_true = np.asarray(y_true)\n    y_pred = np.asarray(y_pred)\n    if y_true.size == 0:\n        return 0.0\n    return np.mean(y_true == y_pred)",
+    "explanation": "The NumPy solution leverages vectorized operations to avoid any Python-level loops. The expression `y_true == y_pred` performs element-wise comparison, producing a boolean array where True means the prediction matched and False means it did not.\n\n`np.mean()` on a boolean array treats True as 1 and False as 0, so the mean is exactly the fraction of correct predictions — which is the accuracy score. This collapses two operations (sum of correct + divide by total) into a single elegant call.\n\nConverting inputs with `np.asarray()` rather than `np.array()` avoids an unnecessary copy if the input is already a numpy array, making it more memory-efficient. This pattern is idiomatic in NumPy-based ML libraries like scikit-learn.",
+    "key_learnings": [
+      "`np.mean(y_true == y_pred)` is the canonical one-liner for accuracy — memorize it, it appears in many ML codebases",
+      "Boolean arrays in NumPy are treated as 0/1 integers in arithmetic operations, enabling concise aggregations like mean, sum, and std",
+      "`np.asarray()` is preferred over `np.array()` when you don't need a copy — it's a no-op if the input is already a compatible ndarray",
+      "Vectorized operations are orders of magnitude faster than Python loops for large arrays due to contiguous memory layout and SIMD CPU instructions",
+      "This exact pattern generalizes: `np.mean(condition_array)` gives the fraction of elements satisfying any condition, not just equality"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "36"
+}
