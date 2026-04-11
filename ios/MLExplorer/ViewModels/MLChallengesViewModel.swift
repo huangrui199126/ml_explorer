@@ -12,6 +12,7 @@ class MLChallengesViewModel: ObservableObject {
     @Published var selectedDifficulty: String? = nil
     @Published var selectedCategory: String? = nil
     @Published var categories: [String] = []
+    @Published var collections: [MLCollection] = []
     @Published var isLoading = false
 
     private var cancellables = Set<AnyCancellable>()
@@ -51,18 +52,26 @@ class MLChallengesViewModel: ObservableObject {
     // MARK: - Local (bundle + cache)
 
     private func loadLocal() -> MLChallengesData? {
-        // Prefer cached (may be newer than bundle)
-        if let cached = try? Data(contentsOf: cacheURL),
-           let decoded = decode(cached) {
-            return decoded
+        var cached: MLChallengesData? = nil
+        var bundled: MLChallengesData? = nil
+
+        if let data = try? Data(contentsOf: cacheURL) {
+            cached = decode(data)
         }
-        // Fall back to bundled JSON
         if let url = Bundle.main.url(forResource: "ml_challenges", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let decoded = decode(data) {
-            return decoded
+           let data = try? Data(contentsOf: url) {
+            bundled = decode(data)
         }
-        return nil
+
+        // Prefer whichever has collections; if tie, prefer more problems (newer)
+        switch (cached, bundled) {
+        case let (c?, b?):
+            if c.collections.isEmpty && !b.collections.isEmpty { return b }
+            return c.problems.count >= b.problems.count ? c : b
+        case (let c?, nil): return c
+        case (nil, let b?): return b
+        default: return nil
+        }
     }
 
     // MARK: - Remote
@@ -88,9 +97,15 @@ class MLChallengesViewModel: ObservableObject {
         try? JSONDecoder().decode(MLChallengesData.self, from: data)
     }
 
+    func problems(for collection: MLCollection) -> [MLChallenge] {
+        let index = Dictionary(uniqueKeysWithValues: problems.map { ($0.id, $0) })
+        return collection.problemIds.compactMap { index[$0] }
+    }
+
     private func apply(_ data: MLChallengesData) {
         problems = data.problems
         categories = data.categories
+        collections = data.collections
         isLoading = false
         applyFilter(search: searchText, difficulty: selectedDifficulty, category: selectedCategory)
     }
