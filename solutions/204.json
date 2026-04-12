@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import math\n\ndef mutual_information(joint_prob: list[list[float]]) -> float:\n    \"\"\"\n    Compute the mutual information between two random variables.\n    \n    Args:\n        joint_prob: 2D joint probability distribution P(X,Y)\n    \n    Returns:\n        Mutual information I(X;Y)\n    \"\"\"\n    rows = len(joint_prob)\n    cols = len(joint_prob[0])\n    \n    # Compute marginal distributions by summing over the other variable\n    p_x = [sum(joint_prob[i][j] for j in range(cols)) for i in range(rows)]\n    p_y = [sum(joint_prob[i][j] for i in range(rows)) for j in range(cols)]\n    \n    mi = 0.0\n    for i in range(rows):\n        for j in range(cols):\n            p_xy = joint_prob[i][j]\n            # Skip zero-probability cells to avoid log(0) (convention: 0 * log(0) = 0)\n            if p_xy > 0 and p_x[i] > 0 and p_y[j] > 0:\n                mi += p_xy * math.log(p_xy / (p_x[i] * p_y[j]))\n    \n    return mi",
+    "explanation": "Mutual information is defined as I(X;Y) = Σ_x Σ_y P(X,Y) log(P(X,Y) / (P(X)·P(Y))). It measures how much the joint distribution deviates from the product of marginals — if X and Y are independent, P(X,Y) = P(X)·P(Y) everywhere, making each log term zero and thus I(X;Y) = 0.\n\nThe algorithm first computes marginal distributions by summing the joint table along each axis: P(X=i) = Σ_j P(X=i, Y=j) and P(Y=j) = Σ_i P(X=i, Y=j). These marginals represent what we know about each variable individually, ignoring the other.\n\nThe double loop then accumulates the KL-divergence-style sum. The key numerical convention is that cells where P(X,Y)=0 contribute 0 to the sum (since lim_{p→0} p·log(p) = 0), which prevents undefined log(0) errors. This is the standard information-theoretic convention.\n\nThe result is always non-negative (by Gibbs' inequality, KL divergence ≥ 0) and equals 0 if and only if X and Y are independent. It is symmetric: I(X;Y) = I(Y;X), which can be seen directly from the formula.",
+    "key_learnings": [
+      "MI = KL divergence between joint P(X,Y) and product of marginals P(X)·P(Y): understanding this connection clarifies why MI ≥ 0 always holds",
+      "The 0·log(0) = 0 convention is critical — always guard against log(0) by skipping zero-probability entries, not by adding epsilon (epsilon distorts the result)",
+      "Marginals are obtained by summing the joint table along each axis (axis=1 gives P(X), axis=0 gives P(Y))",
+      "MI is symmetric I(X;Y) = I(Y;X) and equals H(X) - H(X|Y) = H(Y) - H(Y|X), useful for deriving it from entropy calculations in interviews",
+      "MI is measured in nats when using natural log, bits when using log base 2 — always clarify the base in interviews"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef mutual_information(joint_prob: list[list[float]]) -> float:\n    \"\"\"\n    Compute the mutual information between two random variables.\n    \n    Args:\n        joint_prob: 2D joint probability distribution P(X,Y)\n    \n    Returns:\n        Mutual information I(X;Y)\n    \"\"\"\n    p_xy = np.array(joint_prob, dtype=np.float64)\n    \n    # Marginals: sum along each axis\n    p_x = p_xy.sum(axis=1, keepdims=True)  # shape (m, 1)\n    p_y = p_xy.sum(axis=0, keepdims=True)  # shape (1, n)\n    \n    # Outer product of marginals via broadcasting: shape (m, n)\n    p_x_times_p_y = p_x * p_y\n    \n    # Compute MI only where joint probability is positive\n    # Convention: 0 * log(0) = 0, so we skip zero entries\n    mask = p_xy > 0\n    \n    mi = np.sum(p_xy[mask] * np.log(p_xy[mask] / p_x_times_p_y[mask]))\n    \n    return float(mi)",
+    "explanation": "The NumPy solution vectorizes the double loop into array operations, exploiting broadcasting to compute the denominator P(X)·P(Y) for all (i,j) pairs simultaneously. By keeping p_x as shape (m,1) and p_y as shape (1,n), their product automatically broadcasts to the full (m,n) joint table — this is a clean, idiomatic NumPy pattern for outer products.\n\nThe boolean mask `p_xy > 0` selects only cells where the joint probability is nonzero before applying the log, implementing the 0·log(0)=0 convention without any epsilon approximation. This is preferable to adding a small constant (e.g., 1e-10) which would introduce bias into the estimate.\n\nUnder the hood, this is equivalent to computing a KL divergence: I(X;Y) = D_KL(P(X,Y) || P(X)·P(Y)). NumPy's vectorized operations apply the log and multiply element-wise across all valid cells in one pass, making this significantly faster than the Python loop for large joint tables.\n\nThe result is cast back to a Python float for a clean return type, matching the function signature.",
+    "key_learnings": [
+      "Broadcasting `p_x (m,1) * p_y (1,n)` = `(m,n)` is the canonical NumPy pattern for computing outer products without explicit loops",
+      "Boolean masking (`p_xy > 0`) is the correct way to handle the 0·log(0)=0 convention — never use epsilon-smoothing when an exact mask is available",
+      "MI is equivalent to D_KL(P(X,Y) || P(X)P(Y)), so the vectorized formula maps directly to KL divergence computation patterns used in VAEs and information-theoretic ML",
+      "Using `keepdims=True` when computing marginals preserves shape for broadcasting — a common source of bugs when omitted",
+      "For large sparse joint distributions, consider scipy.sparse or explicit coordinate-based computation to avoid materializing the full dense product"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "204"
+}
