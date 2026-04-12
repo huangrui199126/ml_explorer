@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def hard_voting_classifier(predictions: list[list[int]]) -> list[int]:\n    if not predictions or not predictions[0]:\n        return []\n    \n    n_samples = len(predictions[0])\n    result = []\n    \n    for j in range(n_samples):\n        votes = {}\n        for i in range(len(predictions)):\n            label = predictions[i][j]\n            votes[label] = votes.get(label, 0) + 1\n        \n        max_votes = max(votes.values())\n        tied = [label for label, count in votes.items() if count == max_votes]\n        result.append(min(tied))\n    \n    return result",
+    "explanation": "The hard voting classifier aggregates predictions from multiple classifiers by counting how many classifiers voted for each class label on a per-sample basis. For each sample (column), we iterate over all classifiers (rows) and tally the votes into a dictionary mapping class label to vote count.\n\nOnce all votes are tallied, we find the maximum vote count and collect all class labels that achieved that count. If only one class reached the maximum, it wins outright. In the case of a tie, the problem specifies returning the smallest class label, which we handle with `min(tied)`.\n\nThis approach is O(n_classifiers × n_samples) in time and O(n_classes) in space for the vote dictionary per sample. It mirrors exactly how sklearn's VotingClassifier with voting='hard' works internally — each estimator gets one vote and the plurality winner is selected.",
+    "key_learnings": [
+      "Hard voting uses plurality (most votes), not majority (>50%) — a class can win with just 2/5 votes if others are more split",
+      "Tie-breaking is a real design decision: sklearn resolves ties by returning the class that appears first in the sorted order of unique labels",
+      "Time complexity is O(C × N) where C = number of classifiers and N = number of samples — linear and embarrassingly parallelizable",
+      "Hard voting works best when base classifiers are diverse and have similar accuracy; if one classifier is far weaker it still gets an equal vote",
+      "Contrast with soft voting: soft voting averages predicted probabilities before argmax, which is generally superior when classifiers are well-calibrated"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef hard_voting_classifier(predictions: list[list[int]]) -> list[int]:\n    if not predictions or not predictions[0]:\n        return []\n    \n    arr = np.array(predictions)  # shape: (n_classifiers, n_samples)\n    n_samples = arr.shape[1]\n    \n    classes = np.unique(arr)\n    \n    # Count votes per class per sample: shape (n_classes, n_samples)\n    vote_counts = np.array([(arr == cls).sum(axis=0) for cls in classes])\n    \n    # Find max vote count per sample\n    max_votes = vote_counts.max(axis=0)  # shape: (n_samples,)\n    \n    # For each sample, find the smallest class label with max votes\n    # Mask non-max entries with -1 so argmin on class axis finds the first tied class\n    # Since classes is sorted (np.unique), the first tied class is the smallest\n    masked = np.where(vote_counts == max_votes, vote_counts, -1)\n    winner_idx = (masked > 0).argmax(axis=0)  # index of first (smallest) winning class\n    \n    return classes[winner_idx].tolist()",
+    "explanation": "The NumPy solution converts the predictions into a 2D array of shape (n_classifiers, n_samples) and leverages vectorized operations to count votes for all samples simultaneously. Instead of looping over samples, we compute a (n_classes, n_samples) vote count matrix in one expression using broadcasting: `(arr == cls).sum(axis=0)` sums boolean equality along the classifier axis.\n\nTo find the winning class per sample while respecting tie-breaking, we rely on the fact that `np.unique` returns classes in sorted order. By masking non-maximum entries and using `argmax` along the class axis, we always land on the first (smallest) tied class since the class array is already sorted ascending.\n\nThis vectorized approach avoids Python-level loops over samples, making it significantly faster on large inputs. The memory cost is O(n_classes × n_samples) for the vote count matrix, which is typically small since the number of distinct class labels is bounded.",
+    "key_learnings": [
+      "`np.unique` returns sorted values — this is the key to resolving ties by smallest label without extra sorting",
+      "Broadcasting `arr == cls` against a scalar produces a boolean mask; `.sum(axis=0)` then counts votes across classifiers in one vectorized step",
+      "Building a (n_classes, n_samples) count matrix trades O(n_classes × n_samples) memory for eliminating the Python loop over samples",
+      "`argmax` on a boolean mask returns the index of the first True — useful for 'find smallest matching class' patterns when the array is sorted",
+      "For large-scale ensemble inference, NumPy's vectorized approach can be 10-100x faster than pure Python due to SIMD and cache efficiency"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "305"
+}
