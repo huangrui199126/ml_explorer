@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def ply_based_discount(evaluations: list, ply_depths: list, gamma: float) -> tuple:\n    discounted_values = [\n        round(eval_score * (gamma ** depth), 4)\n        for eval_score, depth in zip(evaluations, ply_depths)\n    ]\n    best_index = discounted_values.index(max(discounted_values))\n    return (discounted_values, best_index)",
+    "explanation": "The core formula is `discounted_value[i] = evaluations[i] * gamma^ply_depths[i]`. This mirrors the discounted reward formula from reinforcement learning: a reward received k steps in the future is worth `gamma^k` times its face value today. When gamma < 1, deeper evaluations are penalized exponentially, making shallower wins preferable even at lower raw scores.\n\nThe implementation zips evaluations with ply_depths, computes the discounted score via exponentiation, and rounds to 4 decimal places. Finding the best index uses `list.index(max(...))`, which naturally returns the first (smallest) index in case of ties — matching the problem's tie-breaking rule.\n\nThis pattern appears throughout game AI (minimax with discounting), RL (Bellman equation), and finance (net present value). Recognizing gamma as a discount factor and depth as 'time' is the key insight that connects all these domains.",
+    "key_learnings": [
+      "Discounted value formula: v_i = score_i * gamma^depth_i — identical to the Bellman discounted return in RL",
+      "gamma=1 means no discounting (all depths equally valued); gamma→0 means only depth-0 evaluations matter",
+      "list.index(max(list)) returns the smallest index on ties — a clean Pythonic tie-break idiom",
+      "Exponential discounting penalizes uncertainty: a win 10 plies deep with gamma=0.9 is worth 0.9^10 ≈ 35% of face value",
+      "Interview trap: negative evaluations — a deeper negative score is LESS negative after discounting, so don't confuse 'best' with 'largest absolute value'"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef ply_based_discount(evaluations: list, ply_depths: list, gamma: float) -> tuple:\n    evals = np.array(evaluations, dtype=np.float64)\n    depths = np.array(ply_depths, dtype=np.float64)\n    discounted = evals * np.power(gamma, depths)\n    discounted_rounded = np.round(discounted, 4)\n    best_index = int(np.argmax(discounted_rounded))\n    return (discounted_rounded.tolist(), best_index)",
+    "explanation": "NumPy vectorizes the entire computation: `np.power(gamma, depths)` computes all discount factors simultaneously as an element-wise array operation, then multiplying by `evals` applies all discounts in one broadcast step. This eliminates the Python-level loop and scales efficiently to thousands of candidate sequences.\n\n`np.argmax` returns the index of the first maximum value when ties exist (same tie-breaking semantics as `list.index(max(...))`), so the behavior matches the pure Python version exactly. Rounding is done before argmax to ensure tie detection respects the 4-decimal precision requirement.\n\nFor game tree search in practice, you'd typically have hundreds or thousands of leaf evaluations, making the vectorized NumPy version significantly faster. The pattern — vectorize discount factors, broadcast multiply, argmax — generalizes directly to batched RL value estimation.",
+    "key_learnings": [
+      "np.power(gamma, depths) vectorizes gamma^k for all depths simultaneously — no Python loop needed",
+      "np.argmax returns the first occurrence of the maximum, matching the 'smallest index on tie' requirement",
+      "Round before argmax when precision matters — ties in floating point can differ by floating-point error",
+      "Broadcasting: scalar gamma × array depths produces an array of discount factors in one operation",
+      "tolist() converts numpy floats to Python floats for clean JSON-serializable output — important in production APIs"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "640"
+}

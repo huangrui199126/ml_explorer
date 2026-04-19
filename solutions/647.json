@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef hamming_distance_kanerva(state: list, prototypes: list, threshold: int) -> tuple:\n    distances = []\n    for proto in prototypes:\n        dist = sum(s != p for s, p in zip(state, proto))\n        distances.append(dist)\n    active_indices = sorted(i for i, d in enumerate(distances) if d <= threshold)\n    return (distances, active_indices)",
+    "explanation": "The solution iterates over each prototype and computes the Hamming distance by counting positions where the state and prototype differ using a generator expression with zip. This avoids XOR arithmetic explicitly but achieves the same result since for binary values, s != p is equivalent to s XOR p being 1.\n\nActive prototypes are those whose Hamming distance is at most the threshold. We collect their indices using a list comprehension and sort them, though since we enumerate in order they are already sorted — the sort is included for correctness guarantee per the spec.\n\nTime complexity is O(N * D) where N is the number of prototypes and D is the dimensionality of the state vector. Space is O(N) for storing distances.",
+    "key_learnings": [
+      "Hamming distance between binary vectors equals the number of differing bits, equivalent to popcount(XOR(a, b))",
+      "zip() is idiomatic for pairwise comparison of equal-length sequences in Python",
+      "Kanerva coding is a sparse distributed memory technique — only 'nearby' prototypes activate, enabling local generalization",
+      "Threshold-based activation is a key design choice: too small means few active prototypes (poor generalization), too large means too many (loss of locality)",
+      "sorted() on an already-ordered sequence is O(N) due to Timsort's best-case behavior"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef hamming_distance_kanerva(state: list, prototypes: list, threshold: int) -> tuple:\n    state_arr = np.array(state, dtype=np.int8)\n    proto_arr = np.array(prototypes, dtype=np.int8)\n    # XOR then sum across columns gives Hamming distances for all prototypes at once\n    distances = np.sum(proto_arr ^ state_arr, axis=1).tolist()\n    active_indices = sorted(np.where(np.array(distances) <= threshold)[0].tolist())\n    return (distances, active_indices)",
+    "explanation": "Broadcasting is the key insight here: state_arr has shape (D,) and proto_arr has shape (N, D). NumPy automatically broadcasts state_arr across all N rows, so proto_arr ^ state_arr produces an (N, D) matrix of XOR results in a single vectorized operation. Summing along axis=1 collapses each row to its Hamming distance.\n\nUsing int8 dtype minimizes memory footprint — each element is 0 or 1, so int8 (1 byte) is sufficient and avoids the default int64 overhead (8 bytes), which matters when N and D are large.\n\nnp.where returns indices where the condition holds, giving us active prototype indices directly. Converting to a Python list and sorting satisfies the return type contract.\n\nThis approach is significantly faster than the pure Python loop for large N or D due to SIMD vectorization in NumPy's C backend.",
+    "key_learnings": [
+      "Vectorized XOR + sum is the canonical NumPy pattern for batch Hamming distance — avoid Python loops over prototypes",
+      "Broadcasting eliminates the need to tile/repeat the state vector; NumPy handles shape (D,) vs (N, D) automatically",
+      "int8 dtype for binary arrays reduces memory by 8x vs default int64, critical at scale",
+      "np.where(condition)[0] is the idiomatic way to extract indices satisfying a condition in NumPy",
+      "Batch distance computation is a fundamental primitive in nearest-neighbor search, KNN, and memory-based RL methods like Kanerva coding"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "647"
+}

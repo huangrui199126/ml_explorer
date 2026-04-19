@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import math\nfrom itertools import accumulate\n\ndef continuous_time_discount(beta: float, rewards: list, durations: list, unit_dt: float = 1.0) -> dict:\n    cumulative_times = list(accumulate(durations))\n    \n    discount_factors = [math.exp(-beta * t) for t in cumulative_times]\n    \n    discounted_return = sum(r * d for r, d in zip(rewards, discount_factors))\n    \n    equivalent_gamma = math.exp(-beta * unit_dt)\n    \n    return {\n        'cumulative_times': [round(t, 4) for t in cumulative_times],\n        'discount_factors': [round(d, 4) for d in discount_factors],\n        'discounted_return': round(discounted_return, 4),\n        'equivalent_gamma': round(equivalent_gamma, 4)\n    }",
+    "explanation": "In continuous-time RL (Semi-Markov Decision Processes), the agent spends variable durations in each state before transitioning. Unlike discrete-time RL where gamma^t accounts for step count, here we discount by exp(-beta * t) where t is the actual elapsed wall-clock time. The parameter beta is the continuous discount rate — when beta=0 there is no discounting, and as beta increases rewards decay faster with time.\n\nThe cumulative time at step i is simply the prefix sum of all durations up to and including i. The discount factor for each reward is exp(-beta * cumulative_time), derived from the continuous-time exponential decay model. This is consistent with the limit of discrete discounting: if you take gamma = exp(-beta * dt) for small dt, you recover this formula in the limit.\n\nThe equivalent discrete gamma answers: 'if I were to run this problem with fixed timesteps of size unit_dt, what gamma would give the same per-step discounting?' The answer is gamma = exp(-beta * unit_dt). This bridges the continuous and discrete RL formalisms and is useful for hyperparameter transfer between simulation environments with different timesteps.",
+    "key_learnings": [
+      "Continuous-time discount uses exp(-beta * t) rather than gamma^n — the key difference is discounting by actual elapsed time, not step count",
+      "SMDPs (Semi-Markov Decision Processes) generalize MDPs by allowing variable sojourn times; continuous-time discounting is the natural extension",
+      "The relationship gamma = exp(-beta * unit_dt) converts between continuous rate beta and discrete factor gamma — critical for comparing agents across environments with different simulation timesteps",
+      "Prefix sums (itertools.accumulate) efficiently compute cumulative times in O(n) without storing intermediate arrays",
+      "When beta=0, all discount factors are 1.0 and equivalent_gamma=1.0, matching the undiscounted / episodic RL setting"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef continuous_time_discount(beta: float, rewards: list, durations: list, unit_dt: float = 1.0) -> dict:\n    rewards_arr = np.array(rewards, dtype=np.float64)\n    durations_arr = np.array(durations, dtype=np.float64)\n    \n    cumulative_times = np.cumsum(durations_arr)\n    \n    discount_factors = np.exp(-beta * cumulative_times)\n    \n    discounted_return = float(np.dot(rewards_arr, discount_factors))\n    \n    equivalent_gamma = float(np.exp(-beta * unit_dt))\n    \n    return {\n        'cumulative_times': [round(float(t), 4) for t in cumulative_times],\n        'discount_factors': [round(float(d), 4) for d in discount_factors],\n        'discounted_return': round(discounted_return, 4),\n        'equivalent_gamma': round(equivalent_gamma, 4)\n    }",
+    "explanation": "The NumPy implementation vectorizes all operations, replacing Python loops with array primitives. np.cumsum computes prefix sums in a single pass, np.exp applies elementwise exponential over the entire time array at once, and np.dot computes the weighted sum of rewards and discount factors as an inner product — all executed in compiled C/Fortran with SIMD acceleration.\n\nFor trajectories common in RL training (hundreds to thousands of steps per episode), the vectorized version is significantly faster than the pure Python loop. The pattern rewards @ discount_factors (dot product) is idiomatic and clearly expresses 'sum of discounted rewards' — a pattern that appears throughout RL implementations including GAE (Generalized Advantage Estimation) and n-step returns.\n\nThis problem is purely numerical computation with no learned parameters or gradients, so TensorFlow and PyTorch add no value here — NumPy is the right tool.",
+    "key_learnings": [
+      "np.cumsum is the canonical vectorized prefix sum — used throughout RL for computing returns, advantages, and cumulative statistics",
+      "np.dot(rewards, discount_factors) expresses the discounted return as an inner product — a pattern that generalizes to batched trajectory processing with matrix multiplication",
+      "Exponential discounting exp(-beta * t) is numerically stable for non-negative beta and t; no risk of overflow since values are in (0, 1]",
+      "Converting between continuous (beta) and discrete (gamma) discount representations is essential when porting RL algorithms between simulators with different physics timesteps",
+      "TF/PyTorch are overkill for pure numerical computation without gradients — recognizing when NOT to use deep learning frameworks is itself an interview signal"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "642"
+}
