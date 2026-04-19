@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef efficient_binary_td_update(initial_weights: list, transitions: list, alpha: float, gamma: float) -> np.ndarray:\n    weights = list(initial_weights)\n\n    for active_s, reward, active_s_next, done in transitions:\n        # V(s) = sum of weights at active feature indices\n        v_s = sum(weights[i] for i in active_s)\n\n        # V(s') = 0 if terminal, otherwise sum over next active indices\n        if done or len(active_s_next) == 0:\n            v_s_next = 0.0\n        else:\n            v_s_next = sum(weights[i] for i in active_s_next)\n\n        # TD error: delta = r + gamma * V(s') - V(s)\n        delta = reward + gamma * v_s_next - v_s\n\n        # Semi-gradient update: only touch weights at active indices of current state\n        for i in active_s:\n            weights[i] += alpha * delta\n\n    return np.array(weights)",
+    "explanation": "This implements the semi-gradient TD(0) algorithm for linear function approximation with binary (indicator) features. The linear value function is V(s) = w^T * x(s), where x(s) is a binary vector. Because x(s) has 1s only at active indices, the dot product simplifies to summing weights at those indices — no need to store or iterate over the full feature vector.\n\nFor each transition, we compute the TD error δ = r + γ·V(s') - V(s). If the episode is done, V(s') is defined as 0 (no future returns). The semi-gradient update then adds α·δ to each weight corresponding to an active feature in the current state. The 'semi' in semi-gradient refers to the fact that we do not differentiate through the target (r + γ·V(s')), treating it as a fixed constant — this is what makes TD methods computationally tractable.\n\nThe key efficiency insight is that binary features turn an O(n) dense vector update into an O(k) sparse update, where k is the number of active features (typically much smaller than n). This is foundational to methods like tile coding used in classic RL benchmarks.",
+    "key_learnings": [
+      "Binary/sparse features reduce value function computation from O(n) to O(k) — always exploit sparsity in linear RL.",
+      "Semi-gradient TD(0): δ = r + γ·V(s') - V(s); update only weights at active indices of the *current* state, not the next state.",
+      "Terminal states set V(s') = 0; the `done` flag must short-circuit the next-state value calculation to avoid using stale weights.",
+      "Linear function approximation with tile coding is a strong baseline — understand it before jumping to neural nets in RL interviews.",
+      "The update rule w[i] += α·δ is equivalent to gradient descent on (1/2)·δ² with a sparse gradient, which is why it scales so well."
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef efficient_binary_td_update(initial_weights: list, transitions: list, alpha: float, gamma: float) -> np.ndarray:\n    weights = np.array(initial_weights, dtype=np.float64)\n\n    for active_s, reward, active_s_next, done in transitions:\n        idx_s = np.asarray(active_s, dtype=np.intp)\n\n        # V(s) via fancy indexing + sum\n        v_s = weights[idx_s].sum() if idx_s.size > 0 else 0.0\n\n        # V(s') — zero if terminal or no active features\n        if done or len(active_s_next) == 0:\n            v_s_next = 0.0\n        else:\n            idx_s_next = np.asarray(active_s_next, dtype=np.intp)\n            v_s_next = weights[idx_s_next].sum()\n\n        delta = reward + gamma * v_s_next - v_s\n\n        # In-place scatter-add at active indices\n        if idx_s.size > 0:\n            weights[idx_s] += alpha * delta\n\n    return weights",
+    "explanation": "The NumPy version replaces Python loops over active indices with fancy indexing: `weights[idx_s]` gathers only the active weights into a temporary array, and `.sum()` reduces them in one vectorized call. The scatter-add `weights[idx_s] += alpha * delta` writes back to the same positions in a single operation, avoiding the explicit Python for-loop over individual indices.\n\nUsing `dtype=np.intp` for index arrays ensures compatibility with NumPy's advanced indexing on any platform (32-bit or 64-bit). For small k this may be marginally slower than the pure-Python version due to array allocation overhead, but it becomes significantly faster when the number of active features grows (e.g., many tile coding tilings) and benefits from NumPy's cache-efficient memory access.\n\nNote that `np.add.at(weights, idx_s, alpha * delta)` would be the unbuffered alternative if duplicate indices were possible, but since feature indices within a single state are assumed unique, the standard `+=` is both correct and faster.",
+    "key_learnings": [
+      "NumPy fancy indexing (`weights[idx_s]`) gathers sparse elements into a dense temp array — ideal for sparse RL feature vectors.",
+      "`weights[idx_s] += scalar` performs a vectorized scatter-add; use `np.add.at` only when duplicate indices are possible (it avoids buffering).",
+      "Convert index lists to `np.intp` arrays once per transition to avoid repeated dtype inference overhead inside the loop.",
+      "For large weight vectors with small k, this approach's O(k) gather/scatter outperforms O(n) dense matrix-vector products.",
+      "Always keep the transition loop in Python when transitions are sequential and stateful — vectorizing across transitions would require careful dependency management since weights are updated in place."
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "609"
+}

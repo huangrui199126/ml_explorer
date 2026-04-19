@@ -1,0 +1,17 @@
+{
+  "python": {
+    "code": "def alpha_beta_pruning(tree, is_maximizing=True):\n    nodes_evaluated = [0]\n\n    def search(node, alpha, beta, maximizing):\n        if not isinstance(node, list):\n            nodes_evaluated[0] += 1\n            return node\n\n        if maximizing:\n            value = float('-inf')\n            for child in node:\n                child_val = search(child, alpha, beta, False)\n                value = max(value, child_val)\n                alpha = max(alpha, value)\n                if alpha >= beta:\n                    break\n            return value\n        else:\n            value = float('inf')\n            for child in node:\n                child_val = search(child, alpha, beta, True)\n                value = min(value, child_val)\n                beta = min(beta, value)\n                if alpha >= beta:\n                    break\n            return value\n\n    result = search(tree, float('-inf'), float('inf'), is_maximizing)\n    return (result, nodes_evaluated[0])",
+    "explanation": "Alpha-beta pruning is a depth-first recursive search over a game tree. At each internal node, we maintain two bounds: alpha (the best value the maximizer can guarantee so far along the path) and beta (the best value the minimizer can guarantee so far). These bounds are passed down from parent to child and tightened as children are evaluated.\n\nThe pruning condition triggers when alpha >= beta. For a maximizer node: if the current best value (alpha) already exceeds what the minimizer above would allow (beta), the minimizer will never choose this branch, so remaining children can be skipped. Symmetrically, for a minimizer: if current best (beta) is already below what the maximizer above can guarantee (alpha), remaining children are useless.\n\nLeaf nodes (non-list values) are the base case and increment our counter. The mutable list `[0]` trick allows the inner function to accumulate a count without nonlocal declarations, though `nonlocal` would also work cleanly in Python 3.\n\nThe algorithm always returns the exact same minimax value as plain minimax — pruning never affects correctness, only efficiency. In the best case (perfect move ordering), the effective branching factor drops from b to sqrt(b), doubling search depth for the same node budget.",
+    "key_learnings": [
+      "Alpha-beta pruning is a lossless optimization: it always returns the identical value as full minimax, just by skipping subtrees that cannot affect the root decision.",
+      "Alpha tracks the maximizer's floor (lower bound), beta tracks the minimizer's ceiling (upper bound); prune when alpha >= beta — the window has collapsed.",
+      "Move ordering dramatically affects pruning efficiency: best moves first yields O(b^(d/2)) nodes vs worst-case O(b^d) with no pruning.",
+      "The algorithm is inherently depth-first and can be implemented with a simple recursive structure passing alpha/beta by value down the call stack.",
+      "Interview trap: remember that alpha and beta are passed DOWN to children (not back up) — only the returned value propagates upward to update the parent's alpha or beta."
+    ]
+  },
+  "numpy": null,
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "632"
+}

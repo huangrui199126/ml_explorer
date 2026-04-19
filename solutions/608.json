@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "import numpy as np\n\ndef tile_coding_step(base_alpha: float, n_tilings: int, weights: list, active_tiles: list, target: float) -> dict:\n    weights = list(weights)\n    adjusted_alpha = base_alpha / n_tilings\n    prediction_before = sum(weights[i] for i in active_tiles)\n    error = target - prediction_before\n    for i in active_tiles:\n        weights[i] += adjusted_alpha * error\n    prediction_after = sum(weights[i] for i in active_tiles)\n    return {\n        'adjusted_alpha': round(adjusted_alpha, 4),\n        'prediction_before': round(prediction_before, 4),\n        'prediction_after': round(prediction_after, 4),\n        'updated_weights': [round(w, 4) for w in weights]\n    }",
+    "explanation": "Tile coding represents a state as multiple overlapping tilings, where each tiling activates exactly one tile. The value estimate is the sum of weights at all active tiles. Because n_tilings features fire simultaneously, a naive step size of alpha would apply n_tilings times the intended correction per update step — so we divide base_alpha by n_tilings to normalize the effective learning rate.\n\nThe update rule follows standard semi-gradient TD: error = target - prediction, then each active weight is nudged by adjusted_alpha * error. This is equivalent to a gradient step on the mean-squared error loss where the gradient is 1 for each active tile.\n\nAfter updating, we recompute the prediction by summing the newly updated weights at active indices. This post-update estimate shows how much the value function moved toward the target in a single step.\n\nThe adjusted step size ensures convergence properties hold regardless of how many tilings are used — a practitioner can tune base_alpha on a familiar scale (0.1, 0.5, etc.) and the function handles the internal normalization automatically.",
+    "key_learnings": [
+      "Tile coding step size must be divided by n_tilings: with k tilings all active, naive alpha applies k× the intended correction — adjusted_alpha = alpha / n_tilings restores proper scaling",
+      "Value estimate in tile coding is a simple linear function: V(s) = sum(w[i] for i in active_tiles), making updates O(n_tilings) regardless of total weight vector size",
+      "The update rule w[i] += alpha * (target - V(s)) is a semi-gradient step — it treats the target as fixed (no gradient through it), which is why TD learning is not a true gradient method",
+      "All active tiles receive the same error signal and the same weight delta, which is why normalization by n_tilings is the correct (not arbitrary) correction",
+      "Tile coding is a classic feature engineering trick for continuous state spaces in RL — interview questions often probe whether you understand the step-size scaling implication"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef tile_coding_step(base_alpha: float, n_tilings: int, weights: list, active_tiles: list, target: float) -> dict:\n    w = np.array(weights, dtype=np.float64)\n    tiles = np.array(active_tiles, dtype=np.int32)\n    adjusted_alpha = base_alpha / n_tilings\n    prediction_before = float(np.sum(w[tiles]))\n    error = target - prediction_before\n    w[tiles] += adjusted_alpha * error\n    prediction_after = float(np.sum(w[tiles]))\n    return {\n        'adjusted_alpha': round(adjusted_alpha, 4),\n        'prediction_before': round(prediction_before, 4),\n        'prediction_after': round(prediction_after, 4),\n        'updated_weights': [round(float(x), 4) for x in w]\n    }",
+    "explanation": "The NumPy version uses fancy indexing to batch-read and batch-write active tile weights in two vectorized operations instead of a Python loop. `w[tiles]` extracts a sub-array of active weights, and `w[tiles] += delta` writes the same delta back to all active positions simultaneously.\n\nThis approach scales well when n_tilings is large (e.g., 32 or 64 tilings, which is common in practice) because the loop overhead disappears. The math is identical to the pure-Python version — adjusted_alpha = base_alpha / n_tilings, error = target - sum(active weights), delta = adjusted_alpha * error.\n\nUsing float64 throughout avoids subtle precision issues when accumulating many small weight updates over thousands of training steps, which matters in long RL training runs.\n\nIn production RL code (e.g., Sutton's tile-coding library), weights are often stored as numpy arrays for exactly this reason — vectorized index updates are the natural fit for sparse feature representations like tile coding.",
+    "key_learnings": [
+      "NumPy fancy indexing (w[array_of_indices]) enables vectorized sparse updates — one line replaces a for-loop and is significantly faster for large n_tilings",
+      "Tile coding is a sparse linear function approximator: the full weight vector can be huge (millions of tiles) but only n_tilings weights are touched per update, making it memory-efficient",
+      "The prediction_after - prediction_before difference equals n_tilings * adjusted_alpha * error = base_alpha * error, confirming the normalization is correct",
+      "In RL implementations, weight vectors are pre-allocated numpy arrays (not Python lists) for O(1) indexed access across millions of updates",
+      "This update is equivalent to a dot product between weights and a binary feature vector x where x[i]=1 for active tiles — the matrix form w += alpha * error * x generalizes to any linear FA"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "608"
+}

@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def semi_markov_q_learning(\n    episodes: list,\n    n_states: int,\n    n_actions: int,\n    gamma: float,\n    alpha: float\n) -> list:\n    # Initialize Q-table to zeros\n    Q = [[0.0] * n_actions for _ in range(n_states)]\n\n    for episode in episodes:\n        for (state, action, reward, next_state, duration, done) in episode:\n            if done:\n                target = reward\n            else:\n                # Key SMDP modification: discount by gamma^duration\n                target = reward + (gamma ** duration) * max(Q[next_state])\n            Q[state][action] += alpha * (target - Q[state][action])\n\n    return [[round(q, 4) for q in row] for row in Q]\n",
+    "explanation": "Semi-Markov Q-Learning extends standard Q-learning by replacing the fixed single-step discount gamma with gamma^duration, where duration is the number of time units the action took. This correctly accounts for how much time actually elapsed during the transition — a longer action should discount future value more heavily.\n\nThe update rule is: Q(s,a) ← Q(s,a) + α * (r + γ^τ * max_a' Q(s',a') - Q(s,a)), where τ is the holding time (duration). When done is True, no future state exists, so the target is simply the immediate reward with no bootstrapped future value.\n\nProcessing transitions sequentially within each episode preserves the temporal ordering of experience, which matters because each update changes Q-values that may influence subsequent updates in the same episode (on-policy trajectory replay).\n\nThe algorithm converges to the SMDP-optimal Q-values under the same conditions as standard Q-learning: sufficient exploration, decaying learning rate, and infinite visits to all state-action pairs.",
+    "key_learnings": [
+      "SMDP replaces fixed gamma discount with gamma^duration — the only algorithmic change from standard Q-learning, but it's conceptually important",
+      "When done=True, the target is just the immediate reward; never bootstrap from a terminal state regardless of duration",
+      "The holding time τ models real-world temporal variability (e.g., macro-actions, options, robot navigation at different distances)",
+      "gamma^duration compounds discounting multiplicatively — a duration-10 action discounts future value by gamma^10, not 10*gamma",
+      "This is the foundation for the Options Framework in hierarchical RL, where options (temporally extended actions) have variable durations"
+    ]
+  },
+  "numpy": {
+    "code": "import numpy as np\n\ndef semi_markov_q_learning(\n    episodes: list,\n    n_states: int,\n    n_actions: int,\n    gamma: float,\n    alpha: float\n) -> list:\n    Q = np.zeros((n_states, n_actions), dtype=np.float64)\n\n    for episode in episodes:\n        for (state, action, reward, next_state, duration, done) in episode:\n            if done:\n                target = reward\n            else:\n                # gamma**duration scales discount by actual elapsed time\n                target = reward + (gamma ** duration) * Q[next_state].max()\n            Q[state, action] += alpha * (target - Q[state, action])\n\n    return np.round(Q, 4).tolist()\n",
+    "explanation": "The NumPy version is structurally identical to pure Python but uses a 2D ndarray for the Q-table, enabling O(n_actions) max computation via Q[next_state].max() and clean 2D indexing with Q[state, action].\n\nUsing float64 ensures numerical precision when gamma^duration is computed for large durations — Python's native float and numpy float64 are both IEEE 754 doubles, but using numpy avoids any accidental precision loss from list-of-list intermediate operations.\n\nnp.round(Q, 4).tolist() efficiently rounds the entire table in one vectorized call before converting back to the nested list format the problem requires.\n\nFor large state/action spaces or many episodes, the array layout (row-major) means Q[next_state] is a contiguous memory slice — cache-friendly for the max() call across all actions.",
+    "key_learnings": [
+      "Q[s].max() over a numpy row is O(n_actions) and cache-friendly — prefer over Python max() on large action spaces",
+      "float64 matters when exponentiating: gamma^1000 underflows to 0.0 for gamma<1, which is actually correct behavior (heavily discounted future)",
+      "np.round(...).tolist() is the idiomatic way to produce a nested Python list from a numpy array with controlled precision",
+      "SMDP Q-learning has the same space complexity as standard Q-learning: O(|S|×|A|) — duration info is not stored, only used transiently",
+      "Vectorizing across episodes (batch updates) is possible but changes semantics from sequential updates — only valid for offline/replay settings"
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "617"
+}

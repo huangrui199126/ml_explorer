@@ -1,0 +1,17 @@
+{
+  "python": {
+    "code": "def minimax_score(tree, is_maximizing=True):\n    def minimax(node, maximizing):\n        if not isinstance(node, list):\n            return float(node), []\n        \n        best_value = None\n        best_path = []\n        best_idx = 0\n        \n        for i, child in enumerate(node):\n            value, path = minimax(child, not maximizing)\n            \n            if best_value is None or (maximizing and value > best_value) or (not maximizing and value < best_value):\n                best_value = value\n                best_path = path\n                best_idx = i\n        \n        return best_value, [best_idx] + best_path\n    \n    value, path = minimax(tree, is_maximizing)\n    return round(value, 4), path",
+    "explanation": "The solution uses recursive depth-first traversal of the game tree. At each internal node, we iterate over all children and recursively compute their backed-up values. The key insight is that players alternate at each depth level — if the current node is maximizing, we pick the child with the highest value; if minimizing, the lowest. Ties are broken by natural iteration order (lowest index wins because we use strict inequality comparisons).\n\nThe path is built bottom-up: each recursive call returns the optimal sub-path starting from that node's chosen child. When we select the best child index `i`, we prepend it to the path returned by that child's subtree, yielding the full path from root to leaf.\n\nLeaf nodes (non-list values) return an empty path and their own float value — this is the base case. The final result rounds the backed-up value to 4 decimal places as specified.",
+    "key_learnings": [
+      "Minimax is a recursive DFS where the player type (max/min) alternates at every depth level — not based on who moved last, but strictly by depth parity from the root.",
+      "Tie-breaking by lowest index is implemented implicitly by using strict inequality (>) — the first child that achieves the optimal value is kept, and later equals are ignored.",
+      "Path reconstruction is cleanest done bottom-up: each call prepends its chosen index to the child's returned path, so no explicit stack or backtracking is needed.",
+      "The base case check `not isinstance(node, list)` correctly handles mixed trees where leaves can be int or float — convert eagerly to float for type consistency.",
+      "For interviews: minimax is O(b^d) time and O(d) space (call stack), where b = branching factor and d = depth. Alpha-beta pruning reduces this to O(b^(d/2)) in the best case."
+    ]
+  },
+  "numpy": null,
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "631"
+}

@@ -1,0 +1,27 @@
+{
+  "python": {
+    "code": "def rote_learning(episodes: list, gamma: float) -> dict:\n    from collections import defaultdict\n\n    state_returns = defaultdict(list)\n\n    for episode in episodes:\n        G = 0.0\n        for state, reward in reversed(episode):\n            G = reward + gamma * G\n            state_returns[state].append(G)\n\n    return {\n        state: round(sum(returns) / len(returns), 4)\n        for state, returns in state_returns.items()\n    }",
+    "explanation": "The algorithm makes a single backward pass through each episode to efficiently compute discounted returns. Starting from the terminal state, G is initialized to 0 and updated as G = r_t + gamma * G at each step moving backwards. This recurrence is equivalent to the full sum G_t = r_t + gamma*r_{t+1} + gamma^2*r_{t+2} + ... but requires only O(T) time and O(1) extra space per episode instead of O(T^2).\n\nEvery (state, G) pair encountered — including repeated visits to the same state within an episode — is appended to that state's list of observed returns. This faithfully implements rote learning: every trajectory through a state contributes evidence about its value, and the agent makes no assumptions about the environment's dynamics.\n\nAfter all episodes are processed, each state's value is the simple mean of all observed returns, rounded to 4 decimal places. Using defaultdict(list) keeps the accumulation clean and avoids explicit key existence checks. The approach is the tabular Monte Carlo every-visit policy evaluation method at its core.",
+    "key_learnings": [
+      "The backward recurrence G = r + gamma*G computes all discounted returns in O(T) — far more efficient than the naive O(T^2) forward summation.",
+      "Every-visit MC (used here) counts all state occurrences; first-visit MC counts only the first occurrence per episode — know which variant is being asked for.",
+      "Rote learning / tabular MC requires no model of the environment; it is purely experience-driven, making it the foundation of model-free RL.",
+      "Averaging returns across episodes is an unbiased estimator of the true value function V(s) = E[G_t | S_t = s] under the policy that generated the data.",
+      "States not encountered remain absent from the table — a key limitation versus parametric function approximators (neural nets) which generalize to unseen states."
+    ]
+  },
+  "numpy": {
+    "code": "def rote_learning(episodes: list, gamma: float) -> dict:\n    import numpy as np\n    from collections import defaultdict\n\n    state_returns = defaultdict(list)\n\n    for episode in episodes:\n        if not episode:\n            continue\n        states = [s for s, _ in episode]\n        rewards = np.array([r for _, r in episode], dtype=np.float64)\n        T = len(rewards)\n\n        # gamma_powers[k] = gamma^k\n        gamma_powers = gamma ** np.arange(T, dtype=np.float64)\n\n        # G[t] = dot(gamma_powers[:T-t], rewards[t:])\n        # Build via vectorized cumsum on reversed, gamma-scaled rewards\n        scaled = rewards * gamma_powers          # r_t * gamma^t\n        rev_cumsum = np.cumsum(scaled[::-1])[::-1]  # sum from t to T-1 of gamma^k * r_k\n        returns = rev_cumsum / gamma_powers     # divide out gamma^t to get G_t\n\n        for t, state in enumerate(states):\n            state_returns[state].append(float(returns[t]))\n\n    return {\n        state: round(float(np.mean(vals)), 4)\n        for state, vals in state_returns.items()\n    }",
+    "explanation": "The NumPy version vectorizes the per-episode return computation. The key insight is that the discounted return G_t = sum_{k=t}^{T-1} gamma^{k-t} * r_k can be rewritten as (1/gamma^t) * sum_{k=t}^{T-1} gamma^k * r_k. If we first scale every reward by its absolute discount factor (scaled[k] = gamma^k * r_k), the suffix sum of scaled gives the bracketed term for each t simultaneously via a single reversed cumulative sum.\n\nDividing the suffix sums by gamma_powers recovers all G_t values in one shot — no Python loop over timesteps is needed. For long episodes this is substantially faster than the scalar recurrence, since NumPy's cumsum and element-wise operations run in compiled C.\n\nThe rest of the algorithm is identical to the pure-Python version: append each return to its state's list and average at the end. This approach is most beneficial when episodes are long or when many episodes share the same structure and can be batched.",
+    "key_learnings": [
+      "The identity G_t = (1/gamma^t) * suffix_sum(gamma^k * r_k) converts the sequential recurrence into a vectorized suffix-sum, eliminating the inner Python loop.",
+      "np.cumsum on the reversed array then re-reversing is the standard NumPy idiom for suffix sums — internalize this pattern.",
+      "Floating-point precision: dividing by very small gamma^t values can amplify numerical error; the backward scalar recurrence in the Python solution is numerically safer for large T with small gamma.",
+      "Vectorizing per-episode computation is only worthwhile for long episodes; for short episodes the overhead of array allocation dominates.",
+      "This pattern generalizes: any dynamic-programming recurrence that can be expressed as a convolution or prefix/suffix sum can be vectorized with NumPy."
+    ]
+  },
+  "tensorflow": null,
+  "pytorch": null,
+  "id": "630"
+}
